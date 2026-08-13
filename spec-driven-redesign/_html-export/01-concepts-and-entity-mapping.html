@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Concepts and Entity Mapping</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  body {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 24px 40px 80px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    color: #1f2328;
+    background: #ffffff;
+  }
+  h1, h2, h3, h4 { font-weight: 600; margin-top: 1.6em; margin-bottom: 0.6em; }
+  h1 { font-size: 2em; border-bottom: 1px solid #d0d7de; padding-bottom: 0.3em; }
+  h2 { font-size: 1.5em; border-bottom: 1px solid #d0d7de; padding-bottom: 0.3em; }
+  h3 { font-size: 1.25em; }
+  a { color: #0969da; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code {
+    background: rgba(175,184,193,0.2);
+    padding: 0.2em 0.4em;
+    border-radius: 6px;
+    font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 85%;
+  }
+  pre {
+    background: #f6f8fa;
+    padding: 16px;
+    border-radius: 6px;
+    overflow-x: auto;
+  }
+  pre code { background: transparent; padding: 0; }
+  pre.mermaid { background: #ffffff; border: 1px solid #d0d7de; text-align: center; }
+  blockquote {
+    border-left: 4px solid #d0d7de;
+    margin: 0;
+    padding: 0 1em;
+    color: #59636e;
+  }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 1em 0;
+    display: block;
+    overflow-x: auto;
+  }
+  th, td {
+    border: 1px solid #d0d7de;
+    padding: 6px 13px;
+    text-align: left;
+    vertical-align: top;
+  }
+  tr:nth-child(2n) { background: #f6f8fa; }
+  hr { border: none; border-top: 1px solid #d0d7de; margin: 2em 0; }
+  .nav {
+    background: #f6f8fa;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    padding: 10px 16px;
+    margin-bottom: 24px;
+    font-size: 14px;
+  }
+  .nav a { margin-right: 14px; }
+  .banner {
+    background: #ddf4ff;
+    border: 1px solid #54aeff3d;
+    border-radius: 6px;
+    padding: 10px 16px;
+    margin-bottom: 16px;
+    font-size: 14px;
+  }
+</style>
+</head>
+<body>
+<div class="banner">Technical / engineering set — for the plain-language business-process companion, see <a href="../../process-playbook/_html-export/README.html">process-playbook</a>.</div>
+<div class="nav"><a href="README.html">README</a><a href="01-concepts-and-entity-mapping.html">01-concepts-and-entity-mapping</a><a href="02-workflow-starting-anew.html">02-workflow-starting-anew</a><a href="03-workflow-new-version-from-existing.html">03-workflow-new-version-from-existing</a><a href="04-cross-cutting-ux-and-open-questions.html">04-cross-cutting-ux-and-open-questions</a><a href="05-eval-methodology-best-practices.html">05-eval-methodology-best-practices</a><a href="06-sdd-alignment-and-resolutions.html">06-sdd-alignment-and-resolutions</a></div>
+<h1>Concepts and Entity Mapping</h1>
+<h2>The new concept: Spec</h2>
+<p>A <strong>Spec</strong> is the structured brief that a prompt, its evaluation, and its test data are all generated from. It is the answer to &quot;what is this prompt actually supposed to do, and how would we know if it did it?&quot; — written down <em>before</em> prompt wording, in a form an LLM (and a teammate) can act on directly.</p>
+<p>The Evals Platform data model deliberately stops at Assertion / Target / Dataset / Judge Policy / Eval / Suite — it has no concept of a product &quot;spec.&quot; That is correct: Spec is a <strong>Prompt Studio concept</strong>, not an Evals Platform concept. Prompt Studio should own it, generate Evals Platform entities from it, and keep a provenance link back to it. This mirrors what <code>PromptRequirement</code> does today, but widens it from &quot;drives assertions only&quot; to &quot;drives prompt + assertions + dataset together.&quot;</p>
+<h3>Recommendation: give Spec the same versioning shape as everything else</h3>
+<p>For consistency with the mental model the team is already adopting for Assertion/Target/Dataset/Eval, a Spec should follow the same <strong>logical / version split</strong> and <strong>draft → published → deprecated</strong> lifecycle described in the data model&#39;s Foundations section:</p>
+<ul>
+<li><code>Spec</code> — identity row: id, name, owning project, owning client.</li>
+<li><code>SpecVersion</code> — frozen content once published: goal, contracts, guardrails, criteria, examples. Editing after publish forks a new <code>SpecVersion</code>, never mutates the old one.</li>
+</ul>
+<p>This buys the same thing it buys everywhere else in the model: a stable thing to point at, reproducibility, and an audit trail of who changed the brief and when.</p>
+<h3>Suggested Spec fields</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>What it captures</th>
+<th>Why it matters downstream</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Name / summary</strong></td>
+<td>One-line description of the prompt&#39;s purpose</td>
+<td>Shown everywhere as the human label</td>
+</tr>
+<tr>
+<td><strong>Goal / business context</strong></td>
+<td>Why this prompt exists, who consumes its output</td>
+<td>Seeds the prompt&#39;s system instructions</td>
+</tr>
+<tr>
+<td><strong>Input contract</strong> (required)</td>
+<td>Variables the prompt needs — a single string, or a collection of named, typed variables — and their sources</td>
+<td>Becomes prompt placeholders + <code>DatasetVersion.ItemSchema</code></td>
+</tr>
+<tr>
+<td><strong>Output contract</strong> (required)</td>
+<td>Expected shape of the output (free text, or a JSON schema with required fields for structured output)</td>
+<td>Seeds prompt instructions/structured-output config, and seeds structural (<code>code_assertion</code>) checks</td>
+</tr>
+<tr>
+<td><strong>Guardrails / must-not-do</strong></td>
+<td>Tone, compliance, safety, things the model must avoid</td>
+<td>Seeds <code>rubric_grading</code> Assertions</td>
+</tr>
+<tr>
+<td><strong>Success criteria</strong></td>
+<td>A bulleted list of pass/fail behaviors (&quot;must always cite a source&quot;, &quot;must refuse X&quot;)</td>
+<td>Each bullet ≈ one Assertion</td>
+</tr>
+<tr>
+<td><strong>Examples (input → expected output)</strong></td>
+<td>Few-shot pairs</td>
+<td>Seed <code>DatasetItem</code> rows (and optionally few-shot content in the prompt itself)</td>
+</tr>
+<tr>
+<td><strong>Edge cases / negative examples</strong></td>
+<td>Tricky or adversarial inputs and how they should be handled</td>
+<td>Seed additional <code>DatasetItem</code> rows + per-item <code>DatasetItemAssertion</code></td>
+</tr>
+<tr>
+<td><strong>Model/target assumptions (optional)</strong></td>
+<td>Preferred model family, latency/cost constraints</td>
+<td>Seeds default <code>TargetVersion.Params</code></td>
+</tr>
+<tr>
+<td><strong>Owner, status</strong></td>
+<td>Who wrote it, draft/published/deprecated</td>
+<td>Same lifecycle pattern as every other entity</td>
+</tr>
+</tbody></table>
+<p><strong>Required vs. optional:</strong> per <a href="02-workflow-starting-anew.html">02</a> step 1, only <strong>Name</strong>, <strong>at least one success criterion</strong>, and the <strong>Input contract + Output contract</strong> are required to save a draft Spec — everything else (goal/context, guardrails, examples, edge cases, model assumptions) can be filled in later through iteration. The Input/Output contract pair is required precisely because the Prompt and its structural <code>code_assertion</code> checks can&#39;t be safely drafted without knowing what goes in and what shape comes out.</p>
+<h3>Provenance: linking generated artifacts back to the Spec</h3>
+<p>Because Assertion/Dataset/Eval/Target are engine-neutral and client-agnostic by design, they should <strong>not</strong> carry a hard foreign key to <code>SpecVersionId</code> inside the Evals Platform schema — that would leak a Prompt-Studio-only concept into a shared, multi-client service. Instead, Prompt Studio keeps its own lightweight join table, something like:</p>
+<pre><code class="language-">SpecGenerationLink
+  SpecVersionId        -&gt; Spec (Prompt Studio's own store)
+  GeneratedEntityType   ('prompt' | 'assertion' | 'dataset' | 'eval' | 'judge' | 'target' | 'suite')
+  GeneratedEntityId
+  GeneratedVersionId
+  SourceSection         (which part of the spec produced this, e.g. "criterion #3")
+  CreatedAt</code></pre>
+<p>This is what powers the &quot;this assertion came from spec criterion #3&quot; breadcrumbs in the UI (see <a href="04-cross-cutting-ux-and-open-questions.html">04-cross-cutting-ux-and-open-questions.md</a>) without polluting the shared data model.</p>
+<hr>
+<h2>Entity mapping: Spec section → Evals Platform entity generated</h2>
+<table>
+<thead>
+<tr>
+<th>Spec section</th>
+<th>Generates</th>
+<th>Evals Platform entity/entities</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Goal + output contract + guardrails (as instructions)</td>
+<td>Prompt content &amp; system instructions</td>
+<td>Prompt Studio&#39;s own <code>PromptVersion</code> (unchanged concept from today)</td>
+</tr>
+<tr>
+<td>Output contract (structural parts)</td>
+<td>A structural check</td>
+<td><code>Assertion</code> / <code>AssertionVersion</code> (<code>code_assertion</code> type)</td>
+</tr>
+<tr>
+<td>Each success-criterion bullet</td>
+<td>One check, <strong>cheapest tier that plausibly covers it</strong></td>
+<td><code>Assertion</code> / <code>AssertionVersion</code> (<code>code_assertion</code> preferred; <code>rubric_grading</code> only when the criterion is genuinely subjective)</td>
+</tr>
+<tr>
+<td>Guardrails / must-not-do</td>
+<td>One check each — deterministic where possible, model-graded only when necessary</td>
+<td><code>Assertion</code> / <code>AssertionVersion</code> (<code>code_assertion</code> or <code>rubric_grading</code>)</td>
+</tr>
+<tr>
+<td>Grading approach / model preference</td>
+<td>The grader those rubric checks call</td>
+<td><code>JudgePolicy</code> / <code>JudgePolicyVersion</code> — <strong>draft</strong>; calibrating it against a human-labeled sample is recommended before trusting its verdicts as release evidence, but is not a required gate (see <a href="05-eval-methodology-best-practices.html">05</a>)</td>
+</tr>
+<tr>
+<td>Examples + edge cases</td>
+<td>Test rows, via structured dimensions → tuples → rows, not naive generation</td>
+<td><code>Dataset</code> / <code>DatasetVersion</code> / <code>DatasetItem</code></td>
+</tr>
+<tr>
+<td>Per-example expected behavior (&quot;golden&quot; cases)</td>
+<td>Per-row checks</td>
+<td><code>DatasetItemAssertion</code></td>
+</tr>
+<tr>
+<td>Target model &amp; call parameters</td>
+<td>The subject under test, wrapping the drafted prompt version</td>
+<td><code>Target</code> / <code>TargetVersion</code> (<code>Params</code> include the promptId + versionId)</td>
+</tr>
+<tr>
+<td>All checks + judge + aggregation rule</td>
+<td>The reusable &quot;what to check&quot; bundle</td>
+<td><code>Eval</code> / <code>EvalVersion</code> / <code>EvalAssertion</code></td>
+</tr>
+<tr>
+<td>Eval + Dataset + Target(s) tied together</td>
+<td>The runnable unit</td>
+<td><code>Suite</code> / <code>SuiteVersion</code> / <code>SuiteTarget</code></td>
+</tr>
+<tr>
+<td>Launching the suite</td>
+<td>The dry run / verification</td>
+<td><code>RunGroup</code> (type <code>batch</code>) → <code>Run</code> → <code>RunItem</code> → <code>Score</code></td>
+</tr>
+</tbody></table>
+<p>This table is the backbone of the &quot;dry run&quot; described in the next two docs: generating a spec-backed prompt is really &quot;populate every row on the right-hand column from the spec, then launch a batch run and look at the scores.&quot; Two caveats that matter more than the mechanics, expanded in <a href="05-eval-methodology-best-practices.html">05-eval-methodology-best-practices.md</a>:</p>
+<ul>
+<li><strong>Every row in this table is a starting hypothesis, not a finished evaluator.</strong> Current field practice (Hamel Husain / Shreya Shankar) is explicit that writing evaluators before you have real failure data — &quot;eval-driven development&quot; — is generally the wrong default; a Spec&#39;s stated criteria are a reasonable exception (they&#39;re known constraints, not guesses), but the assertions generated from them still need to survive real error analysis before they&#39;re trustworthy.</li>
+<li><strong><code>rubric_grading</code> assertions should be the exception, not the default.</strong> When a success criterion <em>could</em> be checked deterministically, generate a <code>code_assertion</code> instead — reserve the LLM-as-judge tier for criteria that are genuinely subjective, since that tier requires ongoing calibration and maintenance that a <code>code_assertion</code> never does.</li>
+<li><strong>&quot;Prefer <code>code_assertion</code>&quot; means mapping to an existing library first, not generating arbitrary code by default.</strong> Per the <em>Eval Service SDD</em>&#39;s security section (see <a href="06-sdd-alignment-and-resolutions.html">06-sdd-alignment-and-resolutions.md</a>), a <code>code_assertion</code> is JavaScript that executes on the runner with the runner&#39;s permissions — in v1 there&#39;s no sandboxing, review-gate, or runtime hardening around that. So the dry-run generator&#39;s job is mainly <strong>detecting the opportunity</strong> to check something deterministically, not writing the code from scratch: (1) map the criterion onto an existing, parameterized type in the <strong>promptfoo assertions library</strong> (contains/excludes, regex match, valid JSON, JSON-schema conformance, field-in-range, tool-was-called) first; (2) only if nothing in that library fits, let the generator write a small custom check itself, flagged for the AI review agent to look at during Review &amp; Approve (see <a href="02-workflow-starting-anew.html">02</a> step 2 and step 8); (3) a check too novel or risky even for that becomes a request to an engineer to add a new curated type instead.</li>
+</ul>
+<hr>
+<h2>Lifecycle recap (borrowed directly from the Evals Platform Foundations)</h2>
+<p>Every artifact — Spec, Assertion, Judge Policy, Dataset, Eval, Target, Suite — moves through the same three states:</p>
+<ul>
+<li><strong>draft</strong> — freely editable, and runnable. You can attach your own drafts to a draft Suite and launch it; the result is a <strong>dry run</strong> (non-citable).</li>
+<li><strong>published</strong> — frozen. Content and bundle membership are immutable. To change anything, fork a new version.</li>
+<li><strong>deprecated</strong> — a label, not a content change.</li>
+</ul>
+<p>Publishing is <strong>one atomic act</strong> across the whole pinned graph (Spec, Assertions, Judge Policy, Dataset, Eval, Target, Suite) — there is no &quot;publish the eval but not the dataset&quot; half-state. This is what replaces today&#39;s fragile, independently-tracked approval checks (final config flag, executed flag, relevancy score) with a single frozen, reproducible bundle.</p>
+<p>A <strong>citable</strong> result is one where every pinned version was already published when it ran — these are the only results that should count as approval evidence or feed cross-run trend dashboards. A dry run against draft content is always <strong>non-citable</strong>: useful to the author, invisible to trend analytics, and rejected by the publish gate as evidence.</p>
+
+<script>
+  mermaid.initialize({ startOnLoad: true, theme: "default", securityLevel: "loose" });
+</script>
+</body>
+</html>

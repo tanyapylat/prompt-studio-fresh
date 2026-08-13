@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Process Playbook — How Prompt Work Should Flow</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  body {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 24px 40px 80px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    color: #1f2328;
+    background: #ffffff;
+  }
+  h1, h2, h3, h4 { font-weight: 600; margin-top: 1.6em; margin-bottom: 0.6em; }
+  h1 { font-size: 2em; border-bottom: 1px solid #d0d7de; padding-bottom: 0.3em; }
+  h2 { font-size: 1.5em; border-bottom: 1px solid #d0d7de; padding-bottom: 0.3em; }
+  h3 { font-size: 1.25em; }
+  a { color: #0969da; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code {
+    background: rgba(175,184,193,0.2);
+    padding: 0.2em 0.4em;
+    border-radius: 6px;
+    font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 85%;
+  }
+  pre {
+    background: #f6f8fa;
+    padding: 16px;
+    border-radius: 6px;
+    overflow-x: auto;
+  }
+  pre code { background: transparent; padding: 0; }
+  pre.mermaid { background: #ffffff; border: 1px solid #d0d7de; text-align: center; }
+  blockquote {
+    border-left: 4px solid #d0d7de;
+    margin: 0;
+    padding: 0 1em;
+    color: #59636e;
+  }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 1em 0;
+    display: block;
+    overflow-x: auto;
+  }
+  th, td {
+    border: 1px solid #d0d7de;
+    padding: 6px 13px;
+    text-align: left;
+    vertical-align: top;
+  }
+  tr:nth-child(2n) { background: #f6f8fa; }
+  hr { border: none; border-top: 1px solid #d0d7de; margin: 2em 0; }
+  .nav {
+    background: #f6f8fa;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    padding: 10px 16px;
+    margin-bottom: 24px;
+    font-size: 14px;
+  }
+  .nav a { margin-right: 14px; }
+  .banner {
+    background: #ddf4ff;
+    border: 1px solid #54aeff3d;
+    border-radius: 6px;
+    padding: 10px 16px;
+    margin-bottom: 16px;
+    font-size: 14px;
+  }
+</style>
+</head>
+<body>
+<div class="banner">Business-process playbook — for the technical/engineering companion set, see <a href="../../spec-driven-redesign/_html-export/README.html">spec-driven-redesign</a>.</div>
+<div class="nav"><a href="README.html">README</a><a href="01-the-spec.html">01-the-spec</a><a href="02-launching-a-brand-new-prompt.html">02-launching-a-brand-new-prompt</a><a href="03-updating-an-existing-prompt.html">03-updating-an-existing-prompt</a><a href="04-roles-responsibilities-and-approvals.html">04-roles-responsibilities-and-approvals</a><a href="05-continuous-quality-and-feedback-loop.html">05-continuous-quality-and-feedback-loop</a><a href="06-libraries-and-real-data.html">06-libraries-and-real-data</a><a href="07-glossary.html">07-glossary</a><a href="08-under-the-hood-technical-context.html">08-under-the-hood-technical-context</a></div>
+<h1>Process Playbook — How Prompt Work Should Flow</h1>
+<p>This is the <strong>business-process companion</strong> to the technical proposal in <a href="../../spec-driven-redesign/_html-export/README.html"><code>../spec-driven-redesign/</code></a>. That set of docs is written for engineers and describes data models, versioned entities, and system architecture. <strong>This set is written for anyone who needs to understand, approve, or follow the actual day-to-day workflow</strong> — what a person does, in what order, who signs off, and why — without needing to know how any of it is stored under the hood.</p>
+<p>If you&#39;re deciding <em>whether this process makes sense for the team</em>, read this set. If you&#39;re deciding <em>whether the technical design supports it</em>, read the other one. The <a href="07-glossary.html">glossary</a> at the end maps plain terms used here to their technical names, so the two sets stay in sync.</p>
+<h2>The idea in one paragraph</h2>
+<p>Today, writing a good prompt and proving it&#39;s good enough to ship are two loosely-connected efforts — someone writes a prompt, then separately (and often as an afterthought) someone sets up a handful of test cases to check it. This playbook proposes flipping the order: <strong>write down what &quot;good&quot; means first</strong> (a short brief we call the <strong>Spec</strong>), then let the system automatically draft a first version of the prompt <em>and</em> a first set of tests from that brief, together, so they&#39;re never out of sync. From there, the real work is reading actual outputs and fixing whichever of three things is wrong — the wording, the tests, or the brief itself — until it&#39;s genuinely good, at which point it goes through a lightweight review and ships. After it&#39;s live, the same discipline continues: real usage keeps teaching the tests new failure modes, which feed straight back into sharper checks and, when needed, an updated brief.</p>
+<h2>How to read this set</h2>
+<table>
+<thead>
+<tr>
+<th>Doc</th>
+<th>What it covers</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><a href="01-the-spec.html">01-the-spec.md</a></td>
+<td>What a Spec is, why you write it before touching prompt wording, what&#39;s required vs. optional, and who typically writes one.</td>
+</tr>
+<tr>
+<td><a href="02-launching-a-brand-new-prompt.html">02-launching-a-brand-new-prompt.md</a></td>
+<td>The full journey for a prompt that doesn&#39;t exist yet: brief → first draft → read outputs → fix loop → lock in → review → ship.</td>
+</tr>
+<tr>
+<td><a href="03-updating-an-existing-prompt.html">03-updating-an-existing-prompt.md</a></td>
+<td>The three different reasons you&#39;d touch a prompt that&#39;s already live, and why each one follows a different, appropriately-sized path.</td>
+</tr>
+<tr>
+<td><a href="04-roles-responsibilities-and-approvals.html">04-roles-responsibilities-and-approvals.md</a></td>
+<td>Who does what, who has final say over quality, how review works, and when a lighter-weight fast track applies.</td>
+</tr>
+<tr>
+<td><a href="05-continuous-quality-and-feedback-loop.html">05-continuous-quality-and-feedback-loop.md</a></td>
+<td>What happens after release — how real usage keeps improving the tests and, sometimes, the brief itself.</td>
+</tr>
+<tr>
+<td><a href="06-libraries-and-real-data.html">06-libraries-and-real-data.md</a></td>
+<td>How checks and test sets get reused across prompts, and how real usage becomes test cases and checks in bulk, not just one case at a time.</td>
+</tr>
+<tr>
+<td><a href="07-glossary.html">07-glossary.md</a></td>
+<td>Plain-language terms used across this set, mapped to their technical equivalents for cross-referencing with the engineering docs.</td>
+</tr>
+<tr>
+<td><a href="08-under-the-hood-technical-context.html">08-under-the-hood-technical-context.md</a></td>
+<td><em>Optional, one page.</em> Not a repeat of the workflow or the glossary — just the handful of engineering facts that explain why certain rules above are trustworthy, and which parts are proven today vs. still being built.</td>
+</tr>
+</tbody></table>
+<h2>What this replaces</h2>
+<p>Today, a prompt&#39;s &quot;quality bar&quot; lives in a loosely-connected pile of things: a short requirements note (if one exists at all), a set of test cases someone bolted on later, and three separate approval checkboxes that can drift out of sync with each other. This playbook proposes one continuous thread instead: <strong>one brief drives the prompt and its tests together, one review looks at the whole bundle at once, and one feedback loop keeps it honest after launch</strong> — replacing disconnected checklists with a single, traceable story from &quot;what should this do&quot; to &quot;here&#39;s proof it does it.&quot;</p>
+
+<script>
+  mermaid.initialize({ startOnLoad: true, theme: "default", securityLevel: "loose" });
+</script>
+</body>
+</html>

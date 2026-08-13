@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Case 2 — Building a New Prompt Version on Top of an Older One</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  body {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 24px 40px 80px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    color: #1f2328;
+    background: #ffffff;
+  }
+  h1, h2, h3, h4 { font-weight: 600; margin-top: 1.6em; margin-bottom: 0.6em; }
+  h1 { font-size: 2em; border-bottom: 1px solid #d0d7de; padding-bottom: 0.3em; }
+  h2 { font-size: 1.5em; border-bottom: 1px solid #d0d7de; padding-bottom: 0.3em; }
+  h3 { font-size: 1.25em; }
+  a { color: #0969da; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code {
+    background: rgba(175,184,193,0.2);
+    padding: 0.2em 0.4em;
+    border-radius: 6px;
+    font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 85%;
+  }
+  pre {
+    background: #f6f8fa;
+    padding: 16px;
+    border-radius: 6px;
+    overflow-x: auto;
+  }
+  pre code { background: transparent; padding: 0; }
+  pre.mermaid { background: #ffffff; border: 1px solid #d0d7de; text-align: center; }
+  blockquote {
+    border-left: 4px solid #d0d7de;
+    margin: 0;
+    padding: 0 1em;
+    color: #59636e;
+  }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 1em 0;
+    display: block;
+    overflow-x: auto;
+  }
+  th, td {
+    border: 1px solid #d0d7de;
+    padding: 6px 13px;
+    text-align: left;
+    vertical-align: top;
+  }
+  tr:nth-child(2n) { background: #f6f8fa; }
+  hr { border: none; border-top: 1px solid #d0d7de; margin: 2em 0; }
+  .nav {
+    background: #f6f8fa;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    padding: 10px 16px;
+    margin-bottom: 24px;
+    font-size: 14px;
+  }
+  .nav a { margin-right: 14px; }
+  .banner {
+    background: #ddf4ff;
+    border: 1px solid #54aeff3d;
+    border-radius: 6px;
+    padding: 10px 16px;
+    margin-bottom: 16px;
+    font-size: 14px;
+  }
+</style>
+</head>
+<body>
+<div class="banner">Technical / engineering set — for the plain-language business-process companion, see <a href="../../process-playbook/_html-export/README.html">process-playbook</a>.</div>
+<div class="nav"><a href="README.html">README</a><a href="01-concepts-and-entity-mapping.html">01-concepts-and-entity-mapping</a><a href="02-workflow-starting-anew.html">02-workflow-starting-anew</a><a href="03-workflow-new-version-from-existing.html">03-workflow-new-version-from-existing</a><a href="04-cross-cutting-ux-and-open-questions.html">04-cross-cutting-ux-and-open-questions</a><a href="05-eval-methodology-best-practices.html">05-eval-methodology-best-practices</a><a href="06-sdd-alignment-and-resolutions.html">06-sdd-alignment-and-resolutions</a></div>
+<h1>Case 2 — Building a New Prompt Version on Top of an Older One</h1>
+<p>&quot;On top of an older one&quot; is not one flow — it splits into three distinct intents, depending on <strong>what actually needs to change</strong>. Getting this branch right matters because it determines what gets reused vs. forked, and whether the new version is proven against the old one or evaluated in isolation.</p>
+<pre class="mermaid">
+flowchart TD
+  openExisting[Open existing published Prompt version + linked Spec/Eval/Dataset] --> whatChanged{What needs to change?}
+  whatChanged -->|Just the prompt wording/model| caseA[Case A: prompt-only tweak]
+  whatChanged -->|The requirements themselves| caseB[Case B: spec change]
+  whatChanged -->|A gap found in eval/dataset, prompt untouched| caseC[Case C: eval/dataset-only change]
+</pre>
+<h2>Reuse-vs-fork at a glance</h2>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Spec</th>
+<th>Assertions</th>
+<th>Dataset</th>
+<th>Judge</th>
+<th>Prompt / Target</th>
+<th>Suite</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Case A</strong> — prompt-only tweak</td>
+<td>reused as-is</td>
+<td>reused as-is</td>
+<td>reused as-is</td>
+<td>reused as-is</td>
+<td><strong>forked</strong> (new Target)</td>
+<td><strong>forked</strong> (new SuiteVersion, adds new Target alongside old)</td>
+</tr>
+<tr>
+<td><strong>Case B</strong> — spec changed</td>
+<td><strong>forked</strong></td>
+<td>changed items forked, untouched items reused</td>
+<td>changed/added rows forked, untouched rows reused</td>
+<td>reused unless grading approach changed</td>
+<td>usually forked (content likely needs to change)</td>
+<td>forked</td>
+</tr>
+<tr>
+<td><strong>Case C</strong> — eval/dataset gap found</td>
+<td>optionally amended (addendum)</td>
+<td><strong>forked</strong> (new/changed assertion)</td>
+<td><strong>forked</strong> (new row(s))</td>
+<td>reused unless the new check needs a different grader</td>
+<td>reused as-is (no prompt change)</td>
+<td>forked (new Suite version, same Target)</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>Case A — Prompt-only tweak (spec unchanged)</h2>
+<p>Wording fix, prompt-engineering improvement, model swap, temperature change — the requirements haven&#39;t changed, you just believe you can satisfy them better (or more cheaply/faster).</p>
+<p><strong>Goal of this flow:</strong> prove the new prompt is at least as good as the current one, on the exact same bar, before it can replace it.</p>
+<p><strong>Does a prompt-only edit risk violating the Spec?</strong> Only if the Spec has a requirement with no Assertion checking it — see the coverage checklist note in <a href="02-workflow-starting-anew.html">02</a> step 4. As long as coverage is complete, re-running the existing Eval against the new prompt (step 5 below) <em>is</em> the check.</p>
+<p><strong>Coverage-complete isn&#39;t the same as drift-proof.</strong> Two blind spots remain even at 100% coverage: an Assertion can exist for a criterion but be too loose to catch a rephrased violation of it (e.g. a keyword-based check for &quot;don&#39;t promise refunds&quot; can pass a rewording that still effectively promises one), and the Dataset was built to stress-test the <em>old</em> wording, so it may not exercise the part of the input space where the new wording actually behaves differently. Neither shows up as a failing test, because nothing mechanical is wrong — it&#39;s a blind spot in what was tested, not a broken check. Two additions close this gap for Case A specifically:</p>
+<ul>
+<li><strong>A semantic spec-conformance pass, not just an assertion-coverage pass.</strong> Before or alongside the comparison run, the AI review agent reads the Spec text itself against the old and new prompt content and flags any wording change that looks like it could weaken a guardrail or criterion — whether or not an Assertion currently tests it — instead of only checking whether a coverage checkbox exists.</li>
+<li><strong>The wording diff itself triggers a small batch of new, targeted dataset rows</strong> aimed specifically at the changed part of the prompt, using the same dimension-based generation already used for dry runs, rather than relying solely on the old rows that only prove &quot;no regression on what we already knew to check.&quot;</li>
+</ul>
+<p>Both are suggestions the reviewer can accept or dismiss, never an automatic block, consistent with the suggest-first pattern used everywhere else in this design. If a gap like this is only discovered after release, the fix flows back through Case C below: the finding becomes a new Assertion or Dataset row so the same gap can&#39;t recur silently on the next Case A edit.</p>
+<ol>
+<li>Open the existing <strong>published</strong> Prompt version. Because it was created (or later migrated) through this system, its linked Spec version, Eval version, and Dataset version are all visible from the same screen.</li>
+<li>Edit the prompt content / model config. This creates a new <strong>draft</strong> <code>PromptVersion</code>, wrapped in a new draft <code>TargetVersion</code>.</li>
+<li><strong>Do not fork the Eval or Dataset</strong> — reuse the published versions unchanged, since nothing about what &quot;good&quot; means has changed.</li>
+<li>Fork a new <strong>draft</strong> <code>SuiteVersion</code> from the last published Suite version. Instead of swapping the old Target for the new one, <strong>add the new Target alongside the old one</strong> (<code>SuiteTarget</code> supports more than one target per suite precisely for this comparison case).</li>
+<li>Launch. One <code>RunGroup</code> fans out into <strong>two Runs</strong> — old prompt vs. new prompt — over the identical dataset, identical assertions, identical judge. This is a native, built-in regression gate, not a separate &quot;Compare&quot; tool bolted onto the side (as today&#39;s <code>/compare</code> page is).</li>
+<li>Read the comparison directly: pass rate, per-assertion pass rate, cost, latency, and token counts, old vs. new, side by side.<ul>
+<li><strong>No regression, meets bar:</strong> drop the old Target from the Suite (keep only the new one), then Publish → auto citable run → Approve → Release, same as steps 6-9 in <a href="02-workflow-starting-anew.html">02-workflow-starting-anew.md</a>.</li>
+<li><strong>Regression found:</strong> stay in the draft loop — edit the prompt again, re-run the same two-target comparison, repeat.</li>
+</ul>
+</li>
+</ol>
+<h2>Case B — The requirements changed (Spec changes)</h2>
+<p>A new business rule, a compliance addition, an edge case discovered in production, a stakeholder asking for different behavior — the bar itself needs to move, not just the prompt&#39;s ability to clear it.</p>
+<ol>
+<li>Open the prompt&#39;s linked <strong>Spec</strong>. Fork a new <strong>draft</strong> <code>SpecVersion</code>: edit/add success criteria, guardrails, examples, or edge cases.</li>
+<li><strong>Recommended: diff-driven regeneration, not a blind full regenerate.</strong> The system diffs the old Spec version against the new one and proposes only the deltas:<ul>
+<li>New/changed criteria → new/changed <code>AssertionVersion</code>s only for those criteria. Untouched criteria keep their existing, possibly hand-tuned, <code>AssertionVersion</code>s — publishing a new Spec must not silently discard manual assertion edits that have nothing to do with the change.</li>
+<li>New/changed examples or edge cases → new <code>DatasetItem</code> rows appended into a forked <code>DatasetVersion</code>. Existing rows are kept by default (additive), since the old bar is still worth checking against unless explicitly removed.</li>
+<li>If the goal/output contract changed in a way that plausibly requires new prompt wording, the system proposes a <strong>prompt content diff</strong> — shown as an editable suggestion, never a silent overwrite of a hand-tuned prompt.</li>
+</ul>
+</li>
+<li>From here, this is the same dry-run/error-analysis/iterate loop as <a href="02-workflow-starting-anew.html">02-workflow-starting-anew.md</a> steps 3-5, seeded from deltas instead of from scratch. (Judge calibration for any new <code>rubric_grading</code> assertion is optional, good practice — not a gate — per the decision in <a href="02-workflow-starting-anew.html">02</a> step 6.)</li>
+<li><strong>Run it as a comparison, same as Case A:</strong> pin the new draft Target alongside the previous published Target in the Suite, so a single run answers two questions at once — &quot;does the new version meet the <em>new</em> bar&quot; and &quot;did it regress on anything the <em>old</em> bar covered&quot; (since old dataset rows/assertions are, by default, still present unless deliberately retired).</li>
+<li>Publish → auto citable run → Approve → Release, same as before. The Approve step here should surface the <strong>Spec diff</strong> prominently (what changed and why), not just the prompt diff — the reviewer is signing off on a requirements change as much as a prompt change.</li>
+</ol>
+<h2>Case C — Only the eval/dataset needs to evolve (prompt untouched)</h2>
+<p><strong>This is the most important loop in the whole system, not an edge case.</strong> Current field practice (Hamel Husain / Shreya Shankar — see <a href="05-eval-methodology-best-practices.html">05-eval-methodology-best-practices.md</a>) holds that error analysis on real outputs — not the initial spec-derived generation — is what actually makes an eval correct over time. Case C is the mechanism for feeding what error analysis finds (in a batch dry run, in a citable run, in Online Evaluation results, <strong>or in raw production traces that were never run through any eval at all</strong>) back into the Dataset and Assertions. That last source matters on its own, not just as a stand-in until Online Evaluation ships — Online Evaluation only ever grades the slice of traffic it&#39;s sampling, so a failure mode outside that slice, or outside what its checks were built to catch, only ever surfaces by reading raw, ungraded output. Expect to run this loop continuously, far more often than Case A or B.</p>
+<p><strong>Phasing note (per the Eval Service SDD — see <a href="06-sdd-alignment-and-resolutions.html">06</a>):</strong> Online Evaluation is Phase 2, with no executor built yet. Until it ships, &quot;error analysis on Online Evaluation traces&quot; isn&#39;t a live source — the feeder is <strong>ingested</strong> results instead (imported Jenkins/PromptFoo batch reports, or manually reviewed trace exports pulled in through the same client API used for ingestion). Same destination (new Dataset rows / new Assertions), more manual sourcing until Phase 2 lands.</p>
+<p>Typical triggers: a production incident reveals an untested edge case; error analysis on a batch of ingested/Online-Evaluation traces surfaces a new failure cluster; a new guardrail policy needs to apply retroactively; someone wants to raise the bar without believing the current prompt needs to change yet.</p>
+<ol>
+<li>No Spec fork is strictly required (though a short addendum documenting the new criterion is good practice for traceability). No Prompt change is needed at all.</li>
+<li><strong>PII redaction gate on promotion.</strong> Before any real production/customer input becomes a <code>DatasetItem</code>, it must pass through PII redaction (reusing the existing redaction service already applied to online evals in the current system) — a Dataset never expires the way a Run&#39;s payload does (that&#39;s cleared automatically after 30 days), so a raw trace copied in bypasses that protection permanently unless it&#39;s scrubbed first. Synthetic/anonymized edge cases don&#39;t need this step.</li>
+<li>Fork a new <strong>draft</strong> <code>DatasetVersion</code> (add the new, redacted-if-needed edge-case row(s), typically promoted directly from an error-analysis note — see <a href="05-eval-methodology-best-practices.html">05</a>) and/or a new <strong>draft</strong> <code>EvalVersion</code> (add the new <code>AssertionVersion</code> — try mapping the new failure mode onto the existing promptfoo assertion library first, fall back to a small LLM-authored custom check flagged for review if nothing fits, or <code>rubric_grading</code> for genuinely subjective cases, per <a href="02-workflow-starting-anew.html">02</a> step 2), reusing the <strong>existing published Target</strong> untouched — the current production prompt doesn&#39;t need a new version to be tested against a stricter bar.</li>
+<li>Build a new <strong>draft</strong> <code>SuiteVersion</code> pinning: the existing published Target (unchanged) + the forked Dataset/Eval version. Launch. This checks whether the <strong>current production prompt</strong> already handles the newly-discovered case.</li>
+<li><strong>If it passes:</strong> publish just the Eval/Dataset (their own atomic freeze — no prompt version needs publishing since none was created). This raises the bar for all <em>future</em> prompt versions immediately, and — once Online Evaluation ships (Phase 2) — can be pointed at production traffic right away to confirm there&#39;s no silent regression on the new case in live traffic, without ever touching the prompt. Until then, re-check periodically via ingested batch reports.</li>
+<li><strong>If it fails:</strong> this is the trigger to go do Case A or B — a concrete, reproducible failing test case in hand, which is exactly what should drive the prompt edit rather than an ad hoc bug report. This is the natural feeder loop between &quot;we found a quality gap&quot; and &quot;now go fix the prompt.&quot;</li>
+</ol>
+<hr>
+<h2>Why multi-target Suites matter here</h2>
+<p>The data model explicitly supports several <code>TargetVersion</code>s pinned to one <code>SuiteVersion</code> as &quot;the comparison case: the same eval and dataset are meant to run against each subject side by side.&quot; Cases A and B above lean on this directly instead of treating &quot;compare old vs. new&quot; as a separate feature (today&#39;s <code>/compare</code> page, which is informal and disconnected from the formal approval gate). Recommendation: <strong>make the comparison Suite the default path for any version built on top of a prior one</strong> — a single-target Suite becomes the exception (used only when there is no meaningful prior baseline, i.e. Case 1&#39;s starting-anew flow), not the default.</p>
+
+<script>
+  mermaid.initialize({ startOnLoad: true, theme: "default", securityLevel: "loose" });
+</script>
+</body>
+</html>

@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Libraries: Reusable Checks and Test Sets, Built From Real Data Too</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  body {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 24px 40px 80px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    color: #1f2328;
+    background: #ffffff;
+  }
+  h1, h2, h3, h4 { font-weight: 600; margin-top: 1.6em; margin-bottom: 0.6em; }
+  h1 { font-size: 2em; border-bottom: 1px solid #d0d7de; padding-bottom: 0.3em; }
+  h2 { font-size: 1.5em; border-bottom: 1px solid #d0d7de; padding-bottom: 0.3em; }
+  h3 { font-size: 1.25em; }
+  a { color: #0969da; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code {
+    background: rgba(175,184,193,0.2);
+    padding: 0.2em 0.4em;
+    border-radius: 6px;
+    font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 85%;
+  }
+  pre {
+    background: #f6f8fa;
+    padding: 16px;
+    border-radius: 6px;
+    overflow-x: auto;
+  }
+  pre code { background: transparent; padding: 0; }
+  pre.mermaid { background: #ffffff; border: 1px solid #d0d7de; text-align: center; }
+  blockquote {
+    border-left: 4px solid #d0d7de;
+    margin: 0;
+    padding: 0 1em;
+    color: #59636e;
+  }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 1em 0;
+    display: block;
+    overflow-x: auto;
+  }
+  th, td {
+    border: 1px solid #d0d7de;
+    padding: 6px 13px;
+    text-align: left;
+    vertical-align: top;
+  }
+  tr:nth-child(2n) { background: #f6f8fa; }
+  hr { border: none; border-top: 1px solid #d0d7de; margin: 2em 0; }
+  .nav {
+    background: #f6f8fa;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    padding: 10px 16px;
+    margin-bottom: 24px;
+    font-size: 14px;
+  }
+  .nav a { margin-right: 14px; }
+  .banner {
+    background: #ddf4ff;
+    border: 1px solid #54aeff3d;
+    border-radius: 6px;
+    padding: 10px 16px;
+    margin-bottom: 16px;
+    font-size: 14px;
+  }
+</style>
+</head>
+<body>
+<div class="banner">Business-process playbook — for the technical/engineering companion set, see <a href="../../spec-driven-redesign/_html-export/README.html">spec-driven-redesign</a>.</div>
+<div class="nav"><a href="README.html">README</a><a href="01-the-spec.html">01-the-spec</a><a href="02-launching-a-brand-new-prompt.html">02-launching-a-brand-new-prompt</a><a href="03-updating-an-existing-prompt.html">03-updating-an-existing-prompt</a><a href="04-roles-responsibilities-and-approvals.html">04-roles-responsibilities-and-approvals</a><a href="05-continuous-quality-and-feedback-loop.html">05-continuous-quality-and-feedback-loop</a><a href="06-libraries-and-real-data.html">06-libraries-and-real-data</a><a href="07-glossary.html">07-glossary</a><a href="08-under-the-hood-technical-context.html">08-under-the-hood-technical-context</a></div>
+<h1>Libraries: Reusable Checks and Test Sets, Built From Real Data Too</h1>
+<p><strong>Worth being blunt about where we&#39;re actually starting from: none of this exists today.</strong> Today there&#39;s a library for <em>prompts</em> (browse projects and versions, manage who has access) — and that&#39;s it. There is no equivalent library for checks or test sets at all; they live buried inside each individual prompt&#39;s own configuration, not as their own reusable, searchable things. Even the prompt library that does exist has no semantic search — finding something means already knowing its name. Everything in this doc, not just the real-usage piece, is new.</p>
+<p>Checks and test sets shouldn&#39;t be one-off things you build fresh for a single prompt and never look at again — they should live in a shared library that any prompt can pull from, and that any prompt can also contribute back to, the same way a prompt library already works today. This doc covers how things actually get <em>into</em> that new library, especially from real usage, not just how they&#39;d get reused once they&#39;re there.</p>
+<h2>Three ways something ends up in the library</h2>
+<pre class="mermaid">
+flowchart TD
+  A["Generated automatically from the brief"] --> D[("Saved to the library")]
+  B["Typed or uploaded by hand"] --> D
+  C["Built directly from real usage"] --> D
+  D --> E["Found and reused from a different prompt later"]
+</pre>
+<ul>
+<li><strong>Generated automatically</strong>, as part of drafting a brand-new prompt or updating one — covered in <a href="02-launching-a-brand-new-prompt.html">02-launching-a-brand-new-prompt.md</a> and <a href="03-updating-an-existing-prompt.html">03-updating-an-existing-prompt.md</a>. This path, and what happens to a check or test case once it exists, is already reasonably well specified by the rest of this playbook.</li>
+<li><strong>Typed or uploaded by hand</strong>, the more direct authoring path, also already covered by the rest of this playbook&#39;s iteration loop.</li>
+<li><strong>Built directly from real usage</strong> — this is the path with the least design behind it so far, and the focus of the rest of this doc.</li>
+</ul>
+<p>All three should land in the same place and work the same way once they exist: named, described, taggable, searchable, and reusable from any other prompt&#39;s workspace — including proper search that finds &quot;something like a tone check&quot; without already knowing what it&#39;s called, which the current prompt library doesn&#39;t have either. The remaining open question isn&#39;t what happens <em>after</em> something is saved — the rest of this playbook already answers that reasonably well. It&#39;s how real data gets <em>in</em> in the first place, which today has no path at all.</p>
+<h2>The gap: even in the new design so far, real data only gets in one row at a time, and only after something already went wrong</h2>
+<p>As proposed so far, the only way a real customer interaction becomes a permanent test case is through the feedback loop in <a href="05-continuous-quality-and-feedback-loop.html">05-continuous-quality-and-feedback-loop.md</a>: someone reviews real usage, notices a pattern, and promotes <em>that specific case</em> into the test set. That&#39;s a real improvement over today (where there&#39;s no path for this at all), but it has two limits worth calling out plainly:</p>
+<ul>
+<li>It only ever happens <strong>one case at a time</strong>, driven by someone manually spotting something during a review.</li>
+<li>It only ever gets triggered <strong>reactively</strong>, after a review turns something up — there&#39;s no way to just go looking for good real examples proactively, on your own schedule, without a specific incident to justify it.</li>
+</ul>
+<p>Building a solid test set out of fifty real support tickets, or a hundred real conversations, shouldn&#39;t require fifty or a hundred separate &quot;I noticed this while reviewing&quot; moments.</p>
+<h2>How this should work instead</h2>
+<ol>
+<li><strong>Open a browse view of real usage, any time, for any reason.</strong> Filter by date, by which prompt produced it, by whether it already passed or failed a check (if anything happened to grade it), or by tag. No specific incident or review finding is required to open this — it should be as available as browsing the library itself.</li>
+<li><strong>Personal or sensitive details are scrubbed automatically before anything here can be saved permanently</strong> — the same rule that already applies when promoting a single case in the continuous-feedback loop. A real interaction clears out on its own after a short window; a permanent test case doesn&#39;t, so nothing raw gets saved for good without being cleaned up first.</li>
+<li><strong>Select any number of real examples and add them to a test set in one action.</strong> Building a test set from fifty real cases should be one step, not fifty individual &quot;promote this&quot; clicks.</li>
+<li><strong>The same real examples can become more than test rows.</strong> A real case is also a natural way to write a new check (&quot;this exact situation should always pass this rule&quot;) or to spot-check an automated grader against real judgment — not just to grow the test set.</li>
+<li><strong>Once built this way, it&#39;s saved to the library exactly like anything else</strong> — same naming, tagging, and reuse from other prompts described above. Nothing extra is needed here; the only thing that needed fixing was how real data gets in.</li>
+</ol>
+<h2>Who does this</h2>
+<p>This is part of day-to-day testing, not a separate specialty — it sits with whoever owns the test loop day to day (see <a href="04-roles-responsibilities-and-approvals.html">04-roles-responsibilities-and-approvals.md</a>), the same person already reading real outputs in the continuous-feedback loop. The brief owner isn&#39;t expected to be hands-on here; they see the results of it, the same way they see everything else that comes out of testing.</p>
+<h2>The short version</h2>
+<p>None of this exists today — there&#39;s a library for prompts and nothing else, no semantic search even there. Building it means three things need a way in: generating from a brief, typing things by hand, and real usage — the first two are already reasonably well covered by the rest of this playbook&#39;s flow. What still needs its own, always-available action — not just a byproduct of noticing a problem during review — is browsing real usage directly and turning a batch of it into test cases (or checks, or grader spot-checks) in one step, with the same privacy scrubbing applied either way. Once it&#39;s in the library, it should be reusable everywhere, the same way the prompt library already lets you reuse a prompt today.</p>
+
+<script>
+  mermaid.initialize({ startOnLoad: true, theme: "default", securityLevel: "loose" });
+</script>
+</body>
+</html>

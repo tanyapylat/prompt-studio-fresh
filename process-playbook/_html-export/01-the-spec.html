@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>The Spec: The Brief That Drives Everything</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  body {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 24px 40px 80px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    color: #1f2328;
+    background: #ffffff;
+  }
+  h1, h2, h3, h4 { font-weight: 600; margin-top: 1.6em; margin-bottom: 0.6em; }
+  h1 { font-size: 2em; border-bottom: 1px solid #d0d7de; padding-bottom: 0.3em; }
+  h2 { font-size: 1.5em; border-bottom: 1px solid #d0d7de; padding-bottom: 0.3em; }
+  h3 { font-size: 1.25em; }
+  a { color: #0969da; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code {
+    background: rgba(175,184,193,0.2);
+    padding: 0.2em 0.4em;
+    border-radius: 6px;
+    font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 85%;
+  }
+  pre {
+    background: #f6f8fa;
+    padding: 16px;
+    border-radius: 6px;
+    overflow-x: auto;
+  }
+  pre code { background: transparent; padding: 0; }
+  pre.mermaid { background: #ffffff; border: 1px solid #d0d7de; text-align: center; }
+  blockquote {
+    border-left: 4px solid #d0d7de;
+    margin: 0;
+    padding: 0 1em;
+    color: #59636e;
+  }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 1em 0;
+    display: block;
+    overflow-x: auto;
+  }
+  th, td {
+    border: 1px solid #d0d7de;
+    padding: 6px 13px;
+    text-align: left;
+    vertical-align: top;
+  }
+  tr:nth-child(2n) { background: #f6f8fa; }
+  hr { border: none; border-top: 1px solid #d0d7de; margin: 2em 0; }
+  .nav {
+    background: #f6f8fa;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    padding: 10px 16px;
+    margin-bottom: 24px;
+    font-size: 14px;
+  }
+  .nav a { margin-right: 14px; }
+  .banner {
+    background: #ddf4ff;
+    border: 1px solid #54aeff3d;
+    border-radius: 6px;
+    padding: 10px 16px;
+    margin-bottom: 16px;
+    font-size: 14px;
+  }
+</style>
+</head>
+<body>
+<div class="banner">Business-process playbook — for the technical/engineering companion set, see <a href="../../spec-driven-redesign/_html-export/README.html">spec-driven-redesign</a>.</div>
+<div class="nav"><a href="README.html">README</a><a href="01-the-spec.html">01-the-spec</a><a href="02-launching-a-brand-new-prompt.html">02-launching-a-brand-new-prompt</a><a href="03-updating-an-existing-prompt.html">03-updating-an-existing-prompt</a><a href="04-roles-responsibilities-and-approvals.html">04-roles-responsibilities-and-approvals</a><a href="05-continuous-quality-and-feedback-loop.html">05-continuous-quality-and-feedback-loop</a><a href="06-libraries-and-real-data.html">06-libraries-and-real-data</a><a href="07-glossary.html">07-glossary</a><a href="08-under-the-hood-technical-context.html">08-under-the-hood-technical-context</a></div>
+<h1>The Spec: The Brief That Drives Everything</h1>
+<h2>What it is</h2>
+<p>A <strong>Spec</strong> is a short, written brief that answers one question: <em>&quot;What is this prompt actually supposed to do, and how would we know if it did it?&quot;</em> You write it <strong>before</strong> you write a single word of prompt wording — the same way a designer works from a brief, or an engineer works from a requirements doc, instead of jumping straight to the finished thing and reverse-engineering what it was supposed to do.</p>
+<p>It&#39;s the single source of truth that everything else gets generated from: the first draft of the prompt, the first set of test cases, and the checks used to grade the results. Because all three come from the same brief, they start out in sync with each other by construction, instead of a prompt and its tests being written separately by different people at different times (today&#39;s most common failure mode).</p>
+<h2>Why write it first, not after</h2>
+<p>Two concrete problems this solves that show up constantly today:</p>
+<ul>
+<li><strong>The prompt and its tests drift apart.</strong> Someone tweaks the prompt wording six months in; nobody remembers to update the test cases to match. The Spec is the shared anchor both the prompt and the tests point back to, so a change to either one is visibly checked against the same brief.</li>
+<li><strong>&quot;Good enough&quot; is a personal, undocumented judgment call.</strong> Without a written brief, &quot;is this prompt done&quot; lives entirely in one person&#39;s head. Writing the success criteria down — even three or four bullet points — turns a vague feeling into something a reviewer, a teammate, or an AI assistant can actually check against.</li>
+</ul>
+<h2>What goes in a Spec</h2>
+<table>
+<thead>
+<tr>
+<th>Section</th>
+<th>In plain terms</th>
+<th>Required?</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Name</strong></td>
+<td>What we call this prompt</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><strong>What goes in, what comes out</strong></td>
+<td>What information does the prompt need, and what shape must the answer come back in — plain text, or something more structured with specific fields?</td>
+<td><strong>Yes</strong> — this is the one thing nothing downstream can be safely drafted without</td>
+</tr>
+<tr>
+<td><strong>At least one success measure</strong></td>
+<td>One clear statement of what &quot;good&quot; looks like for this prompt (e.g., &quot;always cites a source,&quot; &quot;never promises a refund&quot;)</td>
+<td><strong>Yes</strong>, at least one</td>
+</tr>
+<tr>
+<td><strong>Goal / business context</strong></td>
+<td>Why this prompt exists and who&#39;s on the receiving end of its output</td>
+<td>Optional, but strongly recommended</td>
+</tr>
+<tr>
+<td><strong>Things it must never do</strong></td>
+<td>Tone, compliance, and safety lines it must not cross</td>
+<td>Optional at first, add as you learn</td>
+</tr>
+<tr>
+<td><strong>Worked examples</strong></td>
+<td>A few real input → expected-output pairs</td>
+<td>Optional at first</td>
+</tr>
+<tr>
+<td><strong>Tricky/edge cases</strong></td>
+<td>Inputs that are likely to trip it up, and how they should be handled</td>
+<td>Optional at first</td>
+</tr>
+<tr>
+<td><strong>Model or cost preferences</strong></td>
+<td>Any known constraints on which model to use, latency, or budget</td>
+<td>Optional</td>
+</tr>
+</tbody></table>
+<p><strong>The bar for a first draft is deliberately low.</strong> A Spec with just a name, one success measure, and a clear description of inputs/outputs is enough to save and generate a first draft from. Everything else — the business context, the guardrails, the worked examples — can be filled in over time as you iterate, rather than up front behind a long form. The two required fields (name aside) exist because without them, the system genuinely can&#39;t draft a usable first attempt at the prompt or its checks: it needs to know what&#39;s being fed in and what shape the answer needs to come back in before it can write anything sensible.</p>
+<h2>Why input/output shape is non-negotiable</h2>
+<p>It&#39;s tempting to treat this as one more optional field, but it&#39;s structurally different from the rest of the brief: the prompt&#39;s wording, the format of its instructions, and the very first automated checks (e.g., &quot;did the answer come back as valid data in the right shape&quot;) are all built directly from this one section. Two examples of what it should capture:</p>
+<ul>
+<li><strong>Inputs aren&#39;t always just &quot;a block of text.&quot;</strong> A support-ticket summarizer might take a single string. A pricing-quote generator might need several separate pieces of information — customer type, product, region — each with its own type. Say which one it is.</li>
+<li><strong>Outputs aren&#39;t always &quot;whatever text comes back.&quot;</strong> Sometimes free text is genuinely fine. Other times the answer needs to come back in a specific structured shape with certain fields always present (e.g., a summary field that&#39;s never empty). Say which one it is, and what&#39;s required.</li>
+</ul>
+<h2>Who writes it</h2>
+<p>Typically the person who best understands what the end user actually needs — a product owner, a domain expert, someone close to the customer problem — not necessarily the person who will eventually tune the prompt wording. It&#39;s completely fine for one person to draft the Spec and hand it off; what matters is that it exists and is kept up to date, not who typed it. See <a href="04-roles-responsibilities-and-approvals.html">04-roles-responsibilities-and-approvals.md</a> for how this splits across a team.</p>
+<h2>What happens the moment you save it</h2>
+<p>Saving a Spec (even a thin one) is the trigger for everything else. It&#39;s the first step of <a href="02-launching-a-brand-new-prompt.html">02-launching-a-brand-new-prompt.md</a>: the system takes the brief and, in one action, drafts a first attempt at the prompt, a first set of test cases based on your examples and edge cases, and the checks that grade the results — then immediately runs a trial to show you, within seconds, whether that first attempt already clears the bar you just wrote down.</p>
+
+<script>
+  mermaid.initialize({ startOnLoad: true, theme: "default", securityLevel: "loose" });
+</script>
+</body>
+</html>

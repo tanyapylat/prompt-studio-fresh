@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Under the Hood: Technical Context, in One Page</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  body {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 24px 40px 80px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    color: #1f2328;
+    background: #ffffff;
+  }
+  h1, h2, h3, h4 { font-weight: 600; margin-top: 1.6em; margin-bottom: 0.6em; }
+  h1 { font-size: 2em; border-bottom: 1px solid #d0d7de; padding-bottom: 0.3em; }
+  h2 { font-size: 1.5em; border-bottom: 1px solid #d0d7de; padding-bottom: 0.3em; }
+  h3 { font-size: 1.25em; }
+  a { color: #0969da; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code {
+    background: rgba(175,184,193,0.2);
+    padding: 0.2em 0.4em;
+    border-radius: 6px;
+    font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 85%;
+  }
+  pre {
+    background: #f6f8fa;
+    padding: 16px;
+    border-radius: 6px;
+    overflow-x: auto;
+  }
+  pre code { background: transparent; padding: 0; }
+  pre.mermaid { background: #ffffff; border: 1px solid #d0d7de; text-align: center; }
+  blockquote {
+    border-left: 4px solid #d0d7de;
+    margin: 0;
+    padding: 0 1em;
+    color: #59636e;
+  }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 1em 0;
+    display: block;
+    overflow-x: auto;
+  }
+  th, td {
+    border: 1px solid #d0d7de;
+    padding: 6px 13px;
+    text-align: left;
+    vertical-align: top;
+  }
+  tr:nth-child(2n) { background: #f6f8fa; }
+  hr { border: none; border-top: 1px solid #d0d7de; margin: 2em 0; }
+  .nav {
+    background: #f6f8fa;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    padding: 10px 16px;
+    margin-bottom: 24px;
+    font-size: 14px;
+  }
+  .nav a { margin-right: 14px; }
+  .banner {
+    background: #ddf4ff;
+    border: 1px solid #54aeff3d;
+    border-radius: 6px;
+    padding: 10px 16px;
+    margin-bottom: 16px;
+    font-size: 14px;
+  }
+</style>
+</head>
+<body>
+<div class="banner">Business-process playbook — for the technical/engineering companion set, see <a href="../../spec-driven-redesign/_html-export/README.html">spec-driven-redesign</a>.</div>
+<div class="nav"><a href="README.html">README</a><a href="01-the-spec.html">01-the-spec</a><a href="02-launching-a-brand-new-prompt.html">02-launching-a-brand-new-prompt</a><a href="03-updating-an-existing-prompt.html">03-updating-an-existing-prompt</a><a href="04-roles-responsibilities-and-approvals.html">04-roles-responsibilities-and-approvals</a><a href="05-continuous-quality-and-feedback-loop.html">05-continuous-quality-and-feedback-loop</a><a href="06-libraries-and-real-data.html">06-libraries-and-real-data</a><a href="07-glossary.html">07-glossary</a><a href="08-under-the-hood-technical-context.html">08-under-the-hood-technical-context</a></div>
+<h1>Under the Hood: Technical Context, in One Page</h1>
+<p>This is <strong>not</strong> a technical spec, and it doesn&#39;t repeat anything from the workflow docs or the <a href="07-glossary.html">glossary</a>. It&#39;s the handful of engineering facts that explain <em>why</em> certain business rules in this playbook work the way they do, and where the design is genuinely proven vs. still a plan. Optional reading — the workflow docs stand on their own without it.</p>
+<h2>Why &quot;locking in&quot; and reviews can actually be trusted</h2>
+<ul>
+<li><strong>A &quot;locked-in&quot; version is a single atomic transaction, not a save button.</strong> The brief, prompt, checks, test set, and grading rules freeze together in one database transaction — there is no half-frozen state to accidentally review or ship. That&#39;s a system guarantee, not a process rule someone has to remember to follow.</li>
+<li><strong>&quot;Official run&quot; vs. &quot;trial run&quot; is a computed fact, not a label someone assigns.</strong> A run only counts as official evidence if every single piece behind it (brief, prompt, checks, test set) was already locked in at the moment it ran. A trial against anything still in-progress is automatically excluded from ever counting as evidence — the system can&#39;t be talked into treating a draft run as proof.</li>
+<li><strong>The toolbox of checks is a real, already-existing library</strong> (the industry-standard <code>promptfoo</code> assertions engine), not a hypothetical list — contains/excludes text, regex, valid JSON, JSON-schema shape, number-in-range, &quot;was the right tool called.&quot; Drafting a check means picking and filling in one of these first, before anything gets freshly written.</li>
+<li><strong>A freshly-written custom check is literally code that runs on shared infrastructure with real system permissions.</strong> That&#39;s the concrete reason &quot;always flagged for a human during review, never trusted silently&quot; (04, Roles doc) is a security control, not extra caution for its own sake.</li>
+<li><strong>Side-by-side comparisons are a native capability, not a bolted-on &quot;compare&quot; feature.</strong> The underlying run structure explicitly supports pinning more than one prompt version at once and fans a single launch into parallel results automatically — that&#39;s why every update path in this playbook defaults to &quot;run old and new together&quot; instead of two separate steps someone could forget to do.</li>
+</ul>
+<h2>What&#39;s live today vs. what&#39;s still being built</h2>
+<ul>
+<li><strong>Automatic, always-on production monitoring (&quot;Online Evaluation&quot;) doesn&#39;t exist yet — it&#39;s a planned next phase, not shipped.</strong> Everywhere this playbook says &quot;keep watching after launch,&quot; today that means periodically pulling in and reviewing batches of real usage or exported reports by hand — the same checks and bar, just manually sourced for now instead of a live feed. Worth knowing so reviewers don&#39;t assume a fully automatic safety net is already running.</li>
+<li><strong>Rollout has no big-bang migration and no forced cutover.</strong> Existing prompts keep working exactly as they do today, untouched, until someone deliberately brings a specific one into this new process — typically the first time it needs an actual update. The two ways of working simply coexist for as long as needed; nothing breaks or auto-converts in the background.</li>
+<li><strong>Versioning everything, forever, was checked against real numbers and is cheap.</strong> The brief/prompt/checks/test-set side of this stays small (hundreds to low-thousands of records total, org-wide) no matter how often things fork. The only data that grows fast is actual run results, and that already has automatic cleanup (cleared after 30 days) built into the platform — so &quot;a new version for every edit&quot; isn&#39;t a storage or performance concern.</li>
+<li><strong>Privacy scrubbing reuses an existing, already-in-production redaction service</strong> — the same one already used for today&#39;s live evaluations — applied automatically before anything is written permanently. It&#39;s an existing mechanism being pointed at a new use case, not new privacy machinery being built from scratch.</li>
+</ul>
+
+<script>
+  mermaid.initialize({ startOnLoad: true, theme: "default", securityLevel: "loose" });
+</script>
+</body>
+</html>

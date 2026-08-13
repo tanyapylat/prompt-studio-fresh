@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>SDD Alignment: Resolving the Open Critiques</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  body {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 24px 40px 80px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    color: #1f2328;
+    background: #ffffff;
+  }
+  h1, h2, h3, h4 { font-weight: 600; margin-top: 1.6em; margin-bottom: 0.6em; }
+  h1 { font-size: 2em; border-bottom: 1px solid #d0d7de; padding-bottom: 0.3em; }
+  h2 { font-size: 1.5em; border-bottom: 1px solid #d0d7de; padding-bottom: 0.3em; }
+  h3 { font-size: 1.25em; }
+  a { color: #0969da; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code {
+    background: rgba(175,184,193,0.2);
+    padding: 0.2em 0.4em;
+    border-radius: 6px;
+    font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 85%;
+  }
+  pre {
+    background: #f6f8fa;
+    padding: 16px;
+    border-radius: 6px;
+    overflow-x: auto;
+  }
+  pre code { background: transparent; padding: 0; }
+  pre.mermaid { background: #ffffff; border: 1px solid #d0d7de; text-align: center; }
+  blockquote {
+    border-left: 4px solid #d0d7de;
+    margin: 0;
+    padding: 0 1em;
+    color: #59636e;
+  }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 1em 0;
+    display: block;
+    overflow-x: auto;
+  }
+  th, td {
+    border: 1px solid #d0d7de;
+    padding: 6px 13px;
+    text-align: left;
+    vertical-align: top;
+  }
+  tr:nth-child(2n) { background: #f6f8fa; }
+  hr { border: none; border-top: 1px solid #d0d7de; margin: 2em 0; }
+  .nav {
+    background: #f6f8fa;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    padding: 10px 16px;
+    margin-bottom: 24px;
+    font-size: 14px;
+  }
+  .nav a { margin-right: 14px; }
+  .banner {
+    background: #ddf4ff;
+    border: 1px solid #54aeff3d;
+    border-radius: 6px;
+    padding: 10px 16px;
+    margin-bottom: 16px;
+    font-size: 14px;
+  }
+</style>
+</head>
+<body>
+<div class="banner">Technical / engineering set — for the plain-language business-process companion, see <a href="../../process-playbook/_html-export/README.html">process-playbook</a>.</div>
+<div class="nav"><a href="README.html">README</a><a href="01-concepts-and-entity-mapping.html">01-concepts-and-entity-mapping</a><a href="02-workflow-starting-anew.html">02-workflow-starting-anew</a><a href="03-workflow-new-version-from-existing.html">03-workflow-new-version-from-existing</a><a href="04-cross-cutting-ux-and-open-questions.html">04-cross-cutting-ux-and-open-questions</a><a href="05-eval-methodology-best-practices.html">05-eval-methodology-best-practices</a><a href="06-sdd-alignment-and-resolutions.html">06-sdd-alignment-and-resolutions</a></div>
+<h1>SDD Alignment: Resolving the Open Critiques</h1>
+<p>This doc reads the actual <code>Evals Service SDD.md</code> (author @Volodymyr Romaniv, team Cyborgs) against the critical review of this proposal (&quot;grill me&quot; pass) and resolves what can be resolved. Numbering below matches the critique list from that review.</p>
+<p><strong>Headline finding:</strong> the SDD confirms this proposal&#39;s core architectural bet — Spec, roles, approval workflow, and the whole Prompt-Studio-side UX are <strong>correctly out of the Evals Platform&#39;s scope</strong>. The SDD&#39;s own &quot;Limitations, Dependencies, Unknowns&quot; section lists &quot;Auth: SSO, project isolation, or shared tokens — undecided&quot; as unresolved on the Evals Platform side, and says nothing about approval roles at all — that&#39;s Prompt Studio&#39;s problem to own, which is exactly how this proposal split it. Two things the SDD changes materially: <strong>migration</strong> has a real, simple answer, and <strong>online evaluation is Phase 2, not v1</strong> — several docs need a phasing correction.</p>
+<hr>
+<h2>Resolved by the SDD</h2>
+<h3>#3 — Migration of legacy prompts: answered, and simpler than proposed</h3>
+<p>The SDD&#39;s open-questions log has a direct answer:</p>
+<blockquote>
+<p>&quot;Migration of existing PromptFoo YAML configs into eval definitions: automatic or manual? (Historical <em>results</em> are explicitly not migrated - starting clean.)&quot; → <strong>&quot;All new configs should be created through new service. For old ones we should provide an ability to migrate it in case of need.&quot;</strong></p>
+</blockquote>
+<p>This resolves open question #2 in <a href="04-cross-cutting-ux-and-open-questions.html">04</a>: <strong>no bulk/automatic migration, no expectation that historical run history moves over.</strong> Concretely:</p>
+<ul>
+<li>Every <strong>new</strong> prompt goes through the Spec → dry-run → Evals Platform flow from day one — no opt-out.</li>
+<li><strong>Existing</strong> prompts stay on the legacy <code>ConfigurationJson</code> blob model until someone deliberately migrates that specific prompt — there is no forced cutover date or background migration job.</li>
+<li>The trigger for migrating a specific legacy prompt is exactly <strong>Case B or Case A</strong> in <a href="03-workflow-new-version-from-existing.html">03</a>: the first time someone needs a new version of an old prompt, that&#39;s the natural, low-friction moment to write a retroactive Spec for it (even a thin one — name, a few success criteria back-filled from the existing eval config) and let the new version enter the new model. Nobody needs to migrate a prompt that&#39;s stable and untouched.</li>
+<li><strong>Historical run results for that prompt do not carry over.</strong> The prompt gets a clean slate in the Evals Platform starting from its first migrated version — this is explicit in the SDD, not an oversight in this proposal.</li>
+</ul>
+<p>This turns a previously-open, potentially-blocking question into a non-event: the two systems simply coexist indefinitely, and prompts cross over one at a time, exactly when someone touches them.</p>
+<h3>#11 — Storage/version growth: not actually a risk, per the SDD&#39;s own sizing</h3>
+<p>The SDD&#39;s &quot;Expected data volumes&quot; section sizes this directly:</p>
+<blockquote>
+<p>&quot;The authoring side is small and human-paced... Hundreds → low thousands of rows total; effectively static day-to-day.&quot; Run-layer volume (the only thing that actually grows fast) is bounded by &quot;the 30-day clearing job&quot; for online/ingested payloads, and by batch-run frequency for batch — &quot;v1 storage is modest and predictable.&quot;</p>
+</blockquote>
+<p>So: forking a new version on every meaningful edit, forever, across every prompt in the org, is <strong>not</strong> the storage risk it sounded like — versioned authoring rows stay in the hundreds-to-low-thousands range regardless. The real volume driver is <code>run_item</code>/<code>Score</code> rows (proportional to dataset rows × targets × runs), and that&#39;s already accounted for by the retention job and is &quot;someone else&#39;s problem&quot; only in the sense that it&#39;s explicitly the Evals Platform&#39;s own designed-in responsibility, not an externality this proposal quietly created.</p>
+<h3>#10 — Was I designing blind to the SDD? Partially, and it mattered less than feared</h3>
+<p>Now that it&#39;s readable: the SDD is almost entirely infrastructure/subsystem design (four subsystems, auth model, security posture, data volumes, stored-proc impact) — it does not touch Spec, roles, review workflow, or UX at all. Nothing in <code>02</code>–<code>05</code> contradicts it. Two things it surfaces that this proposal had wrong or missing, addressed below (#new-1, #new-2).</p>
+<hr>
+<h2>Newly surfaced by the SDD (not in the original critique, but real)</h2>
+<h3>New-1 — Online Evaluation is Phase 2, not available in v1</h3>
+<blockquote>
+<p>&quot;Online (Phase 2): runs against production traces; shape exists in the model, no executor yet.&quot; Also: &quot;online is explicitly Phase 2 with no executor yet — sizing revisited then.&quot;</p>
+</blockquote>
+<p>This directly affects <a href="02-workflow-starting-anew.html">02-workflow-starting-anew.md</a> step 10 and Phase 5 of its diagram, and the &quot;CI-style batch vs. production monitoring&quot; section of <a href="05-eval-methodology-best-practices.html">05</a> — both describe binding an <code>EvalVersion</code> to production traces as if it&#39;s available from day one. <strong>It isn&#39;t</strong>, per this SDD. Fix: those sections need an explicit phase label. Until Phase 2 ships, &quot;Case C&quot; (eval/dataset evolves from production feedback, <a href="03-workflow-new-version-from-existing.html">03</a>) has to be fed from <strong>ingested</strong> sources instead (imported Jenkins/PromptFoo reports, or manually reviewed trace exports) rather than a live online-eval binding — same destination (new dataset rows / new assertions), different, more manual source until the executor exists.</p>
+<p><em>(Applied below in the doc edits.)</em></p>
+<h3>New-2 — Code assertions are a security surface, not just &quot;the cheap tier&quot;</h3>
+<p>Section &quot;Security Requirements → Code assertions&quot; in the SDD:</p>
+<blockquote>
+<p>&quot;A code assertion is a small piece of JavaScript that runs during an eval to check a model&#39;s output. It executes on the runner with the runner&#39;s permissions, so writing an assertion means writing code that our infrastructure will run... A stolen user credential [without curation] has no way to put executable code into the system [is only true if curated].&quot; Controls considered for later, <strong>none shipped in v1</strong>: a curated library (only engineers write JS, users request), AI approval on submission (&quot;a filter, not a guarantee&quot;), runner hardening.</p>
+</blockquote>
+<p>This is a real gap in <a href="01-concepts-and-entity-mapping.html">01</a> and <a href="05-eval-methodology-best-practices.html">05</a>: both recommend defaulting assertion generation to <code>code_assertion</code> as the &quot;cheap, safe&quot; tier purely on maintenance-cost grounds, without acknowledging that <strong>freely LLM-generated, user-editable JavaScript is exactly the risk the SDD flags</strong> — and v1 ships with none of the mitigations. Fix, since refined further by later review feedback (see <a href="02-workflow-starting-anew.html">02</a> step 2): the dry-run generator should not free-form generate arbitrary JS per criterion as its <em>first</em> move. Instead:</p>
+<ul>
+<li>Map the criterion onto an existing, parameterized type in the <strong>promptfoo assertions library</strong> first (contains/excludes string, matches regex, valid JSON, matches JSON schema, field-in-range, tool-was-called) — the generator&#39;s job is mainly <em>detecting the opportunity</em> to check something deterministically, not writing code from scratch.</li>
+<li><strong>Only if nothing in that library fits</strong>, let the generator write a small custom check itself — this is a deliberate loosening of the original &quot;engineer-only&quot; stance, agreed on review, on the grounds that LLMs are already good at writing small, self-contained assertion code and the actual risk is in <em>what the code does</em>, not who typed it. The mitigation isn&#39;t banning generated code, it&#39;s <strong>never trusting it silently</strong>: flag it for the AI review agent to look at during Review &amp; Approve (step 8 of <a href="02-workflow-starting-anew.html">02</a>).</li>
+<li>A check too novel or risky even for that — or one the reviewing agent flags as doing more than a value check — becomes a <strong>request to an engineer</strong> (mirrors the SDD&#39;s own proposed &quot;curated library&quot; control) rather than something that ships unreviewed.</li>
+<li>Neat convergence worth keeping: the SDD&#39;s own alternative idea — &quot;AI approval on run submission... a filter, not a guarantee. Suspicious cases go to an engineer.&quot; — is the <em>same shape</em> as this proposal&#39;s AI review agent in <a href="02-workflow-starting-anew.html">02</a> step 8. <strong>One agent, two jobs</strong>: review the changeset for spec/eval/prompt consistency <em>and</em> flag any code-assertion content — curated or generator-authored — that looks like it&#39;s doing more than a value check, escalating to an engineer rather than auto-approving either way.</li>
+</ul>
+<h3>New-3 — Promoting a production trace into a Dataset can leak PII forever (this proposal&#39;s own gap, found via the SDD&#39;s PII section)</h3>
+<blockquote>
+<p>&quot;Run data (online and ingested) is the service&#39;s responsibility: a scheduled job clears payload columns 30 days after the run... Hand-authored datasets are the author&#39;s responsibility... The service does not expire them: they are reusable working assets.&quot;</p>
+</blockquote>
+<p><a href="03-workflow-new-version-from-existing.html">03</a>&#39;s Case C and <a href="05-eval-methodology-best-practices.html">05</a>&#39;s error-analysis workflow both describe &quot;promote a failing production trace directly into a permanent <code>DatasetItem</code>&quot; as the core mechanic for growing the eval from real failures. Read against the SDD&#39;s PII rule, that&#39;s a real problem: online/ingested run payloads get redacted after 30 days, but a <strong>Dataset never expires</strong> — so a raw customer input copied into a Dataset row bypasses the very redaction the run layer is designed to enforce, and persists indefinitely. Fix, applied to both docs below: <strong>promoting a real trace into a Dataset item must pass through PII redaction first</strong> — reusing the existing <code>PiiRedactionService</code> pattern already built for online evals in the current system — before the row is written, not after.</p>
+<h3>New-4 — The Library is more specific than what this proposal designed</h3>
+<p>PR-3 / SR-8 (identical wording, both required) specify the shared component library in more detail than <a href="04-cross-cutting-ux-and-open-questions.html">04</a>&#39;s &quot;Libraries as real browse surfaces&quot; bullet:</p>
+<ul>
+<li><strong>Private (personal) vs. public (org-wide) scoping</strong>, with visibility/ownership controls <strong>per component</strong>, not just &quot;the library&quot; as one flat shared space.</li>
+<li><strong>Structured filtering</strong>: type, owner, tags, creation date, usage count, associated prompt/project.</li>
+<li><strong>Grouping</strong>: by team, project, judge type, dataset domain.</li>
+<li><strong>Semantic search over judge rubrics and dataset descriptions</strong> — not keyword-only.</li>
+<li>Enough metadata per component (description, tags, owner, version history, usage stats) &quot;to make discovery and reuse practical at scale.&quot;</li>
+</ul>
+<p>This is a straightforward upgrade to fold into <a href="04-cross-cutting-ux-and-open-questions.html">04</a> — applied below — and it also <strong>helps New-1/New-2 above and the judge-calibration discussion (#9)</strong>: semantic search over rubrics is exactly the mechanism that could power &quot;does an assertion covering this already exist&quot; during Case B&#39;s delta-regeneration (turning a hand-wavy diff into an assisted-search-and-confirm step, addressed next), and a private/public split means an individual can iterate on a judge before publishing it to the shared org library, softening the effort of any calibration someone chooses to do for personal experimentation.</p>
+<hr>
+<h2>Not resolved by the SDD — still need your call, now sharper</h2>
+<h3>#7 — Case B&#39;s &quot;diff-driven regeneration&quot; was hand-wavy; here&#39;s a scoped, buildable v1</h3>
+<p>Rather than claim the system reliably knows which existing assertion maps to a changed Spec criterion (a hard, unsolved NLP problem when a human has hand-edited things), the honest v1 version, enabled directly by New-4&#39;s semantic search requirement:</p>
+<ol>
+<li>Diff the Spec text mechanically (which criteria/fields changed) — this part <em>is</em> reliable, it&#39;s plain text diffing.</li>
+<li>For each changed/new criterion, <strong>semantically search the existing Assertion library</strong> (the same capability PR-3/SR-8 already requires) for candidates that might already cover it, and surface them as suggestions — &quot;criterion #3 changed; assertion &#39;tone-check-v2&#39; looks related, keep/edit/replace?&quot;</li>
+<li>The human confirms the mapping. Nothing is silently regenerated or silently discarded.</li>
+</ol>
+<p>This is a real, scoped v1 feature instead of an aspirational claim, and it&#39;s built on a capability the SDD already commits to delivering for an unrelated reason (library discovery).</p>
+<h3>#9 — Judge calibration friction: superseded — the gate itself was later dropped</h3>
+<p>This section originally proposed bounding the calibration gate (cap at 20-30 labeled items and 3 rubric-iteration rounds) rather than removing the friction question entirely. <strong>Per team decision, documented in <a href="02-workflow-starting-anew.html">02</a> step 6, there is no calibration gate at all anymore</strong> — Publish doesn&#39;t block on it, so there&#39;s nothing left to bound. The one part of this section still worth keeping: per New-4&#39;s private/public library split, <strong>most judges won&#39;t need fresh calibration regardless</strong> — reusing a <em>published, already-calibrated</em> library Judge Policy (the common case if the library is actually good) costs nothing extra, whether or not calibration is a gate.</p>
+<h3>#4/#6 — Small-edit friction and the solo-user approval deadlock: still genuinely open, SDD is silent (it&#39;s out of scope by design)</h3>
+<p>The SDD confirms roles/approval are entirely Prompt Studio&#39;s concern (auth is even listed as its own unresolved item, scoped to client/reader API tokens, not human roles). Concrete proposal to reduce friction, not just flag it: a <strong>fast-track tier</strong> for changesets where (a) the citable run shows no regression against the prior published baseline, and (b) no assertion is new or <code>rubric_grading</code>-changed (i.e., prompt-wording-only tweaks or Case-C dataset additions with no eval change) — these can auto-clear to &quot;approved, notify the domain expert async&quot; instead of blocking on synchronous human review. Anything touching guardrails, success criteria, or judges keeps mandatory human review. This still needs your confirmation that it&#39;s an acceptable trade-off — see updated open questions in <a href="04-cross-cutting-ux-and-open-questions.html">04</a>.</p>
+<h3>#5 — &quot;Benevolent dictator&quot; fitting your actual org structure: genuinely unresolved, needs your input specifically</h3>
+<p>Nothing in the SDD or data model speaks to team structure — this was always going to need direct input rather than another document to read. Still open.</p>
+<h3>#1/#2 — The eval-driven-development tension and doc emphasis: a methodology stance, not an engineering fact the SDD can settle</h3>
+<p>The SDD doesn&#39;t take a position on this (it&#39;s not an SDD concern). <strong>Note this is now stale in one respect:</strong> <a href="05-eval-methodology-best-practices.html">05</a> no longer has a hard rule here — the calibration gate referenced was dropped by later team decision (see <a href="02-workflow-starting-anew.html">02</a> step 6). Still worth revisiting once real usage data exists to see if the balance of effort actually shakes out the way <code>05</code>&#39;s underlying methodology predicts, gate or no gate.</p>
+<hr>
+<h2>Doc changes made as a result of this pass</h2>
+<ul>
+<li><a href="04-cross-cutting-ux-and-open-questions.html">04</a>: open question #2 marked resolved; Library principle rewritten with private/public scoping, structured filtering, grouping, and semantic search per PR-3/SR-8; new open question about the fast-track approval tier.</li>
+<li><a href="03-workflow-new-version-from-existing.html">03</a>: Case C now requires PII redaction before promoting a real trace into a Dataset item, and notes that until Online Evaluation ships (Phase 2), the feeder source is ingested/imported reports rather than a live binding.</li>
+<li><a href="02-workflow-starting-anew.html">02</a>: step 10 / Phase 5 labeled as a Phase 2 dependency, with the Phase 1 fallback spelled out.</li>
+<li><a href="01-concepts-and-entity-mapping.html">01</a> and <a href="05-eval-methodology-best-practices.html">05</a>: <code>code_assertion</code> guidance narrowed to a curated, parameterized set in v1, not freeform generated JavaScript, with the security rationale from the SDD.</li>
+</ul>
+<h2>Later revisions, from a subsequent review pass (comments + team decisions)</h2>
+<ul>
+<li><strong>Dropped the judge-calibration publish gate entirely</strong> (not just bounded it, per #9 above) — <a href="02-workflow-starting-anew.html">02</a> step 6, with matching softening across <a href="01-concepts-and-entity-mapping.html">01</a>, <a href="04-cross-cutting-ux-and-open-questions.html">04</a> (open question #9), and <a href="05-eval-methodology-best-practices.html">05</a>.</li>
+<li><strong><code>code_assertion</code> generation now maps to the existing promptfoo assertions library first</strong>, and allows LLM-authored custom code as a flagged-for-review fallback (not only an engineer request) — see New-2 above, and <a href="01-concepts-and-entity-mapping.html">01</a>/<a href="02-workflow-starting-anew.html">02</a>/<a href="03-workflow-new-version-from-existing.html">03</a>/<a href="05-eval-methodology-best-practices.html">05</a>.</li>
+<li><strong>Renamed &quot;Eval Service&quot; to &quot;Evals Platform&quot;</strong> throughout, as the name for the system this proposal describes (the actual SDD document keeps its original title).</li>
+<li><strong>Results pane elevated further</strong>: structured filters and roll-up summaries, plus one-click promotion from an error-analysis finding into an Assertion, Dataset row, <strong>Spec criterion</strong>, or direct prompt edit — see <a href="02-workflow-starting-anew.html">02</a> steps 3/3b and <a href="05-eval-methodology-best-practices.html">05</a>.</li>
+<li><strong>Sharper scoping of the EVAL-fault diagnosis loop</strong> in <a href="02-workflow-starting-anew.html">02</a>&#39;s dry-run iteration, and an explicit note on what Phase 3 (mechanical freeze) vs. Phase 4 (human/AI review) each are responsible for.</li>
+<li><strong>Spec&#39;s Input contract and Output contract are now required fields</strong>, not optional — see <a href="02-workflow-starting-anew.html">02</a> step 1.</li>
+</ul>
+
+<script>
+  mermaid.initialize({ startOnLoad: true, theme: "default", securityLevel: "loose" });
+</script>
+</body>
+</html>

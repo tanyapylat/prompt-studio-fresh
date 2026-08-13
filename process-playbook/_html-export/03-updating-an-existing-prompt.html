@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Updating an Existing Prompt</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  body {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 24px 40px 80px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    color: #1f2328;
+    background: #ffffff;
+  }
+  h1, h2, h3, h4 { font-weight: 600; margin-top: 1.6em; margin-bottom: 0.6em; }
+  h1 { font-size: 2em; border-bottom: 1px solid #d0d7de; padding-bottom: 0.3em; }
+  h2 { font-size: 1.5em; border-bottom: 1px solid #d0d7de; padding-bottom: 0.3em; }
+  h3 { font-size: 1.25em; }
+  a { color: #0969da; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code {
+    background: rgba(175,184,193,0.2);
+    padding: 0.2em 0.4em;
+    border-radius: 6px;
+    font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 85%;
+  }
+  pre {
+    background: #f6f8fa;
+    padding: 16px;
+    border-radius: 6px;
+    overflow-x: auto;
+  }
+  pre code { background: transparent; padding: 0; }
+  pre.mermaid { background: #ffffff; border: 1px solid #d0d7de; text-align: center; }
+  blockquote {
+    border-left: 4px solid #d0d7de;
+    margin: 0;
+    padding: 0 1em;
+    color: #59636e;
+  }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 1em 0;
+    display: block;
+    overflow-x: auto;
+  }
+  th, td {
+    border: 1px solid #d0d7de;
+    padding: 6px 13px;
+    text-align: left;
+    vertical-align: top;
+  }
+  tr:nth-child(2n) { background: #f6f8fa; }
+  hr { border: none; border-top: 1px solid #d0d7de; margin: 2em 0; }
+  .nav {
+    background: #f6f8fa;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    padding: 10px 16px;
+    margin-bottom: 24px;
+    font-size: 14px;
+  }
+  .nav a { margin-right: 14px; }
+  .banner {
+    background: #ddf4ff;
+    border: 1px solid #54aeff3d;
+    border-radius: 6px;
+    padding: 10px 16px;
+    margin-bottom: 16px;
+    font-size: 14px;
+  }
+</style>
+</head>
+<body>
+<div class="banner">Business-process playbook — for the technical/engineering companion set, see <a href="../../spec-driven-redesign/_html-export/README.html">spec-driven-redesign</a>.</div>
+<div class="nav"><a href="README.html">README</a><a href="01-the-spec.html">01-the-spec</a><a href="02-launching-a-brand-new-prompt.html">02-launching-a-brand-new-prompt</a><a href="03-updating-an-existing-prompt.html">03-updating-an-existing-prompt</a><a href="04-roles-responsibilities-and-approvals.html">04-roles-responsibilities-and-approvals</a><a href="05-continuous-quality-and-feedback-loop.html">05-continuous-quality-and-feedback-loop</a><a href="06-libraries-and-real-data.html">06-libraries-and-real-data</a><a href="07-glossary.html">07-glossary</a><a href="08-under-the-hood-technical-context.html">08-under-the-hood-technical-context</a></div>
+<h1>Updating an Existing Prompt</h1>
+<p>Once a prompt is live, &quot;make a change&quot; is not one workflow — it&#39;s three different ones, depending on <strong>why you&#39;re actually touching it</strong>. Picking the right one matters because it determines how much gets re-checked, and whether the new version is proven against the old one automatically.</p>
+<pre class="mermaid">
+flowchart TD
+  start[Open the live prompt + its brief, tests, and checks] --> q{What actually needs to change?}
+  q -->|Just the wording or the model| pathA[Path A: quick tweak]
+  q -->|The requirements themselves changed| pathB[Path B: the brief changed]
+  q -->|A gap was found in testing, prompt is fine| pathC[Path C: sharpen the tests]
+</pre>
+<h2>At a glance</h2>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>The brief</th>
+<th>The tests/checks</th>
+<th>The prompt</th>
+<th>How it&#39;s proven</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Path A — wording tweak</strong></td>
+<td>unchanged</td>
+<td>unchanged</td>
+<td>new version</td>
+<td>side-by-side against the current live version, same tests</td>
+</tr>
+<tr>
+<td><strong>Path B — requirements changed</strong></td>
+<td>new version</td>
+<td>updated for what changed, rest kept</td>
+<td>usually new version</td>
+<td>side-by-side against the current live version, plus the new requirements</td>
+</tr>
+<tr>
+<td><strong>Path C — sharpen the tests</strong></td>
+<td>usually unchanged</td>
+<td>new/updated</td>
+<td><strong>unchanged</strong></td>
+<td>run the <em>current</em> live prompt against the sharper bar, see if it already holds up</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>Path A — Just the wording (or model) changed</h2>
+<p><strong>When this applies:</strong> you believe you can word it better, or want to try a different model — but what the prompt is supposed to accomplish hasn&#39;t changed at all.</p>
+<p><strong>The goal:</strong> prove the new wording is at least as good as what&#39;s live today, on the exact same bar, before it&#39;s allowed to replace it.</p>
+<ol>
+<li>Open the current live version — its brief, tests, and checks are all visible right alongside it.</li>
+<li>Edit the wording (or model settings). This creates a new version of the prompt only.</li>
+<li><strong>Don&#39;t touch the tests or checks</strong> — reuse them exactly as they are, since what &quot;good&quot; means here hasn&#39;t changed.</li>
+<li>Run the new wording <strong>and</strong> the current live wording through the exact same tests, side by side, in one go. This is a built-in comparison, not a separate manual step someone has to remember to do.</li>
+<li>Read the comparison: pass rate, cost, and speed, old vs. new.<ul>
+<li><strong>No regression, meets the bar:</strong> proceed to lock in and release, same as a brand-new prompt&#39;s later stages.</li>
+<li><strong>Something got worse:</strong> stay in the fix loop — adjust the wording again, re-run the same comparison, repeat.</li>
+</ul>
+</li>
+</ol>
+<h2>Path B — The requirements themselves changed</h2>
+<p><strong>When this applies:</strong> a new business rule, a compliance requirement, an edge case a customer hit in the real world, a stakeholder wanting genuinely different behavior. The bar itself has to move, not just the prompt&#39;s ability to clear it.</p>
+<ol>
+<li>Update the brief first: add or edit the specific requirements that changed.</li>
+<li><strong>The system proposes only what actually needs to change, not a full do-over.</strong> Whatever in the tests and checks isn&#39;t affected by the update stays exactly as it was — including anything you&#39;ve since hand-tuned — so updating one requirement never silently wipes out unrelated manual work. For the parts that <em>did</em> change, the system suggests updates and clearly shows them as suggestions to review, never as silent overwrites.</li>
+<li>From here it&#39;s the same read-outputs-and-fix loop as launching a brand-new prompt, just starting from &quot;what changed&quot; instead of from scratch.</li>
+<li>Run it as a comparison too: the new version against the currently-live one, so a single run answers two questions at once — does it meet the <em>new</em> bar, and did it accidentally break anything the <em>old</em> bar was still checking for.</li>
+<li>Lock in and get a second opinion, same as always — but make sure the reviewer sees clearly <strong>what changed in the requirements themselves</strong>, not just the prompt wording, since that&#39;s really what&#39;s being signed off on here.</li>
+</ol>
+<h2>Path C — A gap was found, but the prompt itself is fine</h2>
+<p><strong>This is the most common loop of all, not a rare edge case.</strong> The single best way an organization&#39;s tests actually get better over time is by learning from real failures — not from guessing upfront what might go wrong. This path is how a specific, real lesson (a production incident, a pattern spotted while reviewing real usage, a new policy that should apply retroactively) turns into a permanent, sharper check — without necessarily touching the prompt at all.</p>
+<p><strong>Typical triggers:</strong> a real customer interaction reveals a case nobody thought to test; a review of recent usage turns up a recurring pattern of a certain kind of mistake; a new guardrail needs to apply going forward, even to cases that were previously untested.</p>
+<ol>
+<li>No brief update is strictly required (though a short note added to the brief for traceability is good practice). No prompt change is needed at all, yet.</li>
+<li><strong>If a real customer example is being turned into a permanent test case, personal or sensitive details must be scrubbed first.</strong> A live interaction naturally clears out sensitive details automatically after a short window — but a permanent test case doesn&#39;t expire the same way, so anything copied in for good needs to be cleaned up before it&#39;s saved that way.</li>
+<li>Add the new, sharper test case and/or the new check to a fresh version of the test set — the currently-live prompt stays completely untouched.</li>
+<li>Run the <strong>current, already-live prompt</strong> against this sharper bar. This checks one specific question: does what&#39;s already shipped hold up against the newly-discovered case?</li>
+<li><strong>If it passes:</strong> lock in just the sharper tests — no prompt version needed, since none was created. This raises the bar for every future version of this prompt immediately, and, once live monitoring is fully wired up, the same sharper bar can be checked against real ongoing traffic right away.</li>
+<li><strong>If it fails:</strong> now you have a concrete, reproducible example of exactly what&#39;s broken — hand this straight to Path A or Path B, whichever fits. This is the natural bridge between &quot;we found a real quality gap&quot; and &quot;now go fix the prompt,&quot; grounded in an actual failing example instead of a vague complaint.</li>
+</ol>
+<h2>Why comparisons are always side-by-side, not a separate step</h2>
+<p>In every path above, a new version is checked directly against whatever&#39;s currently live, in the same run, rather than being evaluated in isolation and compared informally afterward. Treat &quot;old vs. new, same test, same checks&quot; as the default way any change gets validated — a standalone check with no baseline to compare against should be the rare exception (mainly, a genuinely brand-new prompt with nothing to compare to yet), not the norm.</p>
+
+<script>
+  mermaid.initialize({ startOnLoad: true, theme: "default", securityLevel: "loose" });
+</script>
+</body>
+</html>

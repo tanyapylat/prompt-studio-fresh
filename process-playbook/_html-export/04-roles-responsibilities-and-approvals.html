@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Roles, Responsibilities, and Approvals</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  body {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 24px 40px 80px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    color: #1f2328;
+    background: #ffffff;
+  }
+  h1, h2, h3, h4 { font-weight: 600; margin-top: 1.6em; margin-bottom: 0.6em; }
+  h1 { font-size: 2em; border-bottom: 1px solid #d0d7de; padding-bottom: 0.3em; }
+  h2 { font-size: 1.5em; border-bottom: 1px solid #d0d7de; padding-bottom: 0.3em; }
+  h3 { font-size: 1.25em; }
+  a { color: #0969da; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code {
+    background: rgba(175,184,193,0.2);
+    padding: 0.2em 0.4em;
+    border-radius: 6px;
+    font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 85%;
+  }
+  pre {
+    background: #f6f8fa;
+    padding: 16px;
+    border-radius: 6px;
+    overflow-x: auto;
+  }
+  pre code { background: transparent; padding: 0; }
+  pre.mermaid { background: #ffffff; border: 1px solid #d0d7de; text-align: center; }
+  blockquote {
+    border-left: 4px solid #d0d7de;
+    margin: 0;
+    padding: 0 1em;
+    color: #59636e;
+  }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 1em 0;
+    display: block;
+    overflow-x: auto;
+  }
+  th, td {
+    border: 1px solid #d0d7de;
+    padding: 6px 13px;
+    text-align: left;
+    vertical-align: top;
+  }
+  tr:nth-child(2n) { background: #f6f8fa; }
+  hr { border: none; border-top: 1px solid #d0d7de; margin: 2em 0; }
+  .nav {
+    background: #f6f8fa;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    padding: 10px 16px;
+    margin-bottom: 24px;
+    font-size: 14px;
+  }
+  .nav a { margin-right: 14px; }
+  .banner {
+    background: #ddf4ff;
+    border: 1px solid #54aeff3d;
+    border-radius: 6px;
+    padding: 10px 16px;
+    margin-bottom: 16px;
+    font-size: 14px;
+  }
+</style>
+</head>
+<body>
+<div class="banner">Business-process playbook — for the technical/engineering companion set, see <a href="../../spec-driven-redesign/_html-export/README.html">spec-driven-redesign</a>.</div>
+<div class="nav"><a href="README.html">README</a><a href="01-the-spec.html">01-the-spec</a><a href="02-launching-a-brand-new-prompt.html">02-launching-a-brand-new-prompt</a><a href="03-updating-an-existing-prompt.html">03-updating-an-existing-prompt</a><a href="04-roles-responsibilities-and-approvals.html">04-roles-responsibilities-and-approvals</a><a href="05-continuous-quality-and-feedback-loop.html">05-continuous-quality-and-feedback-loop</a><a href="06-libraries-and-real-data.html">06-libraries-and-real-data</a><a href="07-glossary.html">07-glossary</a><a href="08-under-the-hood-technical-context.html">08-under-the-hood-technical-context</a></div>
+<h1>Roles, Responsibilities, and Approvals</h1>
+<p>Good process needs clear ownership, not just clear steps. This doc covers who does what, who has final say over quality, and how review and approval actually work day to day.</p>
+<h2>The roles</h2>
+<table>
+<thead>
+<tr>
+<th>Role</th>
+<th>What they own</th>
+<th>What they&#39;re not responsible for</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Prompt Engineer</strong></td>
+<td>Prompt strategy and wording end to end, translating success criteria into concrete evals/checks, building and running the test loop, reading trial outputs, doing the day-to-day error-analysis pass</td>
+<td>Deciding what &quot;good&quot; means in the first place, and the final call on whether a version ships — that&#39;s the Product Manager&#39;s call</td>
+</tr>
+<tr>
+<td><strong>Product Manager / Brief Owner</strong></td>
+<td>Writing (or commissioning) the brief, defining what success actually looks like in business/user terms, final sign-off before release</td>
+<td>Tuning prompt wording, writing evals, or doing the hands-on output review day to day — that&#39;s the Prompt Engineer&#39;s job</td>
+</tr>
+<tr>
+<td><strong>Reviewer / Approver</strong></td>
+<td>Giving the final sign-off before release, ideally the same person as the Product Manager</td>
+<td>Writing the prompt or the brief themselves — a reviewer should not be reviewing their own work</td>
+</tr>
+<tr>
+<td><strong>Engineer</strong></td>
+<td>Adding brand-new kinds of automated checks when nothing existing covers a need</td>
+<td>Day-to-day prompt iteration or writing the brief</td>
+</tr>
+<tr>
+<td><strong>AI Assistant</strong></td>
+<td>Drafting first attempts (prompt, tests, checks), doing a first-pass review with comments and flags</td>
+<td><strong>Never has final approval authority</strong> — every gate that matters ends with a human decision</td>
+</tr>
+</tbody></table>
+<p>On a small team, several of these can be the same person — what matters is that the <em>brief owner</em> and the <em>reviewer</em> are, wherever possible, not the same person as whoever wrote the prompt wording being reviewed. That separation is what keeps &quot;is this actually good&quot; an honest question instead of the author grading their own homework.</p>
+<p><strong>Where the line actually falls.</strong> The split isn&#39;t &quot;who tests vs. who doesn&#39;t&quot; — the Prompt Engineer writes the evals too. It&#39;s &quot;who owns the Spec&#39;s content vs. who owns everything that proves the Spec is met.&quot; If a decision is about <em>what</em> the prompt should do, or whether the business is comfortable shipping it, that&#39;s the Product Manager. If it&#39;s about <em>how</em> to get there, or how to prove it got there — including the checks and test cases themselves — that&#39;s the Prompt Engineer. Practically, this means the Product Manager approves based on the citable run&#39;s results and the Prompt Engineer&#39;s summary, not on redoing the output review themselves; they&#39;re the tie-breaker when a result is ambiguous or when a recurring failure looks like it should become a new requirement, not the primary annotator on every run.</p>
+<h2>Why one named owner, not a committee</h2>
+<p>For any given prompt, <strong>one specific person should own the quality bar</strong> — the brief, the definition of &quot;good,&quot; and the final approval call — rather than quality being a shared, undefined responsibility across a group. This isn&#39;t about limiting who can contribute; it&#39;s about avoiding the two failure modes that show up when nobody owns it: quality drifting because everyone assumes someone else is watching it, and endless back-and-forth because too many people have an equal, undefined say in what &quot;good enough&quot; means.</p>
+<p>That person should ideally be the one closest to the actual end user&#39;s needs — a product owner, a compliance lead, a support-ops lead — not necessarily the most technical person on the team. Their job is to judge outcomes (&quot;did this actually solve the customer&#39;s problem&quot;) rather than implementation details (&quot;did the code technically run without erroring&quot;).</p>
+<p><strong>When does this need more than one person?</strong> Only when a single owner genuinely can&#39;t cover the whole domain — for example, a prompt that has to satisfy meaningfully different regulatory rules in different regions. Default to one owner; add more only when there&#39;s a real, specific reason to.</p>
+<h2>How review works: a real review, not a rubber stamp</h2>
+<p>The review that happens before release should feel like reviewing a finished piece of work, not clicking a single &quot;approve&quot; button on a form:</p>
+<ul>
+<li><strong>The reviewer sees everything that changed, together</strong> — the brief, the prompt wording, every check, the test set, and the actual results — compared against what&#39;s live today, so they&#39;re reviewing one coherent story, not three disconnected checkboxes.</li>
+<li><strong>Comments attach to the specific thing they&#39;re about</strong> — a particular line of the brief, a particular check, a particular result — and stay visible on that version going forward, so the reasoning behind a decision is never lost to a hallway conversation nobody wrote down.</li>
+<li><strong>An AI assistant does the first pass.</strong> Before the human even looks, it flags things like a requirement with nothing checking it, an oddly-worded check, a suspicious jump in the pass rate, or a cost/speed regression versus what&#39;s live today. It only ever comments and summarizes — never approves. This isn&#39;t about replacing the reviewer&#39;s judgment; it&#39;s about making sure the reviewer&#39;s attention goes straight to what actually needs it instead of re-discovering it from scratch.</li>
+<li><strong>The verdict is binary: Approve, or Request Changes.</strong> A request for changes sends things back to the fix loop — since what was reviewed is already locked in, any fix produces a fresh version rather than quietly altering the one that was reviewed, and comes back around for a fresh, focused review once ready.</li>
+</ul>
+<h2>When does a lighter-weight fast track make sense?</h2>
+<p>Not every change deserves the same amount of ceremony. A recommended, principled fast track: if the new version shows <strong>no drop in quality</strong> against what&#39;s currently live, and the change <strong>doesn&#39;t touch or add any subjective, AI-graded check</strong> (i.e., it&#39;s a wording-only tweak, or purely adds sharper test coverage without changing what &quot;pass&quot; means) — it can auto-clear with an async notification to the brief owner, instead of waiting on a synchronous review. Anything that touches guardrails, success criteria, or how something subjective gets graded should always go through full human review — that&#39;s exactly the kind of change where a quiet drift in judgment is easiest to miss and most costly to get wrong.</p>
+<h2>Where an engineer gets involved</h2>
+<p>Most checks needed for a given requirement should come from an existing, trusted library of check types rather than being written from scratch every time — think of it like a shared toolbox of common, pre-approved checks (does the output contain or avoid certain text, is it valid structured data, does a number fall in range, was the right action taken) that a first draft picks from automatically. When a requirement genuinely doesn&#39;t fit anything in that toolbox, the system can write a small custom check on its own — but anything written this way is always flagged for a human to look at during review, never trusted silently. Only a check that&#39;s too unusual or sensitive even for that becomes a request for an engineer to build a proper, reusable addition to the shared toolbox. This keeps day-to-day iteration fast without quietly trusting unreviewed, freshly-written logic to gate a release on its own.</p>
+<h2>The short version</h2>
+<p>One named owner per prompt decides what &quot;good&quot; means and gives final sign-off. Whoever tunes the wording day to day is usually a different person. Every release goes through a real review — AI-assisted, human-decided — before it ships, with a lighter fast track reserved specifically for low-risk, no-regression changes. Custom logic beyond the standard toolbox always gets a human&#39;s eyes on it before it&#39;s trusted.</p>
+
+<script>
+  mermaid.initialize({ startOnLoad: true, theme: "default", securityLevel: "loose" });
+</script>
+</body>
+</html>

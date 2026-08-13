@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Continuous Quality and the Feedback Loop</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  body {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 24px 40px 80px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    color: #1f2328;
+    background: #ffffff;
+  }
+  h1, h2, h3, h4 { font-weight: 600; margin-top: 1.6em; margin-bottom: 0.6em; }
+  h1 { font-size: 2em; border-bottom: 1px solid #d0d7de; padding-bottom: 0.3em; }
+  h2 { font-size: 1.5em; border-bottom: 1px solid #d0d7de; padding-bottom: 0.3em; }
+  h3 { font-size: 1.25em; }
+  a { color: #0969da; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code {
+    background: rgba(175,184,193,0.2);
+    padding: 0.2em 0.4em;
+    border-radius: 6px;
+    font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 85%;
+  }
+  pre {
+    background: #f6f8fa;
+    padding: 16px;
+    border-radius: 6px;
+    overflow-x: auto;
+  }
+  pre code { background: transparent; padding: 0; }
+  pre.mermaid { background: #ffffff; border: 1px solid #d0d7de; text-align: center; }
+  blockquote {
+    border-left: 4px solid #d0d7de;
+    margin: 0;
+    padding: 0 1em;
+    color: #59636e;
+  }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 1em 0;
+    display: block;
+    overflow-x: auto;
+  }
+  th, td {
+    border: 1px solid #d0d7de;
+    padding: 6px 13px;
+    text-align: left;
+    vertical-align: top;
+  }
+  tr:nth-child(2n) { background: #f6f8fa; }
+  hr { border: none; border-top: 1px solid #d0d7de; margin: 2em 0; }
+  .nav {
+    background: #f6f8fa;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    padding: 10px 16px;
+    margin-bottom: 24px;
+    font-size: 14px;
+  }
+  .nav a { margin-right: 14px; }
+  .banner {
+    background: #ddf4ff;
+    border: 1px solid #54aeff3d;
+    border-radius: 6px;
+    padding: 10px 16px;
+    margin-bottom: 16px;
+    font-size: 14px;
+  }
+</style>
+</head>
+<body>
+<div class="banner">Business-process playbook — for the technical/engineering companion set, see <a href="../../spec-driven-redesign/_html-export/README.html">spec-driven-redesign</a>.</div>
+<div class="nav"><a href="README.html">README</a><a href="01-the-spec.html">01-the-spec</a><a href="02-launching-a-brand-new-prompt.html">02-launching-a-brand-new-prompt</a><a href="03-updating-an-existing-prompt.html">03-updating-an-existing-prompt</a><a href="04-roles-responsibilities-and-approvals.html">04-roles-responsibilities-and-approvals</a><a href="05-continuous-quality-and-feedback-loop.html">05-continuous-quality-and-feedback-loop</a><a href="06-libraries-and-real-data.html">06-libraries-and-real-data</a><a href="07-glossary.html">07-glossary</a><a href="08-under-the-hood-technical-context.html">08-under-the-hood-technical-context</a></div>
+<h1>Continuous Quality and the Feedback Loop</h1>
+<p>Shipping a version is not the finish line — it&#39;s the point where the most valuable source of new information actually opens up: real usage. This doc covers what happens after release, and how the whole system is meant to keep getting better rather than staying frozen at whatever the team thought of on day one.</p>
+<h2>Why this matters more than the initial testing does</h2>
+<p>The initial trial-and-fix work described in <a href="02-launching-a-brand-new-prompt.html">02-launching-a-brand-new-prompt.md</a> is deliberately based on a small set of examples — mostly what was written into the brief up front, plus a modest number of made-up extra cases. That&#39;s enough to sanity-check a first attempt, but it can never anticipate everything real usage will throw at it. <strong>The real engine of quality improvement is reading actual results and real usage, not the original guesses written into the brief.</strong> Treat the ongoing loop described below as the main event, not a footnote — expect to run it continuously, far more often than a full prompt rewrite.</p>
+<h2>The loop, at a glance</h2>
+<pre class="mermaid">
+flowchart TD
+  A["Watch real usage against the same checks used to approve release"] --> B["Regularly review a sample of real results"]
+  B --> C["Read outputs, jot short notes on anything that looks off — even if it technically passed"]
+  C --> D["Group similar notes into named patterns once a few show up"]
+  D --> E{"Turn a recurring pattern into something permanent"}
+  E -->|"a specific real case worth always testing"| F["Add it as a new, permanent test case"]
+  E -->|"a check needs to exist that doesn't yet"| G["Add or fix a check"]
+  E -->|"the requirement itself was never actually written down"| H["Update the brief"]
+  F --> A
+  G --> A
+  H --> A
+</pre>
+<h2>Step by step</h2>
+<h3>1. Keep watching after launch</h3>
+<p>The same checks that gated release should keep grading a regular sample of real, live usage — not just at launch, on an ongoing basis. This means &quot;did we ship something good&quot; and &quot;is it still good right now&quot; get answered by the exact same yardstick, rather than one bar for the demo and a different, unmeasured reality afterward.</p>
+<p><strong>A note on where we are today:</strong> fully automatic, always-on live monitoring is the target end state, and it&#39;s coming, but isn&#39;t fully wired up yet. In the meantime, the equivalent habit is regularly pulling in and reviewing batches of real usage or exported reports on a set cadence, rather than a continuous live feed — same discipline, more manual sourcing for now.</p>
+<p><strong>Automated grading is not the whole review pool — this is worth being explicit about.</strong> Only some real traffic ever gets graded by a check (limited sampling, cost, or simply not wired up yet). Reviewing real usage means reading actual outputs regardless of whether a check ran on them, not just the subset that happens to have a pass/fail score attached. A check can only ever catch what it was already built to look for — the ungraded majority of traffic is exactly where a genuinely new failure pattern is most likely to be hiding, since nothing has filtered it yet.</p>
+<h3>2. Review real results on a regular cadence, not just when something breaks</h3>
+<p>Waiting for a complaint or an incident before looking at real usage means you only ever see the failures someone was upset enough to report — a small and biased sample of what&#39;s actually happening. Build in a standing habit of periodically sampling and reading real results, successes included, so quieter failure patterns don&#39;t stay invisible.</p>
+<h3>3. Read the actual outputs — this is the highest-leverage habit in the whole process</h3>
+<p>Skimming a pass-rate number is not the same as reading what actually happened. For each result you&#39;re reviewing:</p>
+<ul>
+<li><strong>Write a short, honest note on anything that looks wrong</strong> — &quot;wrong tone for this situation,&quot; &quot;made up a policy that doesn&#39;t exist&quot; — before trying to fit it into an existing category. Forcing a note into a predefined bucket too early is exactly how new, unexpected failure patterns stay hidden.</li>
+<li><strong>Render results the way a person would actually read them</strong> — an email formatted like an email, structured data shown in its actual shape — not a raw technical dump that&#39;s hard to actually evaluate.</li>
+<li><strong>Prioritize what&#39;s most likely to be interesting</strong> (results a check already flagged as failing, or results with low grader confidence, or ones with negative user feedback) — but keep mixing in a few random ones too, so patterns with no existing signal don&#39;t stay permanently invisible. <strong>&quot;Random&quot; has to include usage no check has ever touched, not just a random pick among already-graded results</strong> — otherwise the sample is silently pre-filtered by whatever the checks already know to look for, and the one place a brand-new failure mode is most likely to surface never gets read at all.</li>
+<li><strong>Keep reviewing until new patterns stop showing up</strong>, not for a fixed number of items — once you&#39;ve gone through a solid stretch without finding anything new, that&#39;s the natural stopping point, not an arbitrary quota.</li>
+</ul>
+<h3>4. Make it easy to act on what you find — not just record it</h3>
+<p>Notes that pile up without ever turning into an actual fix are wasted effort. A finding should be one step away from becoming a concrete update, ideally with a drafted first attempt at the fix ready for a quick human confirmation rather than a blank page:</p>
+<ul>
+<li><strong>A recurring, serious pattern → a new or fixed check.</strong> If a real example is the clearest illustration of a mistake worth always catching going forward, propose the actual check needed to catch it, not just a description of the problem.</li>
+<li><strong>A specific tricky case → a permanent test case.</strong> So the exact scenario that once slipped through stays part of the test set forever, protecting against the same mistake resurfacing in a future version.</li>
+<li><strong>A requirement that was never actually written down → an update to the brief.</strong> Sometimes a real failure reveals that the original brief simply never specified the right behavior in the first place. When that&#39;s the case, the fix belongs in the brief itself, not just downstream — that&#39;s how the brief keeps growing to reflect what&#39;s actually been learned, instead of staying frozen at day one.</li>
+<li><strong>Sometimes the most direct fix is just the prompt wording.</strong> Not every finding needs a new check or a brief update — if the fix is obviously &quot;add an explicit instruction covering this,&quot; go straight there.</li>
+</ul>
+<p>Whichever of these it becomes, a proposed fix should always be reviewed and confirmed by a person before it&#39;s finalized — nothing gets silently rewritten on its own.</p>
+<h3>5. Reviewing real results should be easy to filter and summarize, not just scroll through</h3>
+<p>A results view that&#39;s just a long list of individual outputs doesn&#39;t scale once there&#39;s real volume. Look for (and expect) a results view that lets you:</p>
+<ul>
+<li><strong>Filter</strong> by pass/fail, by which specific requirement a result relates to, by a named failure pattern once one exists, or by unusual cost/speed.</li>
+<li><strong>See a summary at a glance</strong> — pass rate broken down by requirement, the most common failure patterns right now, and how this compares to the last time you looked — before drilling into any individual result.</li>
+</ul>
+<p>This turns &quot;reviewing results&quot; from a chore into something closer to triage: you see what&#39;s actually broken and how much, before you spend time reading individual cases.</p>
+<h3>6. Don&#39;t chase a perfect score</h3>
+<p>A prompt passing 100% of its checks, especially early on, is more often a sign the tests aren&#39;t challenging it yet than a sign it&#39;s flawless. The goal isn&#39;t a perfect number — it&#39;s a <strong>meaningfully hard, honest bar that keeps getting sharper</strong> as real usage teaches it new lessons. A pass rate that holds steady on a test set that keeps getting harder over time is a far stronger signal of real quality than a static, easy 100%.</p>
+<h2>The short version</h2>
+<p>Release isn&#39;t the end of the work — it&#39;s where the most useful lessons start arriving. Watch real usage against the same bar that gated release, review it on a regular cadence (not just when something breaks), read actual outputs rather than just scores, and turn every real finding into one of three permanent improvements: a sharper test, a better check, or an updated brief. Make that path as short as possible — ideally one confirmed click from &quot;here&#39;s what I noticed&quot; to &quot;here&#39;s the fix&quot; — and don&#39;t mistake an easy 100% for a job well done.</p>
+
+<script>
+  mermaid.initialize({ startOnLoad: true, theme: "default", securityLevel: "loose" });
+</script>
+</body>
+</html>

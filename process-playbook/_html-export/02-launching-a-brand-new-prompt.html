@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Launching a Brand-New Prompt</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  body {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 24px 40px 80px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    color: #1f2328;
+    background: #ffffff;
+  }
+  h1, h2, h3, h4 { font-weight: 600; margin-top: 1.6em; margin-bottom: 0.6em; }
+  h1 { font-size: 2em; border-bottom: 1px solid #d0d7de; padding-bottom: 0.3em; }
+  h2 { font-size: 1.5em; border-bottom: 1px solid #d0d7de; padding-bottom: 0.3em; }
+  h3 { font-size: 1.25em; }
+  a { color: #0969da; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code {
+    background: rgba(175,184,193,0.2);
+    padding: 0.2em 0.4em;
+    border-radius: 6px;
+    font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 85%;
+  }
+  pre {
+    background: #f6f8fa;
+    padding: 16px;
+    border-radius: 6px;
+    overflow-x: auto;
+  }
+  pre code { background: transparent; padding: 0; }
+  pre.mermaid { background: #ffffff; border: 1px solid #d0d7de; text-align: center; }
+  blockquote {
+    border-left: 4px solid #d0d7de;
+    margin: 0;
+    padding: 0 1em;
+    color: #59636e;
+  }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 1em 0;
+    display: block;
+    overflow-x: auto;
+  }
+  th, td {
+    border: 1px solid #d0d7de;
+    padding: 6px 13px;
+    text-align: left;
+    vertical-align: top;
+  }
+  tr:nth-child(2n) { background: #f6f8fa; }
+  hr { border: none; border-top: 1px solid #d0d7de; margin: 2em 0; }
+  .nav {
+    background: #f6f8fa;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    padding: 10px 16px;
+    margin-bottom: 24px;
+    font-size: 14px;
+  }
+  .nav a { margin-right: 14px; }
+  .banner {
+    background: #ddf4ff;
+    border: 1px solid #54aeff3d;
+    border-radius: 6px;
+    padding: 10px 16px;
+    margin-bottom: 16px;
+    font-size: 14px;
+  }
+</style>
+</head>
+<body>
+<div class="banner">Business-process playbook — for the technical/engineering companion set, see <a href="../../spec-driven-redesign/_html-export/README.html">spec-driven-redesign</a>.</div>
+<div class="nav"><a href="README.html">README</a><a href="01-the-spec.html">01-the-spec</a><a href="02-launching-a-brand-new-prompt.html">02-launching-a-brand-new-prompt</a><a href="03-updating-an-existing-prompt.html">03-updating-an-existing-prompt</a><a href="04-roles-responsibilities-and-approvals.html">04-roles-responsibilities-and-approvals</a><a href="05-continuous-quality-and-feedback-loop.html">05-continuous-quality-and-feedback-loop</a><a href="06-libraries-and-real-data.html">06-libraries-and-real-data</a><a href="07-glossary.html">07-glossary</a><a href="08-under-the-hood-technical-context.html">08-under-the-hood-technical-context</a></div>
+<h1>Launching a Brand-New Prompt</h1>
+<p>This is the journey for a prompt that doesn&#39;t exist yet — no prior version, no prior tests, nothing to build on. It has five stages. Here&#39;s the whole thing at a glance:</p>
+<pre class="mermaid">
+flowchart LR
+  s1["1 · Write the brief"] --> s2["2 · Try it out and fix what's wrong<br/>(most of your time goes here)"] --> s3["3 · Lock it in"] --> s4["4 · Get a second opinion, then ship"] --> s5["5 · Keep watching after launch"]
+</pre>
+<p>The middle stage — trying it out and fixing what&#39;s wrong — is deliberately where most of the effort lives. Everything before it should take minutes; everything after it should be fast because the hard thinking already happened there.</p>
+<h2>Stage 1 — Write the brief</h2>
+<p>Covered in full in <a href="01-the-spec.html">01-the-spec.md</a>. Short version: write down the name, what &quot;good&quot; looks like, and what goes in/comes out. Save it.</p>
+<h2>Stage 2 — Try it out and fix what&#39;s wrong</h2>
+<p>The moment the brief is saved, the system does something for you automatically, in one action: it drafts a first attempt at the prompt, a first small set of test inputs (seeded from your examples and edge cases), and the checks that will grade the results — then immediately runs that first attempt against those checks and shows you the results. You didn&#39;t have to set any of that up by hand; you get a first data point within seconds of finishing the brief.</p>
+<pre class="mermaid">
+flowchart TD
+  A["System drafts: prompt + test cases + checks"] --> B["System runs a trial automatically"]
+  B --> C["You read every single output — not just the score"]
+  C --> D{"Good enough?"}
+  D -->|"yes"| E["Move to Stage 3: lock it in"]
+  D -->|"no"| F{"What's actually wrong?"}
+  F -->|"the wording"| G["Fix the prompt"]
+  F -->|"a check is testing the wrong thing"| H["Fix or add a check"]
+  F -->|"the brief itself was incomplete or wrong"| I["Update the brief"]
+  G --> B
+  H --> B
+  I --> A
+</pre>
+<p><strong>The single most important habit in this whole process: read the actual outputs, not just the pass rate.</strong> A trial that passes 100% on its first try is far more often a sign the test cases aren&#39;t challenging the prompt yet than a sign the prompt is actually done — the first batch of tests is intentionally small, seeded mostly from your own examples. Read every output (it&#39;s only a few dozen at this stage), jot a short note on anything that looks wrong even if it technically &quot;passed,&quot; and don&#39;t trust a clean scoreboard until the test cases themselves have earned your trust.</p>
+<h3>When something&#39;s wrong, there are only three possible culprits</h3>
+<p>This is the part worth internalizing, because reaching for the wrong fix wastes time and can quietly make your tests worse instead of better:</p>
+<ul>
+<li><strong>Most often, it&#39;s the wording.</strong> The brief was clear and correct; the prompt just didn&#39;t fully follow it yet. This is the cheapest, fastest fix — edit the prompt, try again.</li>
+<li><strong>Occasionally, a check is wrong, not the prompt.</strong> The brief&#39;s intent was correct and clear, but whoever (or whatever) wrote the check for it got the check itself wrong — testing the wrong thing, or testing it too strictly or too loosely. This is a narrower case than it might feel like in the moment: before you decide &quot;the check is broken,&quot; make sure it&#39;s not actually the first case (wording) or the third (the brief itself needs updating).</li>
+<li><strong>Sometimes the brief itself was incomplete or wrong.</strong> You discover, in the middle of iterating, that the original brief didn&#39;t actually specify the right behavior — a requirement was missing, or it was too vague to pin down what &quot;correct&quot; even means here. This is the biggest fix: go back and sharpen the brief, which naturally cascades into fresh prompt and test drafts for whatever changed.</li>
+</ul>
+<p>Every fix — however big or small — gets tried again automatically against the same test set, so you can immediately tell whether it actually helped before moving on.</p>
+<h3>A standing safety net: is every requirement actually being checked?</h3>
+<p>Keep a simple, always-visible checklist next to the brief: for every success measure and guardrail you wrote down, is there currently a check that actually verifies it? This is what makes &quot;make a change and see if it still passes&quot; a trustworthy signal for every future edit — a re-run can only catch what it&#39;s actually checking, so an uncovered requirement is a silent gap, not a passing grade.</p>
+<h2>Stage 3 — Lock it in</h2>
+<p>Once trial results are stable and genuinely good — not just clean by accident of an easy test set — you formally lock in this version. Locking in is a single, deliberate action that freezes everything together at once: the brief, the prompt, every check, the test set, and the grading rules. There&#39;s no partial state where the prompt is locked but the tests aren&#39;t, or vice versa — it&#39;s one bundle, frozen together, so what gets reviewed next is guaranteed to be self-consistent.</p>
+<p>Locking in immediately triggers one more automatic run of the exact same trial — now formally on the record as the version&#39;s official result, the one that gets cited as evidence going forward, rather than something anyone has to just take on faith.</p>
+<p><strong>A note on the automated grader, if this prompt uses one.</strong> Some checks are simple pass/fail rules a computer can verify directly (does the answer contain X, is it valid structured data, is a number in range). Others are inherently more subjective — tone, persona, nuanced correctness — and get graded by an AI acting as a judge instead. If your checks include one of these AI-graded checks, it&#39;s genuinely good practice to spot-check that grader against a handful of examples you&#39;ve scored by hand yourself, to build confidence it agrees with a human before you lean on it. That said, <strong>this is a recommendation, not a requirement that blocks locking in</strong> — you&#39;re free to do it whenever it adds value, but it won&#39;t hold up shipping a version that&#39;s otherwise ready.</p>
+<h2>Stage 4 — Get a second opinion, then ship</h2>
+<p>Locking in a version is not the same as approving it for release — those are two different moments, on purpose. The locked bundle goes through a short review, styled like a code review rather than a rubber-stamp:</p>
+<ul>
+<li>The reviewer sees everything that changed at once: the brief, the prompt wording, the checks, the test set, and the official run&#39;s results — compared side-by-side against whatever&#39;s live today, if anything is.</li>
+<li>Comments can be left directly on any specific piece — a line of the brief, a specific check, a specific test row, a specific result — and stay attached to that version&#39;s history going forward, so the reasoning behind a decision isn&#39;t lost.</li>
+<li>An AI assistant does a first pass automatically before the human does: flagging things like a requirement with no check covering it, an oddly-worded check, a suspicious jump in the pass rate, or a cost/speed regression. <strong>The assistant only comments — it never approves.</strong> The decision always belongs to a person.</li>
+<li><strong>The reviewer should not be the same person who wrote the brief or tuned the prompt.</strong> Ideally it&#39;s the person who owns the quality bar for this prompt in the first place (see <a href="04-roles-responsibilities-and-approvals.html">04-roles-responsibilities-and-approvals.md</a>) — the person best placed to judge whether any remaining rough edges are actually acceptable.</li>
+<li>The verdict is either <strong>Approve</strong> or <strong>Request changes</strong>. A request for changes sends things back into Stage 2&#39;s fix loop — because the reviewed version is already locked, any fix creates a fresh version rather than quietly editing the one that was reviewed, and comes back for review again once it&#39;s ready.</li>
+</ul>
+<p>Once approved, the version is released — it becomes the live, current version being served to real users, with the official run kept on record as the evidence that justified shipping it.</p>
+<h2>Stage 5 — Keep watching after launch</h2>
+<p>Shipping isn&#39;t the finish line. The same checks that gated the release should keep grading a sample of real, live usage on an ongoing basis, so &quot;did we ship something good&quot; and &quot;is it still good in production&quot; are answered by the exact same yardstick, not two different ones. What that ongoing loop looks like, and how real failures feed back into sharper tests (and sometimes a sharper brief), is covered in <a href="05-continuous-quality-and-feedback-loop.html">05-continuous-quality-and-feedback-loop.md</a>.</p>
+<h2>The one-paragraph version</h2>
+<p>Write the brief, let the system draft everything from it, spend your real effort reading real outputs and fixing whichever of three things is actually wrong (wording is small, a bad check is medium, the brief itself is the big one), lock it all in together once it&#39;s genuinely good, get a second opinion from someone who wasn&#39;t the author, ship it — and then keep watching real usage, because that&#39;s where the sharpest lessons come from.</p>
+
+<script>
+  mermaid.initialize({ startOnLoad: true, theme: "default", securityLevel: "loose" });
+</script>
+</body>
+</html>

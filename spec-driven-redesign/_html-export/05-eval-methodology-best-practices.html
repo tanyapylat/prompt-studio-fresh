@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Eval Methodology: Applying Current Best Practice (Hamel Husain / Shreya Shankar) to This Design</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  body {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 24px 40px 80px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    color: #1f2328;
+    background: #ffffff;
+  }
+  h1, h2, h3, h4 { font-weight: 600; margin-top: 1.6em; margin-bottom: 0.6em; }
+  h1 { font-size: 2em; border-bottom: 1px solid #d0d7de; padding-bottom: 0.3em; }
+  h2 { font-size: 1.5em; border-bottom: 1px solid #d0d7de; padding-bottom: 0.3em; }
+  h3 { font-size: 1.25em; }
+  a { color: #0969da; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code {
+    background: rgba(175,184,193,0.2);
+    padding: 0.2em 0.4em;
+    border-radius: 6px;
+    font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 85%;
+  }
+  pre {
+    background: #f6f8fa;
+    padding: 16px;
+    border-radius: 6px;
+    overflow-x: auto;
+  }
+  pre code { background: transparent; padding: 0; }
+  pre.mermaid { background: #ffffff; border: 1px solid #d0d7de; text-align: center; }
+  blockquote {
+    border-left: 4px solid #d0d7de;
+    margin: 0;
+    padding: 0 1em;
+    color: #59636e;
+  }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 1em 0;
+    display: block;
+    overflow-x: auto;
+  }
+  th, td {
+    border: 1px solid #d0d7de;
+    padding: 6px 13px;
+    text-align: left;
+    vertical-align: top;
+  }
+  tr:nth-child(2n) { background: #f6f8fa; }
+  hr { border: none; border-top: 1px solid #d0d7de; margin: 2em 0; }
+  .nav {
+    background: #f6f8fa;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    padding: 10px 16px;
+    margin-bottom: 24px;
+    font-size: 14px;
+  }
+  .nav a { margin-right: 14px; }
+  .banner {
+    background: #ddf4ff;
+    border: 1px solid #54aeff3d;
+    border-radius: 6px;
+    padding: 10px 16px;
+    margin-bottom: 16px;
+    font-size: 14px;
+  }
+</style>
+</head>
+<body>
+<div class="banner">Technical / engineering set — for the plain-language business-process companion, see <a href="../../process-playbook/_html-export/README.html">process-playbook</a>.</div>
+<div class="nav"><a href="README.html">README</a><a href="01-concepts-and-entity-mapping.html">01-concepts-and-entity-mapping</a><a href="02-workflow-starting-anew.html">02-workflow-starting-anew</a><a href="03-workflow-new-version-from-existing.html">03-workflow-new-version-from-existing</a><a href="04-cross-cutting-ux-and-open-questions.html">04-cross-cutting-ux-and-open-questions</a><a href="05-eval-methodology-best-practices.html">05-eval-methodology-best-practices</a><a href="06-sdd-alignment-and-resolutions.html">06-sdd-alignment-and-resolutions</a></div>
+<h1>Eval Methodology: Applying Current Best Practice (Hamel Husain / Shreya Shankar) to This Design</h1>
+<p>The rest of this proposal describes a <strong>mechanism</strong>: Spec → generate Prompt/Assertions/Dataset → dry run → publish → citable run → online eval. This doc grounds that mechanism in the <strong>methodology</strong> that the field has converged on for actually getting evals right — primarily Hamel Husain&#39;s and Shreya Shankar&#39;s writing and teaching (the <a href="https://hamel.dev/blog/posts/evals-faq/">&quot;LLM Evals FAQ&quot;</a>, the <em>AI Evals for Engineers &amp; PMs</em> course, and <em>A Field Guide to Rapidly Improving AI Products</em>). Their guidance was assembled from 700+ practitioners and is the most current, field-tested reference available as of mid-2026.</p>
+<p><strong>The one thing worth being explicit about up front:</strong> their single strongest, most repeated warning is <em>against</em> the exact thing a naive reading of &quot;spec-driven&quot; could become — writing evaluators before you have real failure data (&quot;eval-driven development&quot;). This doc exists to reconcile that warning with spec-driven generation, not to ignore it.</p>
+<h2>The core warning: don&#39;t practice eval-driven development by default</h2>
+<blockquote>
+<p>&quot;Should I practice eval-driven development? Generally no... Unlike traditional software where failure modes are predictable, LLMs have infinite surface area for potential failures. You can&#39;t anticipate what will break. A better approach is to start with error analysis. Write evaluators for errors you discover, not errors you imagine.&quot; — Hamel Husain</p>
+</blockquote>
+<p><strong>Exception, explicitly stated:</strong> &quot;Eval-driven development may work for specific constraints where you know exactly what success looks like.&quot; A guardrail like &quot;never mention a competitor&quot; is a legitimate case for writing the check before you have failure data.</p>
+<h3>How this reshapes the Spec → dry-run flow</h3>
+<p>A Spec&#39;s success criteria and guardrails are usually closer to that exception than to &quot;imagined failures&quot; — they&#39;re stated product/business constraints (input contract, output contract, explicit must-not-do rules), not guesses about how the model might fail. So it&#39;s reasonable for a dry run to auto-generate assertions from them. But two things need to change from a purely mechanical reading of <a href="02-workflow-starting-anew.html">02</a>/<a href="03-workflow-new-version-from-existing.html">03</a>:</p>
+<ol>
+<li><strong>Spec-derived assertions are hypotheses, not committed evaluators, until validated.</strong> Treat every auto-generated <code>AssertionVersion</code> as <strong>draft and provisional</strong>. It earns &quot;trusted&quot; status the same way any evaluator does in this methodology: by being checked against real failure data (see judge calibration below), not by having been present at generation time.</li>
+<li><strong>The primary way an Eval actually gets <em>good</em> is error analysis on real traces, not the initial spec-derived generation.</strong> The dry run gets a prompt+eval+dataset bundle to a <em>runnable</em> state fast. Error analysis — reading real dry-run outputs, batch-run outputs, and (once live) production traces — is what makes that bundle <em>correct</em>. This is why <a href="03-workflow-new-version-from-existing.html">03</a>&#39;s &quot;Case C&quot; (eval/dataset evolves from a discovered gap) is not a secondary edge case — it is the main engine of eval quality, and the product should treat it that way (see &quot;Elevating error analysis to a first-class surface&quot; below).</li>
+</ol>
+<h2>The cost hierarchy — apply it to how assertions get generated and typed</h2>
+<blockquote>
+<p>&quot;Fix your prompt, then use the cheapest eval that does the job.&quot; — Hamel Husain</p>
+</blockquote>
+<p>When a dry run drafts assertions from Spec criteria (or when a user manually adds one), apply this order, cheapest first:</p>
+<ol>
+<li><strong>Is this actually a missing instruction, not a missing check?</strong> Before generating a <code>rubric_grading</code> assertion for a criterion like &quot;responses should be concise,&quot; the system should surface: <em>&quot;this looks like a prompt instruction, not a check — add &#39;keep responses under 3 sentences&#39; to the prompt instead?&quot;</em> Many &quot;failures&quot; are unspecified preferences, not things that need a judge.</li>
+<li><strong>Prefer <code>code_assertion</code> wherever the criterion is checkable deterministically</strong> — output contains/excludes a string, matches a JSON schema, a field is within bounds, a tool was/wasn&#39;t called. Cheap to run, cheap to maintain, zero calibration burden.</li>
+<li><strong>Reserve <code>rubric_grading</code> (LLM-as-judge) for criteria that are genuinely subjective and will need repeated iteration</strong> — tone, persona consistency, nuanced correctness. This is the expensive tier: it needs a labeled validation set and ongoing maintenance (see below), so it should be a deliberate choice, not the default output of every success-criterion bullet.</li>
+</ol>
+<p><strong>Recommendation for the dry-run generator:</strong> when drafting assertions from a Spec, tag each suggestion with its tier (<code>prompt-fix</code> / <code>code_assertion</code> / <code>rubric_grading</code>) and default to the cheapest tier that plausibly covers the criterion. Let the user upgrade a suggestion to <code>rubric_grading</code> explicitly rather than defaulting there.</p>
+<p><strong>Important refinement from the <em>Eval Service SDD</em> (see <a href="06-sdd-alignment-and-resolutions.html">06-sdd-alignment-and-resolutions.md</a>):</strong> &quot;cheap&quot; and &quot;safe&quot; aren&#39;t the same axis for <code>code_assertion</code>. The SDD&#39;s security section flags that a code assertion runs as real JavaScript on the runner, with the runner&#39;s own permissions, and v1 ships <strong>no</strong> sandboxing or review gate around that content. So step 2 above isn&#39;t &quot;let the generator write arbitrary JS by default&quot; — per the resolved approach in <a href="02-workflow-starting-anew.html">02</a> step 2, it means: (1) map the criterion onto an existing, parameterized type in the <strong>promptfoo assertions library</strong> first (contains/excludes, regex, valid JSON, JSON-schema, field-in-range, tool-called); (2) only if nothing fits, let the generator write a small custom check itself, flagged for the AI review agent rather than trusted silently; (3) a check too novel or risky even for that becomes a request to an engineer to add a new curated type. A criterion that fits none of the code tiers drops to <code>rubric_grading</code>.</p>
+<h2>Binary pass/fail, not 1-5 scales</h2>
+<blockquote>
+<p>&quot;Start with binary labels to understand what &#39;bad&#39; looks like. Numeric labels are advanced and usually not necessary.&quot; — Hamel Husain</p>
+</blockquote>
+<p>The data model already agrees with this by construction: <code>Score.Passed</code> is the verdict that matters (<code>Score.Score</code> is the raw 0-1 the engine returns, but the pass/fail threshold — Gate 1 in the data model&#39;s three-gate scoring section — is what should drive decisions). The recommendation this adds is a <strong>UI/authoring</strong> one: when a Spec criterion is naturally graded (&quot;rate helpfulness 1-5&quot;), push the author toward decomposing it into several <strong>binary</strong> sub-checks instead (&quot;cites a source,&quot; &quot;answers the literal question asked,&quot; &quot;under 200 words&quot;) rather than a single Likert-style <code>rubric_grading</code> assertion. Binary checks are faster to label, faster to align a judge against, and don&#39;t let annotators hide uncertainty in a middle value.</p>
+<h2>No generic, off-the-shelf metrics</h2>
+<blockquote>
+<p>&quot;The abuse of generic metrics is endemic... Instead, conduct error analysis to understand failures. Define binary failure modes based on real problems.&quot; — Hamel Husain</p>
+</blockquote>
+<p>The Eval Library (see <a href="04-cross-cutting-ux-and-open-questions.html">04</a>) should <strong>not</strong> ship with a starter pack of generic assertions like &quot;helpfulness,&quot; &quot;coherence,&quot; or &quot;quality&quot; as if they were meaningful defaults. If the library needs seed content, seed it with <strong>mechanism-level</strong> reusable checks (schema validation, PII/profanity detection, refusal-calibration pattern) rather than vague quality scores — the same distinction the data model draws between <code>code_assertion</code> and <code>rubric_grading</code>, applied to what the library recommends by default.</p>
+<h2>Judge calibration: recommended practice, not a publish gate</h2>
+<p>Current best practice treats this as important:</p>
+<blockquote>
+<p>&quot;Focus on achieving high True Positive Rate (TPR) and True Negative Rate (TNR) with your judge on a held-out labeled test set... Skip this validation and your judges may not reflect your actual quality criteria.&quot; — Hamel Husain</p>
+</blockquote>
+<p>This doc originally recommended a <strong>hard publish gate</strong>: no <code>JudgePolicyVersion</code> backing a <code>rubric_grading</code> Assertion could be published until it cleared a calibration pass against human labels. <strong>Per team decision (see <a href="02-workflow-starting-anew.html">02</a> step 6), that hard gate has been dropped</strong> — Publish no longer blocks on it. The reasoning below still stands as recommended, optional practice for anyone who wants real confidence in a judge before trusting its verdicts, kept here as guidance rather than enforcement:</p>
+<ol>
+<li>The domain expert (see &quot;benevolent dictator,&quot; below) hand-labels pass/fail on a sample of dataset items/dry-run outputs for that specific assertion — the data model&#39;s <code>DatasetItemAssertion</code> mechanism is a natural home for these golden labels.</li>
+<li>Run the draft judge against the same items; compute agreement (TPR/TNR, or simple accuracy for a first pass).</li>
+<li>Iterate on the rubric (<code>JudgePolicyVersion.RubricPrompt</code>) until agreement is acceptable — this is expected to take a few rounds, so keep the judge in <strong>draft</strong> through this process (draft versions are freely editable, per the data model&#39;s Foundations section).</li>
+<li>A judge that&#39;s been through this loop and shows good agreement can be trusted as real <em>evidence</em>, not just <em>a number</em> — but skipping it doesn&#39;t block anything downstream.</li>
+</ol>
+<p>A judge that hasn&#39;t been through this loop can still be visibly flagged in the UI (e.g., &quot;uncalibrated judge&quot;) anywhere its scores are shown, so nobody mistakes an unvalidated <code>rubric_grading</code> score for ground truth — a useful, low-cost signal even without a hard gate behind it.</p>
+<h2>The &quot;benevolent dictator&quot;: who owns quality judgment</h2>
+<blockquote>
+<p>&quot;For most small to medium-sized companies, appointing a single domain expert as a &#39;benevolent dictator&#39; is the most effective approach... A single expert eliminates annotation conflicts and prevents the paralysis that comes from &#39;too many cooks in the kitchen.&#39;&quot; — Hamel Husain</p>
+</blockquote>
+<p>This resolves open question #7 from <a href="04-cross-cutting-ux-and-open-questions.html">04</a> with a concrete recommendation: yes, introduce a role distinct from &quot;whoever tunes prompt wording.&quot; Concretely:</p>
+<ul>
+<li><strong>Spec ownership and the pass/fail rubric for each success criterion belong to one named domain expert per Spec</strong> (a PM, a compliance lead, a support-ops lead — whoever best represents the end user&#39;s actual needs), not to committee consensus.</li>
+<li><strong>Team-structure variant, confirmed for this team:</strong> Hamel&#39;s default assumes the domain expert is also the hands-on annotator. Where the Prompt Engineer role already covers prompt strategy <em>and</em> writing/running evals (this team&#39;s actual structure — see <a href="../process-playbook/04-roles-responsibilities-and-approvals.html">process-playbook/04</a>), it&#39;s the Prompt Engineer who does the day-to-day error-analysis pass, not the PM. The PM/domain expert still owns the Spec&#39;s content and the pass/fail bar, is the tie-breaker when a judge&#39;s verdict or an annotation looks wrong, and gives final sign-off — but they&#39;re consuming the Prompt Engineer&#39;s error-analysis summary and the citable run&#39;s results as evidence, not re-doing the annotation themselves. The one-owner-per-quality-bar principle stays intact; what changes is who&#39;s hands-on in the annotation loop day to day.</li>
+<li>Engineers still do plenty of the work (technical failure modes: retrieval errors, tool errors, malformed output), but &quot;did this actually solve the user&#39;s problem&quot; is the domain expert&#39;s call, evaluated on outcomes (&quot;was an appointment made?&quot;), not implementation details (&quot;did the tool call succeed?&quot;).</li>
+<li>Only add a multi-annotator process (with Cohen&#39;s Kappa agreement tracking) if a single domain expert genuinely can&#39;t cover the domain — e.g., multiple regulatory jurisdictions. Default to one owner.</li>
+</ul>
+<h2>Elevating error analysis to a first-class surface, not just a &quot;Results&quot; report</h2>
+<blockquote>
+<p>&quot;Build a custom annotation tool. This is the single most impactful investment you can make for your AI evaluation workflow.&quot; — Hamel Husain</p>
+</blockquote>
+<p>The &quot;Results&quot; pane described in <a href="02-workflow-starting-anew.html">02</a>/<a href="04-cross-cutting-ux-and-open-questions.html">04</a> needs to be more than a pass-rate readout. It should double as the error-analysis workspace, because that workspace — not the initial spec-derived generation — is where eval quality actually comes from. Concretely, the Results pane should support (below, &quot;domain expert&quot; means whoever is hands-on in the annotation loop day to day — for this team, that&#39;s the Prompt Engineer, per the team-structure note above, with the PM as tie-breaker and final sign-off, not the primary annotator):</p>
+<ul>
+<li><strong>Structured filters and roll-up summaries</strong>: filter by pass/fail, assertion type, which Spec criterion/guardrail is covered, failure-cluster/tag, or cost/latency outliers; summarize pass rate by criterion, the most common failure clusters, and trend vs. the previous run — so the pane answers &quot;what&#39;s broken and how much&quot; before anyone drills into individual rows.</li>
+<li><strong>Open coding</strong>: free-text notes per run item (&quot;wrong tone for this persona,&quot; &quot;cites a policy that doesn&#39;t exist&quot;), written by the domain expert, before any category exists — this is how new failure modes get discovered rather than forced into predetermined buckets.</li>
+<li><strong>Axial coding assist</strong>: after a batch of notes exists, an LLM-assisted &quot;cluster these notes into a failure taxonomy&quot; pass — reviewed and corrected by the domain expert, never accepted blindly.</li>
+<li><strong>One-click promotion from a cluster to an artifact, LLM-drafted and human-confirmed</strong>: turn a named failure-mode cluster directly into a new <code>AssertionVersion</code> (the LLM proposes the actual check from the cluster&#39;s notes) if it&#39;s now common/severe enough to warrant an automated check, into new <code>DatasetItem</code> rows so the specific failing case becomes a permanent regression test, into a new success criterion on a forked <code>SpecVersion</code> if the failure reveals a requirement the Spec never stated, or straight into a prompt edit when that&#39;s the more direct fix — this is the concrete mechanism behind Case C in <a href="03-workflow-new-version-from-existing.html">03</a>, and the suggest-first pattern behind it is the same as <a href="06-sdd-alignment-and-resolutions.html">06</a>&#39;s diff-driven regeneration answer.</li>
+<li><strong>Render outputs the way a domain expert actually reads them</strong> (an email as an email, code with syntax highlighting, a structured output rendered as its structured shape), not a raw JSON dump — and keep the trace&#39;s full context (inputs, tool calls, reasoning) available but collapsed by default.</li>
+<li><strong>Fast review ergonomics</strong>: a bounded progress indicator (&quot;item 32 of 100&quot;), keyboard shortcuts for pass/fail/next, and prioritization of items already flagged by an assertion failure, a low judge-confidence score, or negative user feedback (once online) — random sampling should still always be mixed in, so failure modes with no existing signal aren&#39;t invisible.</li>
+<li><strong>The sample pool is all real traffic, not just scored traffic — worth stating explicitly.</strong> Online Evaluation only grades whatever slice of production it&#39;s sampling; a check, once it exists, can only ever surface what it was already built to detect. Neither replaces reading raw, ungraded traces — that&#39;s the only place a genuinely novel failure mode (one no Assertion or Judge Policy yet knows to look for) can actually be found. This matters more, not less, while Online Evaluation is still Phase 2 with no executor built (see below and <a href="06-sdd-alignment-and-resolutions.html">06</a>): a real chunk of production traffic has no score attached to it at all right now, and the Results/annotation workspace should pull its random-sample slice from that ungraded pool too, not only from RunGroups that happened to execute.</li>
+<li><strong>Theoretical saturation as the stopping rule</strong>, not a fixed count: keep reviewing until ~20 more items in a row produce no new failure category, with 100 reviewed as the practical floor. Note the scale caveat: this guidance applies once there&#39;s real data to review — production traces via Online Evaluation, or large batch runs. A dry run over a small seed-plus-synthetic dataset doesn&#39;t have 100 rows to offer; there, the rule is simply &quot;read all of it,&quot; and the saturation discipline kicks in post-release.</li>
+</ul>
+<h2>Structured synthetic data generation for the dry-run Dataset</h2>
+<blockquote>
+<p>&quot;A common mistake is prompting an LLM to &#39;give me test queries&#39; without structure, resulting in generic, repetitive outputs. A structured approach using dimensions produces far better synthetic data.&quot; — Hamel Husain</p>
+</blockquote>
+<p>This sharpens the Dataset-generation step inside &quot;dry run&quot; (<a href="02-workflow-starting-anew.html">02</a> step 2, <a href="01-concepts-and-entity-mapping.html">01</a>&#39;s mapping table). Instead of generating rows directly from the Spec&#39;s examples/edge cases in one shot, the recommended algorithm is:</p>
+<ol>
+<li><strong>Derive dimensions from the Spec</strong> — each guardrail, each input-contract field, and each stated edge case is a candidate dimension (e.g., for a support bot: Issue Type, Customer Mood, Prior Context).</li>
+<li><strong>Seed a handful of tuples by hand</strong> (or take them directly from the Spec&#39;s own worked examples) — a specific combination of one value per dimension.</li>
+<li><strong>Generate more tuples</strong>, then <strong>convert tuples to natural-language rows in a second, separate pass</strong> — this two-step approach avoids the repetitive, generic phrasing that comes from asking an LLM for &quot;more test cases&quot; directly.</li>
+<li><strong>Cap the first dry-run dataset small</strong> (aligns with open question #5 in <a href="04-cross-cutting-ux-and-open-questions.html">04</a>) — enough to sanity-check coverage across dimensions, not an exhaustive matrix. The dataset grows over time primarily through the error-analysis loop (real failing cases get added, per Case C), not through generating more synthetic rows upfront.</li>
+</ol>
+<h2>CI-style batch runs vs. production monitoring — different jobs, different tools</h2>
+<blockquote>
+<p>&quot;Test datasets for CI are small and purpose-built... favor assertions or other deterministic checks over LLM-as-judge... For production traffic... you might rely more on expensive reference-free evaluators like LLM-as-judge.&quot; — Hamel Husain</p>
+</blockquote>
+<p>This maps directly onto the data model&#39;s <code>RunGroupType</code> distinction and should shape defaults, not just be a technical footnote. <strong>Phasing note (per the Eval Service SDD — <a href="06-sdd-alignment-and-resolutions.html">06</a>):</strong> <code>online</code> is a Phase 2 <code>RunGroupType</code> — the model supports it, but no executor is built yet in v1. Read &quot;Online Evaluations&quot; below as the target state; until it ships, the same role is filled by periodically <strong>ingesting</strong> batch/trace reports instead of a live binding.</p>
+<ul>
+<li><strong>Batch Suites (pre-publish, and any CI-style regression run)</strong>: keep the dataset small and curated (dozens to a couple hundred rows, not thousands), and prefer <code>code_assertion</code> checks wherever possible so re-runs during iteration stay fast and cheap.</li>
+<li><strong>Online Evaluations (post-release, Phase 2)</strong>: this is where the more expensive <code>rubric_grading</code>/judge-based checks earn their cost, run asynchronously over a sample of live traffic, because there&#39;s no reference output to compare against — only a judge&#39;s read of a real interaction. <strong>This is a sample, not full coverage</strong> — it only ever grades the slice of traffic it&#39;s pointed at. Error analysis should not be scoped to Online Evaluation output alone; the review/annotation workspace needs a path to pull raw, ungraded production traces too (a plain log/trace export, independent of any <code>RunGroup</code>), precisely because a failure mode outside what Online Evaluation samples, or outside what its judges are calibrated to catch, will never surface any other way.</li>
+<li><strong>The feedback loop is what closes it</strong>: a new failure pattern found via error analysis on Online Evaluation (or, pre-Phase-2, ingested) results — <strong>or on raw traces that were never run through any eval at all</strong> — should get a representative case added back into the batch Dataset (Case C in <a href="03-workflow-new-version-from-existing.html">03</a>) — <strong>after PII redaction if it&#39;s a real trace</strong>, since a Dataset row doesn&#39;t expire the way a Run payload does — so the next prompt iteration is checked against real production failure modes, not just the original Spec&#39;s examples. This is the concrete version of &quot;these two systems are complementary&quot; from the source material.</li>
+</ul>
+<h2>Don&#39;t optimize for a 100% pass rate</h2>
+<blockquote>
+<p>&quot;Be wary of optimizing for high eval pass rates. If you&#39;re passing 100% of your evals, you&#39;re likely not challenging your system enough.&quot; — Hamel Husain</p>
+</blockquote>
+<p>Worth stating explicitly in the dry-run and publish flow: a dry run that shows 100% pass on the first try is more likely a sign the dataset/assertions aren&#39;t stress-testing anything yet than a sign the prompt is perfect. The publish gate should check for a real citable run passing the eval&#39;s <code>RunPassRatio</code>, not chase a perfect score — and the error-analysis loop above is what should keep introducing harder cases over time so the bar stays meaningful.</p>
+<h2>Summary: what changes in the mechanism because of this doc</h2>
+<table>
+<thead>
+<tr>
+<th>Mechanism as originally drafted</th>
+<th>Refinement from current best practice</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Dry run auto-generates a <code>rubric_grading</code> assertion per success criterion</td>
+<td>Default to the cheapest tier (prompt fix → <code>code_assertion</code> → <code>rubric_grading</code>); tag generated assertions with their tier and let the user upgrade deliberately</td>
+</tr>
+<tr>
+<td>Assertions are &quot;draft&quot; only in the versioning sense</td>
+<td>Assertions are also <strong>methodologically provisional</strong> — treated as hypotheses until run against real error-analysis findings, regardless of version status</td>
+</tr>
+<tr>
+<td>Publish gate = one citable run passing the eval</td>
+<td>Publish gate stays just the citable run passing the eval; <strong>judge calibration is recommended, optional practice</strong> (human agreement/TPR-TNR on a labeled sample), not a required gate — per <a href="02-workflow-starting-anew.html">02</a> step 6</td>
+</tr>
+<tr>
+<td>&quot;Results&quot; pane = pass-rate report</td>
+<td>&quot;Results&quot; pane = full error-analysis workspace: structured filters and roll-up summaries, open coding, LLM-assisted clustering, and one-click, LLM-drafted/human-confirmed promotion of a failure cluster into a new assertion, dataset row, Spec criterion, or direct prompt edit</td>
+</tr>
+<tr>
+<td>Dataset generated directly from Spec examples/edge cases</td>
+<td>Dataset generated via structured dimensions → tuples → natural-language rows, kept intentionally small pre-publish, and grown mainly through the error-analysis/Case C loop afterward</td>
+</tr>
+<tr>
+<td>Approval reviewer = generic &quot;Reviewer/Approver&quot; role</td>
+<td>Recommend a named <strong>domain-expert owner (&quot;benevolent dictator&quot;)</strong> per Spec who defines the pass/fail bar and is the primary error-analysis annotator</td>
+</tr>
+<tr>
+<td>Success = high/100% pass rate</td>
+<td>Success = a meaningful, appropriately-hard bar; a rising pass rate over time on a <em>growing, harder</em> dataset is the real signal, not a static 100%</td>
+</tr>
+</tbody></table>
+
+<script>
+  mermaid.initialize({ startOnLoad: true, theme: "default", securityLevel: "loose" });
+</script>
+</body>
+</html>

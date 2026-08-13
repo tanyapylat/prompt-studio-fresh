@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="48" height="48">
+  <defs>
+    <linearGradient id="compass-grad" x1="4" y1="2" x2="20" y2="22" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7dd3fc"/>
+      <stop offset="1" stop-color="#0369a1"/>
+    </linearGradient>
+  </defs>
+  <circle cx="12" cy="12" r="10" fill="url(#compass-grad)"/>
+  <path fill="#fff" d="m15.8 8.2-1.53 4.6a1.9 1.9 0 0 1-1.2 1.2l-4.6 1.53 1.53-4.6a1.9 1.9 0 0 1 1.2-1.2z"/>
+</svg>
