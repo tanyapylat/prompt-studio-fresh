@@ -5,10 +5,13 @@ import type {
   CodeCheck,
   DatasetItem,
   RunGroup,
+  RunInsights,
   RunItemResult,
   SpecProject,
 } from "./types";
 import { newId } from "./utils/id";
+import { estimateCostUsd, estimateTokens } from "./pricing";
+import { datasetItemLabel, datasetVariableNames } from "./dataset";
 
 export const DEFAULT_TARGET_MODEL = "gpt-4o-mini";
 export const DEFAULT_TEMPERATURE = 0.7;
@@ -58,7 +61,7 @@ function isLiteralPhrase(phrase: string | null): phrase is string {
 }
 
 /** Cheapest-tier-first classifier — mirrors the cost hierarchy from the redesign docs. */
-export function classifyCriterion(text: string): {
+export function classifyRequirementStatement(text: string): {
   tier: AssertionTier;
   check?: CodeCheck;
   rubric?: string;
@@ -98,43 +101,40 @@ export function classifyCriterion(text: string): {
   };
 }
 
-const ENUM_PATTERNS: RegExp[] = [
-  /\btrue\b\s*(?:or|\/)\s*\bfalse\b/i,
-  /\bfalse\b\s*(?:or|\/)\s*\btrue\b/i,
-  /\byes\b\s*(?:or|\/)\s*\bno\b/i,
-  /\bno\b\s*(?:or|\/)\s*\byes\b/i,
-];
+function fieldLine(f: { name: string; type: string; required: boolean; description: string }): string {
+  return `- ${f.name} (${f.type}${f.required ? ", required" : ", optional"})${f.description ? `: ${f.description}` : ""}`;
+}
 
 /**
- * Derives structural assertions directly from the Output contract's shape — e.g. "respond with
- * exactly true or false" or "respond in JSON" — rather than from a criterion bullet. These are
- * the checks that can't be safely skipped: they gate whether the output is even usable downstream.
+ * Derives structural assertions directly from the Output contract's typed shape/mode — e.g. a
+ * single boolean field gets an exact enum check, `json_schema` mode gets a valid-JSON check.
+ * `tool_call` mode gets neither: the tool's own parameter schema already enforces the shape, so
+ * there's nothing left for a text-level check to usefully add. These are the checks that can't be
+ * safely skipped: they gate whether the output is even usable downstream.
  */
 export function deriveStructuralAssertions(spec: SpecProject): Assertion[] {
   const out: Assertion[] = [];
-  const contract = spec.outputContract || "";
+  if (spec.outputMode === "tool_call") return out;
 
-  if (ENUM_PATTERNS.some((p) => p.test(contract))) {
-    const isYesNo = /\byes\b/i.test(contract);
-    const values = isYesNo ? "yes,no" : "true,false";
+  if (spec.outputMode === "json_schema" && spec.outputFields.length > 0) {
     out.push({
       id: newId("assert"),
-      sourceCriterionId: null,
-      tier: "deterministic",
-      description: `Output must be exactly one of: ${values.replace(",", " / ")} — nothing else`,
-      check: { mode: "enum", value: values },
-      status: "draft",
-    });
-  }
-
-  if (/\bjson\b/i.test(contract)) {
-    out.push({
-      id: newId("assert"),
-      sourceCriterionId: null,
+      sourceRequirementId: null,
       tier: "deterministic",
       description: "Output must be valid, parseable JSON",
       check: { mode: "valid_json", value: "" },
-      status: "draft",
+    });
+  }
+
+  // A single boolean field, regardless of mode, is the "respond with exactly true/false" case —
+  // narrow enough to check literally rather than leaving it to a judge.
+  if (spec.outputFields.length === 1 && spec.outputFields[0].type === "boolean") {
+    out.push({
+      id: newId("assert"),
+      sourceRequirementId: null,
+      tier: "deterministic",
+      description: "Output must be exactly one of: true / false — nothing else",
+      check: { mode: "enum", value: "true,false" },
     });
   }
 
@@ -144,15 +144,24 @@ export function deriveStructuralAssertions(spec: SpecProject): Assertion[] {
 export function buildPromptContent(spec: SpecProject): string {
   const lines: string[] = [];
   lines.push(`You are assisting with: ${spec.goal || "(no goal set yet)"}`);
-  if (spec.inputContract) lines.push(`\nInput you will receive: ${spec.inputContract}`);
-  if (spec.outputContract) lines.push(`\nRespond in this shape: ${spec.outputContract}`);
-  if (spec.guardrails.length) {
-    lines.push(`\nGuardrails — never violate these:`);
-    spec.guardrails.forEach((g) => lines.push(`- ${g.text}`));
+  if (spec.context) lines.push(`\nBackground: ${spec.context}`);
+  if (spec.inputFields.length) {
+    lines.push(`\nYou will receive:`);
+    spec.inputFields.forEach((f) => lines.push(fieldLine(f)));
   }
-  if (spec.criteria.length) {
+  if (spec.outputFields.length) {
+    const modeNote =
+      spec.outputMode === "tool_call"
+        ? `by calling the ${spec.outputToolName || "output"} tool with`
+        : spec.outputMode === "json_schema"
+          ? "in JSON, with"
+          : "as plain text representing";
+    lines.push(`\nRespond ${modeNote}:`);
+    spec.outputFields.forEach((f) => lines.push(fieldLine(f)));
+  }
+  if (spec.requirements.length) {
     lines.push(`\nYour response must satisfy:`);
-    spec.criteria.forEach((c) => lines.push(`- ${c.text}`));
+    spec.requirements.forEach((r) => lines.push(`- ${r.name}: ${r.statement}`));
   }
   return lines.join("\n");
 }
@@ -184,19 +193,18 @@ export function generateSyntheticItems(spec: SpecProject, count: number): Datase
  * only the prompt wording and dataset rows go through the model.
  */
 export function classifyAssertionsFor(spec: SpecProject): Assertion[] {
-  const fromCriteria: Assertion[] = [...spec.guardrails, ...spec.criteria].map((c) => {
-    const cls = classifyCriterion(c.text);
+  const fromRequirements: Assertion[] = spec.requirements.map((r) => {
+    const cls = classifyRequirementStatement(r.statement);
     return {
       id: newId("assert"),
-      sourceCriterionId: c.id,
+      sourceRequirementId: r.id,
       tier: cls.tier,
       description: cls.description,
       check: cls.check,
       rubric: cls.rubric,
-      status: "draft" as const,
     };
   });
-  return [...deriveStructuralAssertions(spec), ...fromCriteria];
+  return [...deriveStructuralAssertions(spec), ...fromRequirements];
 }
 
 function violationRate(a: Assertion): number {
@@ -294,7 +302,7 @@ export function scoreCodeAssertion(check: CodeCheck, output: string): { passed: 
     }
     case "contains": {
       if (!check.value) return { passed: true, reason: "Structural check passed." };
-      const passed = lower.includes(check.value.toLowerCase());
+      const passed = text.includes(check.value);
       return {
         passed,
         reason: passed ? `Found "${check.value}" in the output.` : `Missing "${check.value}" in the output.`,
@@ -308,12 +316,28 @@ export function scoreCodeAssertion(check: CodeCheck, output: string): { passed: 
       };
     }
     case "excludes": {
-      const passed = !lower.includes(check.value.toLowerCase());
+      const passed = !text.includes(check.value);
       return {
         passed,
         reason: passed
           ? `Correctly avoided "${check.value}".`
           : `Output contains "${check.value}", which it shouldn't.`,
+      };
+    }
+    case "not_contains_any": {
+      const items = splitList(check.value);
+      const found = items.filter((it) => text.includes(it));
+      return {
+        passed: found.length === 0,
+        reason: found.length === 0 ? "Contains none of the disallowed phrases." : `Contains disallowed phrase(s): ${found.join(", ")}.`,
+      };
+    }
+    case "not_icontains_any": {
+      const items = splitList(check.value).map((v) => v.toLowerCase());
+      const found = items.filter((it) => lower.includes(it));
+      return {
+        passed: found.length === 0,
+        reason: found.length === 0 ? "Contains none of the disallowed phrases (case-insensitive)." : `Contains disallowed phrase(s): ${found.join(", ")}.`,
       };
     }
     case "contains_all": {
@@ -445,6 +469,22 @@ export function scoreCodeAssertion(check: CodeCheck, output: string): { passed: 
         return { passed: false, reason: `Invalid regex: ${check.value}` };
       }
     }
+    case "word_count": {
+      const words = text.trim().split(/\s+/).filter(Boolean).length;
+      const { min, max } = check;
+      let passed = true;
+      if (min !== undefined) passed = passed && words >= min;
+      if (max !== undefined) passed = passed && words <= max;
+      const expected =
+        min !== undefined && max !== undefined
+          ? `${min}-${max}`
+          : min !== undefined
+            ? `at least ${min}`
+            : max !== undefined
+              ? `at most ${max}`
+              : "any";
+      return { passed, reason: `Output has ${words} word(s) (expected ${expected}).` };
+    }
     default:
       return { passed: true, reason: "Unknown check type — skipped." };
   }
@@ -515,23 +555,34 @@ export function runSuiteOffline(spec: SpecProject, itemIds?: string[]): RunGroup
     const scores: AssertionScore[] = scored.map(({ assertion, passed }) => {
       if (assertion.tier === "deterministic" && assertion.check) {
         const real = scoreCodeAssertion(assertion.check, output);
-        return { assertionId: assertion.id, passed: real.passed, reason: real.reason };
+        return { assertionId: assertion.id, passed: real.passed, reason: real.reason, score: real.passed ? 1 : 0 };
       }
       if (assertion.tier === "custom_code" && assertion.code) {
         const real = scoreCustomCode(assertion.code, assertion.codeLanguage ?? "javascript", output, item.input);
-        return { assertionId: assertion.id, passed: real.passed, reason: real.reason };
+        return { assertionId: assertion.id, passed: real.passed, reason: real.reason, score: real.passed ? 1 : 0 };
       }
-      return { assertionId: assertion.id, passed, reason: describeScore(assertion, passed) };
+      // Simulated rubric score: a plausible fractional value on the "passing"/"failing" side of
+      // 0.5, not just a flat 1/0 — keeps the offline path exercising the same score field a live
+      // llm-rubric judge would populate.
+      const seed = seededRandom(`${item.id}:${assertion.id}:score`);
+      const score = passed ? 0.7 + seed * 0.3 : seed * 0.5;
+      return { assertionId: assertion.id, passed, reason: describeScore(assertion, passed), score };
     });
 
-    return { datasetItemId: item.id, output, scores };
+    // Fabricated, not measured — same "directionally correct, not billing-grade" convention as
+    // the Playground's offline path (`handlePlaygroundRun`'s simulated branch in apiPlugin.ts).
+    const promptTokens = estimateTokens(item.input);
+    const completionTokens = estimateTokens(output);
+    const costUsd = estimateCostUsd(target.model, promptTokens, completionTokens);
+    const latencyMs = Math.round(350 + seededRandom(`${item.id}:latency`) * 2400);
+
+    return { datasetItemId: item.id, output, scores, latencyMs, costUsd };
   });
 
-  return finalizeRun(spec, results, "simulated", itemIds && itemIds.length > 0 ? "sample" : "full");
+  return finalizeRun(results, "simulated", itemIds && itemIds.length > 0 ? "sample" : "full");
 }
 
 export function finalizeRun(
-  spec: SpecProject,
   results: RunItemResult[],
   mode: RunGroup["mode"],
   scope: RunGroup["scope"] = "full",
@@ -541,17 +592,9 @@ export function finalizeRun(
     ? totalScores.filter((s) => s.passed).length / totalScores.length
     : 0;
 
-  const citable =
-    scope === "full" &&
-    spec.status === "published" &&
-    spec.target?.status === "published" &&
-    spec.evalStatus === "published" &&
-    spec.datasetStatus === "published";
-
   return {
     id: newId("run"),
     createdAt: Date.now(),
-    citable,
     mode,
     results,
     passRate,
@@ -559,30 +602,84 @@ export function finalizeRun(
   };
 }
 
-const STOPWORDS = new Set([
-  "the", "a", "an", "and", "or", "of", "to", "for", "in", "on", "with", "that", "this", "is", "are",
-  "it", "its", "into", "from", "by", "as", "be", "will", "should", "must", "not", "no", "so", "than",
-  "then", "when", "where", "who", "what", "which", "their", "they", "you", "your", "our", "we",
-]);
-
 /**
- * Offline fallback for "what does this power" — no LLM call, just pulls the most repeated
- * meaningful words out of the Goal (and Output contract as a tiebreaker) into a Title Case phrase.
- * Deliberately rough: this only has to be a reasonable starting suggestion for a human to edit.
+ * Free, instant "what to look at first" for a Run — no LLM call. Surfaces the rows with the most
+ * failed checks (reviewFirst) and the assertions/latency patterns worth tightening (improvements).
+ * This is what the Results pane shows by default; `/api/suggest-review-insights` (LLM-backed) is
+ * an opt-in, deeper pass a user can request on top of this.
  */
-export function suggestPowerTagsHeuristic(spec: SpecProject): string[] {
-  const text = `${spec.goal} ${spec.outputContract}`.toLowerCase();
-  const words = text.match(/[a-z][a-z-]{2,}/g) ?? [];
-  const counts = new Map<string, number>();
-  for (const w of words) {
-    if (STOPWORDS.has(w)) continue;
-    counts.set(w, (counts.get(w) ?? 0) + 1);
+export function suggestRunInsightsHeuristic(spec: SpecProject, run: RunGroup): RunInsights {
+  const variableNames = datasetVariableNames(spec.target?.messages);
+  const byItem = new Map(spec.dataset.map((d) => [d.id, d]));
+
+  const withFails = run.results
+    .map((r) => ({
+      result: r,
+      failed: r.scores.filter((s) => !s.passed),
+    }))
+    .filter((r) => r.failed.length > 0)
+    .sort((a, b) => b.failed.length - a.failed.length);
+
+  const reviewFirst = withFails.slice(0, 5).map(({ result, failed }) => {
+    const item = byItem.get(result.datasetItemId);
+    const label = item ? datasetItemLabel(item, variableNames) : result.datasetItemId;
+    const assertionById = new Map(spec.assertions.map((a) => [a.id, a]));
+    const names = failed
+      .slice(0, 2)
+      .map((s) => assertionById.get(s.assertionId)?.description ?? "a check")
+      .join(", ");
+    const more = failed.length > 2 ? ` and ${failed.length - 2} more` : "";
+    return {
+      datasetItemId: result.datasetItemId,
+      reason: `Failed ${failed.length}/${result.scores.length} checks (${names}${more}) — "${label.slice(0, 60)}"`,
+    };
+  });
+
+  const improvements: string[] = [];
+  const assertionStats = spec.assertions.map((a) => {
+    const scores = run.results.flatMap((r) => r.scores.filter((s) => s.assertionId === a.id));
+    const total = scores.length;
+    const failCount = scores.filter((s) => !s.passed).length;
+    return { assertion: a, total, failCount, failRate: total ? failCount / total : 0 };
+  });
+  const worstAssertions = assertionStats
+    .filter((s) => s.failCount > 0)
+    .sort((a, b) => b.failRate - a.failRate)
+    .slice(0, 3);
+  for (const s of worstAssertions) {
+    const pct = Math.round(s.failRate * 100);
+    if (s.assertion.tier === "rubric_grading") {
+      improvements.push(
+        `"${s.assertion.description}" fails ${pct}% of the time (${s.failCount}/${s.total}) — consider tightening the rubric or the prompt's instructions around this.`,
+      );
+    } else if (s.assertion.tier === "custom_code") {
+      improvements.push(
+        `"${s.assertion.description}" fails ${pct}% of the time (${s.failCount}/${s.total}) — double-check the custom-code logic isn't too strict, or fix the prompt.`,
+      );
+    } else {
+      improvements.push(
+        `"${s.assertion.description}" fails ${pct}% of the time (${s.failCount}/${s.total}) — a deterministic check, so the prompt likely needs clearer/stronger wording here.`,
+      );
+    }
   }
-  const top = [...counts.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 3)
-    .map(([w]) => w);
-  if (top.length === 0) return [];
-  const phrase = top.map((w) => w[0].toUpperCase() + w.slice(1)).join(" ");
-  return [phrase];
+
+  const withLatency = run.results.filter((r): r is RunItemResult & { latencyMs: number } => r.latencyMs !== undefined);
+  if (withLatency.length >= 3) {
+    const sorted = [...withLatency].sort((a, b) => a.latencyMs - b.latencyMs);
+    const median = sorted[Math.floor(sorted.length / 2)].latencyMs;
+    const slowest = sorted[sorted.length - 1];
+    if (median > 0 && slowest.latencyMs > median * 2.5) {
+      const item = byItem.get(slowest.datasetItemId);
+      const label = item ? datasetItemLabel(item, variableNames) : slowest.datasetItemId;
+      improvements.push(
+        `One row took ${Math.round(slowest.latencyMs)}ms — over 2.5× the median (${Math.round(median)}ms): "${label.slice(0, 50)}". Worth checking for an unusually long input or a retry.`,
+      );
+    }
+  }
+
+  if (improvements.length === 0 && reviewFirst.length === 0) {
+    improvements.push("Every row passed every check — consider whether the dataset is stressing the prompt enough.");
+  }
+
+  return { reviewFirst, improvements: improvements.slice(0, 4) };
 }

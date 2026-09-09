@@ -19,17 +19,60 @@ export interface MockUser {
   initials: string;
 }
 
-export interface Criterion {
+/**
+ * A single, flat requirement statement — deliberately NOT split into "guardrail" vs. "criterion"
+ * buckets (that split proved artificial against real Specs, which just enumerate a flat list of
+ * things the output must always or must never do). `name` is a short, scannable label; `statement`
+ * is the full rule text — matches the shape of real production Spec documents.
+ */
+export interface Requirement {
+  id: string;
+  name: string;
+  statement: string;
+}
+
+/**
+ * A question the Spec author hasn't resolved yet — e.g. a known ambiguity, a modeling tradeoff, or
+ * a gap discovered while writing the brief. First-class (not buried in free text) so it's visible
+ * to reviewers and to North Star, matching real production Spec documents.
+ */
+export interface OpenQuestion {
   id: string;
   text: string;
-  kind: "criterion" | "guardrail";
+  resolved: boolean;
 }
 
 export interface Example {
   id: string;
   input: string;
   expectedOutput?: string;
+  /** Why this example is here / what it's illustrating — e.g. why an edge case resolves the way it does. */
+  comment?: string;
 }
+
+/** Scalar/structural types available for a typed Input/Output contract field. */
+export type IOFieldType = "string" | "number" | "boolean" | "object" | "array";
+
+/**
+ * One typed field of a Spec's Input or Output contract — matches how real production Specs
+ * declare their I/O shape (name/type/required/description) instead of a free-text paragraph.
+ */
+export interface IOField {
+  id: string;
+  name: string;
+  type: IOFieldType;
+  required: boolean;
+  description: string;
+}
+
+/**
+ * How the Output contract's fields are actually delivered by the Target:
+ * - `text`: an unstructured string completion (the common case — `outputFields` still documents
+ *   the single value's shape/description for reference, even though nothing enforces it).
+ * - `json_schema`: a JSON object matching `outputFields`, enforced via a structured-output schema.
+ * - `tool_call`: the fields are the arguments of a forced function/tool call (see `outputToolName`).
+ */
+export type OutputMode = "text" | "json_schema" | "tool_call";
 
 /**
  * The deterministic, built-in check catalog — modeled on promptfoo's non-model-graded assertion
@@ -56,16 +99,19 @@ export type CodeCheckMode =
   | "levenshtein"
   | "rouge_n"
   | "latency"
-  | "cost";
+  | "cost"
+  | "not_contains_any"
+  | "not_icontains_any"
+  | "word_count";
 
 export interface CodeCheck {
   mode: CodeCheckMode;
   /**
    * equals/contains/icontains/excludes/starts_with: the literal phrase.
-   * contains_all/contains_any/icontains_all/icontains_any: comma-separated phrases.
+   * contains_all/contains_any/icontains_all/icontains_any/not_contains_any/not_icontains_any: comma-separated phrases.
    * regex_match/regex_excludes: a regular expression source (passes when it does/doesn't match).
    * enum: comma-separated list of the only allowed exact outputs (case-insensitive, trimmed).
-   * valid_json/contains_json/is_xml/contains_xml/contains_sql: unused.
+   * valid_json/contains_json/is_xml/contains_xml/contains_sql/word_count: unused (word_count uses `min`/`max` instead).
    * levenshtein/rouge_n: unused — the comparison text lives in `reference`.
    * latency/cost: unused — the limit lives in `threshold` (ms / USD).
    */
@@ -74,11 +120,15 @@ export interface CodeCheck {
   threshold?: number;
   /** levenshtein/rouge_n: the reference string the output is compared against. */
   reference?: string;
+  /** word_count only: inclusive lower/upper bounds on the output's word count. At least one of the two should be set; both set means a range, one set means "at least"/"at most". */
+  min?: number;
+  max?: number;
 }
 
 export interface Assertion {
   id: string;
-  sourceCriterionId: string | null;
+  /** Id of the Requirement this assertion covers, or null if it was added manually/from the Library. */
+  sourceRequirementId: string | null;
   tier: AssertionTier;
   description: string;
   check?: CodeCheck;
@@ -87,7 +137,6 @@ export interface Assertion {
   code?: string;
   /** custom_code only. JavaScript actually executes in-browser; Python is stored but not run (no in-browser runtime). */
   codeLanguage?: CodeLanguage;
-  status: Status;
   /** Id of the LibraryAssertion this was copied from, if any. A one-time stamp — not a live link. */
   libraryOrigin?: string;
   /** Free-text bucket for organizing the Eval pane's assertion list (e.g. "Guardrails", "Tone"). Undefined = ungrouped. */
@@ -102,8 +151,6 @@ export interface Assertion {
 export interface JudgePolicy {
   id: string;
   model: string;
-  /** Id of the LibraryJudgePolicy this was copied from, if any. A one-time stamp — not a live link. */
-  libraryOrigin?: string;
   /** Overrides the built-in grading system prompt (see `judgeDefaults.ts`) when set. */
   systemPrompt?: string;
   /** Overrides the default grading temperature (0) when set. */
@@ -122,6 +169,10 @@ export interface DatasetItem {
    * working unchanged. Undefined on legacy rows that predate multi-variable datasets.
    */
   variables?: Record<string, string>;
+  /** When this row was created — undefined on legacy/seed/synthetic rows that predate this field. */
+  createdAt?: number;
+  /** When this row's fields were last edited — undefined on legacy rows; equals `createdAt` on unedited rows. */
+  updatedAt?: number;
 }
 
 /**
@@ -153,6 +204,30 @@ export interface PromptOutputSchema {
   schema: string;
 }
 
+/**
+ * The "Config gear" parameters beyond model/temperature — everything here is optional so legacy
+ * content (and the plain Generate flow) stays valid without ever having touched these. Undefined
+ * means "provider default", not zero, for every numeric field.
+ */
+export interface PromptSettings {
+  /** Sent as `max_completion_tokens` — caps the length of the completion. */
+  maxTokens?: number;
+  /** Nucleus sampling, 0-1. */
+  topP?: number;
+  /** -2 to 2. Penalizes tokens by how often they've already appeared. */
+  frequencyPenalty?: number;
+  /** -2 to 2. Penalizes tokens that have appeared at all, encouraging new topics. */
+  presencePenalty?: number;
+  /** Best-effort reproducibility across identical requests. */
+  seed?: number;
+  /** Up to 4 sequences where the API stops generating further tokens. */
+  stopSequences?: string[];
+  /** Raw JSON text mapping a token id to a bias from -100 to 100, e.g. {"50256": -100}. */
+  logitBias?: string;
+  /** Client-side request timeout, in milliseconds. */
+  timeoutMs?: number;
+}
+
 export interface TargetVersion {
   id: string;
   promptContent: string;
@@ -171,6 +246,7 @@ export interface TargetVersion {
   messages?: PromptMessage[];
   tools?: PromptTool[];
   outputSchema?: PromptOutputSchema;
+  settings?: PromptSettings;
 }
 
 /** A single immutable revision of a Prompt's content — history is append-only. */
@@ -187,6 +263,7 @@ export interface PromptVersion {
   messages?: PromptMessage[];
   tools?: PromptTool[];
   outputSchema?: PromptOutputSchema;
+  settings?: PromptSettings;
 }
 
 /**
@@ -203,6 +280,7 @@ export interface PromptDraft {
   messages?: PromptMessage[];
   tools?: PromptTool[];
   outputSchema?: PromptOutputSchema;
+  settings?: PromptSettings;
 }
 
 /**
@@ -232,26 +310,49 @@ export interface AssertionScore {
   assertionId: string;
   passed: boolean;
   reason: string;
+  /**
+   * Continuous grading score in [0, 1], when the judge produces one — mirrors promptfoo's default
+   * `llm-rubric` behavior (a rubric grade is a score, not just a binary pass/fail; deterministic
+   * and custom_code checks still naturally collapse to 1 or 0). `passed` remains the authoritative
+   * per-row outcome for rollups; `score` is preserved alongside it for display/analysis so nuance
+   * like "0.3 vs 0.4 out of 1" isn't lost. Undefined on legacy rows that predate this field.
+   */
+  score?: number;
 }
 
 export interface RunItemResult {
   datasetItemId: string;
   output: string;
   scores: AssertionScore[];
+  /** Longer freeform qualitative commentary — edited in the side panel's Metadata tab only. */
   note?: string;
+  /** Short, filterable tags a reviewer attaches while triaging (e.g. "hallucination", "needs fix") — editable inline in the table and the side panel. */
+  labels?: string[];
+  /** Wall-clock time of the generation call that produced `output` — excludes judge grading calls. */
+  latencyMs?: number;
+  /** Estimated cost (USD) of the generation call that produced `output`, from token usage × model pricing. */
+  costUsd?: number;
+}
+
+/**
+ * "What to look at first, and how to improve" for one Run — the heuristic version (`engine.ts`'s
+ * `suggestRunInsightsHeuristic`) is always free/instant and computed client-side; the optional
+ * LLM version (`/api/suggest-review-insights`) is a deeper, opt-in pass a user can request.
+ */
+export interface RunInsights {
+  reviewFirst: { datasetItemId: string; reason: string }[];
+  improvements: string[];
 }
 
 export interface RunGroup {
   id: string;
   createdAt: number;
-  citable: boolean;
   mode: GenerationMode;
   results: RunItemResult[];
   passRate: number;
   /**
    * `"sample"` when this run only scored a chosen subset of the Dataset (random or hand-picked
    * rows) rather than every row — useful for a quick check before running a huge dataset in full.
-   * Sample runs are never citable, regardless of publish status.
    */
   scope: "full" | "sample";
 }
@@ -277,38 +378,78 @@ export interface AccessGrant {
 }
 
 /**
- * A "what does this power" label — e.g. "Chatbot Conversation Module". Either typed by hand or
- * suggested by the AI-suggest action from the Goal/Output contract; AI suggestions always start
- * unconfirmed and only count as real metadata once a human accepts them.
+ * Forward-looking adoption/usage counters for a Spec — mocked today so the concept can be
+ * demoed, but in production these would be sourced from real telemetry (Dynatrace tracing
+ * LiteLLM calls), not authored by hand.
  */
-export interface PowerTag {
-  id: string;
-  text: string;
-  source: "ai" | "manual";
-  confirmed: boolean;
+export interface SpecUsageStats {
+  /** Rolling window these counters cover, in hours (mocked as a fixed 24h window today). */
+  windowHours: number;
+  /** How many times a Prompt version generated from this Spec has been fetched from AI Studio, within the window. */
+  promptFetches: number;
+  /**
+   * How many times that Prompt was actually executed on Production via a LiteLLM call, within
+   * the window. NOT a subset of `promptFetches` — a single fetch is typically cached by the
+   * caller and reused across many executions, so `productionExecutions` is normally >= (often
+   * much greater than) `promptFetches`, never the other way around.
+   */
+  productionExecutions: number;
+}
+
+/**
+ * Tracks, for one Generate-able artifact (Prompt/Assertions/Dataset), when it was last produced
+ * by Generate vs. last hand-edited outside of Generate — the raw data `specFactory.ts`'s
+ * `getArtifactStaleness` uses to warn "this may no longer match the Spec brief".
+ */
+export interface ArtifactSyncInfo {
+  /** When this artifact was last (re)generated from the Spec's brief. Undefined = never generated. */
+  generatedAt?: number;
+  /** When this artifact was last hand-edited outside Generate. Cleared back to undefined by the next Generate. */
+  manualEditAt?: number;
+}
+
+/**
+ * Divergence-tracking between a Spec's brief (goal/context/contracts/requirements/examples) and
+ * the artifacts generated from it. See `specFactory.ts`'s `getArtifactStaleness`/`isSpecStale`.
+ */
+export interface SpecSyncState {
+  /** Bumped whenever the Spec's brief changes — see `markBriefEdited` in `specFactory.ts`. */
+  briefUpdatedAt: number;
+  prompt: ArtifactSyncInfo;
+  assertions: ArtifactSyncInfo;
+  dataset: ArtifactSyncInfo;
 }
 
 export interface SpecProject {
   id: string;
   name: string;
-  status: Status;
   goal: string;
-  inputContract: string;
-  outputContract: string;
-  guardrails: Criterion[];
-  criteria: Criterion[];
+  /** Background beyond the goal — who reads the output, where it's surfaced downstream, etc. */
+  context: string;
+  inputFields: IOField[];
+  outputFields: IOField[];
+  outputMode: OutputMode;
+  /** `outputMode: "tool_call"` only — the name of the forced function/tool (e.g. `"your_func_1"`). */
+  outputToolName?: string;
+  /** Flat list — see `Requirement`. Replaces the old guardrails/criteria split. */
+  requirements: Requirement[];
+  openQuestions: OpenQuestion[];
   examples: Example[];
 
+  /**
+   * `"published"` is no longer a status this struct carries directly — a Spec counts as published
+   * iff its current `target` (i.e. its mirrored Prompt's active version) is published. See
+   * `isSpecPublished` in `specFactory.ts`. Assertions/Dataset/Eval have no publish state of their
+   * own; "published" now lives only at the Prompt (Target) and Spec level.
+   */
   target: TargetVersion | null;
   /** Prior active Targets, most recent first — pushed here right before `target` is overwritten. */
   promptHistory: TargetVersion[];
   assertions: Assertion[];
   judge: JudgePolicy | null;
   dataset: DatasetItem[];
-  datasetStatus: Status;
   /** Fraction (0-1) of dataset rows an assertion must pass by default — see `Assertion.passThreshold`. */
   defaultPassThreshold: number;
-  evalStatus: Status;
   /** Id of the LibraryDataset the whole dataset was last loaded from, if any. Not a live link. */
   datasetLibraryOrigin?: string;
 
@@ -321,15 +462,26 @@ export interface SpecProject {
   lastGenerationMode?: GenerationMode;
 
   ownerId: string;
+  /** Id of the user who made the most recent change — drives the "Last updated by" column. */
+  updatedByUserId: string;
   visibility: LibraryVisibility;
   /** Explicit per-person role grants, on top of the owner and the private/org default. */
   access: AccessGrant[];
-  /** What product/feature surface this Spec powers — free text, AI-suggested or hand-typed. */
-  powers: PowerTag[];
+
+  /**
+   * Exact product/feature surface this Spec is applied against (e.g. "CC Headline", "Pearl
+   * Intake Bot") — free text, mocked today. See `SpecUsageStats` for the adoption counters.
+   */
+  appliedFeature?: string;
+  /** Mocked adoption/usage counters — see `SpecUsageStats`. */
+  usageStats?: SpecUsageStats;
 
   /** Set when this Spec was forked as a new version of another Spec. */
   forkedFromId?: string;
   forkedFromName?: string;
+
+  /** Undefined on legacy/seed data — treated as "no divergence info yet" (no staleness warnings). */
+  syncState?: SpecSyncState;
 
   createdAt: number;
   updatedAt: number;
@@ -365,18 +517,16 @@ export interface LibraryAssertion extends LibraryMeta {
 
 export interface LibraryDataset extends LibraryMeta {
   items: DatasetItem[];
+  /**
+   * Field/variable names for a dataset created directly in the library (no Spec/prompt to infer
+   * them from). Undefined on Spec-saved datasets — their fields are derived from `items` instead.
+   */
+  variableNames?: string[];
 }
 
-export interface LibraryJudgePolicy extends LibraryMeta {
-  model: string;
-  systemPrompt?: string;
-  temperature?: number;
-}
-
-export type LibraryKind = "assertions" | "datasets" | "judgePolicies";
+export type LibraryKind = "assertions" | "datasets";
 
 export interface Library {
   assertions: LibraryAssertion[];
   datasets: LibraryDataset[];
-  judgePolicies: LibraryJudgePolicy[];
 }

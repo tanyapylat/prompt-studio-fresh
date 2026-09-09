@@ -4,16 +4,19 @@ import type {
   GenerateSelection,
   GenerationMode,
   JudgePolicy,
+  RunInsights,
   RunItemResult,
   SpecProject,
   TargetVersion,
 } from "./types";
+import type { AssistantMessage, AssistantToolCall, AssistantViewContext } from "./assistantTools";
 
-async function post<T>(path: string, body: unknown): Promise<T> {
+async function post<T>(path: string, body: unknown, signal?: AbortSignal): Promise<T> {
   const res = await fetch(path, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
+    signal,
   });
   const responseBody = await res.json().catch(() => ({}));
   if (!res.ok) {
@@ -34,8 +37,12 @@ export interface GenerateResponse {
   mode: GenerationMode;
 }
 
-export function generateBundleRemote(spec: SpecProject, selection: GenerateSelection): Promise<GenerateResponse> {
-  return post<GenerateResponse>("/api/generate", { spec, selection });
+export function generateBundleRemote(
+  spec: SpecProject,
+  selection: GenerateSelection,
+  signal?: AbortSignal,
+): Promise<GenerateResponse> {
+  return post<GenerateResponse>("/api/generate", { spec, selection }, signal);
 }
 
 export interface RunResponse {
@@ -44,17 +51,18 @@ export interface RunResponse {
 }
 
 /** `itemIds`, when provided and non-empty, scores only that subset of the Dataset — a sample run. */
-export function runSuiteRemote(spec: SpecProject, itemIds?: string[]): Promise<RunResponse> {
-  return post<RunResponse>("/api/run", { spec, itemIds });
+export function runSuiteRemote(spec: SpecProject, itemIds?: string[], signal?: AbortSignal): Promise<RunResponse> {
+  return post<RunResponse>("/api/run", { spec, itemIds }, signal);
 }
 
-export interface SuggestPowersResponse {
-  tags: string[];
+export interface SuggestReviewInsightsResponse {
+  insights: RunInsights;
   mode: GenerationMode;
 }
 
-export function suggestPowersRemote(spec: SpecProject): Promise<SuggestPowersResponse> {
-  return post<SuggestPowersResponse>("/api/suggest-powers", { spec });
+/** Opt-in, deeper "what to review first / how to improve" pass over a Run — the free heuristic version runs client-side instead. */
+export function suggestReviewInsightsRemote(spec: SpecProject, runId: string): Promise<SuggestReviewInsightsResponse> {
+  return post<SuggestReviewInsightsResponse>("/api/suggest-review-insights", { spec, runId });
 }
 
 export interface PlaygroundChatMessage {
@@ -73,12 +81,25 @@ export interface PlaygroundResponseFormat {
   schema: unknown;
 }
 
+export interface PlaygroundSettings {
+  maxTokens?: number;
+  topP?: number;
+  frequencyPenalty?: number;
+  presencePenalty?: number;
+  seed?: number;
+  stopSequences?: string[];
+  /** Parsed client-side from the raw JSON text the user edits, same convention as tool parameters. */
+  logitBias?: Record<string, number>;
+  timeoutMs?: number;
+}
+
 export interface PlaygroundRunRequest {
   messages: PlaygroundChatMessage[];
   model: string;
   temperature: number;
   tools?: PlaygroundToolSpec[];
   responseFormat?: PlaygroundResponseFormat | null;
+  settings?: PlaygroundSettings;
 }
 
 export interface PlaygroundToolCall {
@@ -86,10 +107,19 @@ export interface PlaygroundToolCall {
   arguments: string;
 }
 
+export interface PlaygroundUsage {
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+}
+
 export interface PlaygroundRunResponse {
   content: string | null;
   toolCalls?: PlaygroundToolCall[];
   mode: GenerationMode;
+  usage: PlaygroundUsage;
+  latencyMs: number;
+  costUsd: number;
 }
 
 /** Ad-hoc Playground tester — multi-message, tools, and structured output; not tied to any Spec's dataset/assertions. */
@@ -116,21 +146,21 @@ export async function checkApiHealth(): Promise<{ hasApiKey: boolean }> {
   }
 }
 
-export interface AssistantChatMessage {
-  role: "user" | "assistant";
-  content: string;
-}
-
 export interface AssistantChatResponse {
-  content: string;
+  content: string | null;
+  toolCalls?: AssistantToolCall[];
   mode: GenerationMode;
 }
 
-/** North Star's chat turn — sends the running conversation plus whichever Spec/tab is currently in view. */
+/**
+ * North Star's agentic turn — sends the running conversation (including any prior tool calls/
+ * results) plus whichever Spec/view is currently in scope, and gets back either a final text reply
+ * or tool calls for the client to execute (see `assistantAgentActions.ts`) before calling again.
+ */
 export function assistantChatRemote(opts: {
-  messages: AssistantChatMessage[];
+  messages: AssistantMessage[];
   spec?: SpecProject | null;
-  tab?: string | null;
+  view?: AssistantViewContext | null;
 }): Promise<AssistantChatResponse> {
   return post<AssistantChatResponse>("/api/assistant-chat", opts);
 }

@@ -1,12 +1,11 @@
 ﻿import { useState } from "react";
-import { FolderInput, Maximize2, Save } from "lucide-react";
+import { Maximize2, Save } from "lucide-react";
 import { useStore } from "../../store";
 import { mirrorPromptIdForSpec } from "../../promptFactory";
-import type { Prompt, SpecProject } from "../../types";
+import type { SpecProject } from "../../types";
 import type { SaveToLibraryMeta } from "../../libraryFactory";
-import { Button } from "../ui";
+import { Button } from "@/components/ui/button";
 import { PromptPlaygroundBody } from "../prompts/PromptPlaygroundBody";
-import { PickPromptModal } from "../prompts/PickPromptModal";
 import { SaveToLibraryModal } from "../library/SaveToLibraryModal";
 
 /**
@@ -15,15 +14,11 @@ import { SaveToLibraryModal } from "../library/SaveToLibraryModal";
  * feels identical whether you got here from a Spec or from the Prompts list directly.
  */
 export function PromptPane({ spec }: { spec: SpecProject }) {
-  const { prompts, currentUserId, selectPrompt, insertPromptIntoSpec, duplicatePromptAsStandalone } = useStore();
-  const [modal, setModal] = useState<"insert" | "duplicate" | null>(null);
+  const { prompts, currentUserId, selectPrompt, duplicatePromptAsStandalone } = useStore();
+  const [showDuplicateModal, setShowDuplicateModal] = useState(false);
 
   const mirroredId = mirrorPromptIdForSpec(spec.id);
   const prompt = prompts.find((p) => p.id === mirroredId) ?? null;
-
-  function handleInsert(picked: Prompt) {
-    insertPromptIntoSpec(spec.id, picked.id);
-  }
 
   function handleDuplicate(meta: SaveToLibraryMeta) {
     if (!prompt) return;
@@ -31,30 +26,23 @@ export function PromptPane({ spec }: { spec: SpecProject }) {
   }
 
   return (
-    <div className="max-w-6xl space-y-4">
+    <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="text-sm text-slate-600">Prompt</div>
-        <div className="flex items-center gap-2">
-          <Button size="sm" onClick={() => setModal("insert")}>
-            <FolderInput size={13} /> Insert existing prompt
-          </Button>
-          {prompt && (
-            <>
-              <Button size="sm" onClick={() => setModal("duplicate")}>
-                <Save size={13} /> Save as standalone prompt
-              </Button>
-              <Button size="sm" onClick={() => selectPrompt(prompt.id)}>
-                <Maximize2 size={13} /> Open in full Playground
-              </Button>
-            </>
-          )}
-        </div>
+        {prompt && (
+          <div className="flex items-center gap-2">
+            <Button size="sm" onClick={() => setShowDuplicateModal(true)}>
+              <Save size={13} /> Save as standalone prompt
+            </Button>
+            <Button size="sm" onClick={() => selectPrompt(prompt.id)}>
+              <Maximize2 size={13} /> Open in full Playground
+            </Button>
+          </div>
+        )}
       </div>
 
       {!prompt ? (
-        <p className="text-sm text-slate-500">
-          No Prompt yet — click Generate to draft one from the Spec, or insert an existing prompt from the catalog.
-        </p>
+        <p className="text-sm text-slate-500">No Prompt yet — click Generate to draft one from the Spec.</p>
       ) : (
         <>
           {spec.target?.copiedFromPromptId && (
@@ -64,16 +52,13 @@ export function PromptPane({ spec }: { spec: SpecProject }) {
         </>
       )}
 
-      {modal === "insert" && (
-        <PickPromptModal title="Insert an existing prompt" excludePromptId={mirroredId} onPick={handleInsert} onClose={() => setModal(null)} />
-      )}
-      {modal === "duplicate" && (
+      {showDuplicateModal && prompt && (
         <SaveToLibraryModal
           title="Save as a standalone Prompt"
           defaultName={`${spec.name} — Prompt`}
           ownerId={currentUserId}
           onSave={handleDuplicate}
-          onClose={() => setModal(null)}
+          onClose={() => setShowDuplicateModal(false)}
         />
       )}
     </div>

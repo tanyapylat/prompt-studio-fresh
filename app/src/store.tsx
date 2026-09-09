@@ -3,7 +3,6 @@ import type {
   Library,
   LibraryAssertion,
   LibraryDataset,
-  LibraryJudgePolicy,
   LibraryKind,
   LibraryVisibility,
   MockUser,
@@ -12,20 +11,20 @@ import type {
   SpecProject,
 } from "./types";
 import { seedLibrary, seedPrompts, seedSpecs, seedUsers, USER_VERONICA } from "./seed";
-import { applyLibraryAssertionToSpec, applyLibraryDatasetToSpec, applyLibraryJudgeToSpec } from "./libraryFactory";
-import { applyPromptEditToSpec } from "./specFactory";
+import { applyLibraryAssertionToSpec, applyLibraryDatasetToSpec } from "./libraryFactory";
+import { applyPromptEditToSpec, markArtifactManuallyEdited } from "./specFactory";
 import {
-  activePromptVersion,
   addStandalonePromptVersion,
   createStandalonePrompt,
   duplicateAsStandalonePrompt,
   mirrorPromptFromSpec,
   mirrorPromptIdForSpec,
+  publishActiveVersion,
   type DuplicatePromptMeta,
   type PromptVersionPatch,
 } from "./promptFactory";
 
-type LibraryEntry = LibraryAssertion | LibraryDataset | LibraryJudgePolicy;
+type LibraryEntry = LibraryAssertion | LibraryDataset;
 
 interface State {
   specs: SpecProject[];
@@ -35,6 +34,8 @@ interface State {
   /** Which version the Playground should open on, when it was entered from a version list. */
   selectedPromptVersionId: string | null;
   library: Library;
+  /** Which library Dataset entry the Datasets full-page workspace should show, if any. */
+  selectedLibraryDatasetId: string | null;
   users: MockUser[];
   currentUserId: string;
 }
@@ -48,12 +49,14 @@ type Action =
   | { type: "saveToLibrary"; kind: LibraryKind; entry: LibraryEntry }
   | { type: "pinFromLibrary"; kind: LibraryKind; libraryId: string; specId: string; datasetMode?: "append" | "replace" }
   | { type: "setLibraryVisibility"; kind: LibraryKind; id: string; visibility: LibraryVisibility }
+  | { type: "updateLibraryEntry"; kind: LibraryKind; id: string; updater: (e: LibraryEntry) => LibraryEntry }
   | { type: "deleteLibraryEntry"; kind: LibraryKind; id: string }
+  | { type: "selectLibraryDataset"; id: string | null }
   | { type: "selectPrompt"; id: string | null; versionId?: string | null }
   | { type: "createPrompt"; name: string; ownerId: string; visibility?: LibraryVisibility }
   | { type: "savePromptDraft"; promptId: string; draft: PromptDraft | null }
   | { type: "savePromptVersion"; promptId: string; patch: PromptVersionPatch }
-  | { type: "insertPromptIntoSpec"; specId: string; sourcePromptId: string }
+  | { type: "publishPrompt"; id: string }
   | { type: "duplicatePromptAsStandalone"; sourcePromptId: string; meta: DuplicatePromptMeta }
   | { type: "updatePromptMeta"; id: string; updater: (p: Prompt) => Prompt }
   | { type: "deletePrompt"; id: string };
@@ -85,7 +88,9 @@ function reducer(state: State, action: Action): State {
         prompts: syncPromptForSpec(state.prompts, action.spec),
       };
     case "update": {
-      const specs = state.specs.map((s) => (s.id === action.id ? action.updater(s) : s));
+      const specs = state.specs.map((s) =>
+        s.id === action.id ? { ...action.updater(s), updatedByUserId: state.currentUserId } : s,
+      );
       const updated = specs.find((s) => s.id === action.id);
       return { ...state, specs, prompts: updated ? syncPromptForSpec(state.prompts, updated) : state.prompts };
     }
@@ -111,11 +116,21 @@ function reducer(state: State, action: Action): State {
           list.map((e) => (e.id === action.id ? { ...e, visibility: action.visibility, updatedAt: Date.now() } : e)),
         ),
       };
+    case "updateLibraryEntry":
+      return {
+        ...state,
+        library: updateLibraryList(state.library, action.kind, (list) =>
+          list.map((e) => (e.id === action.id ? action.updater(e) : e)),
+        ),
+      };
     case "deleteLibraryEntry":
       return {
         ...state,
         library: updateLibraryList(state.library, action.kind, (list) => list.filter((e) => e.id !== action.id)),
+        selectedLibraryDatasetId: state.selectedLibraryDatasetId === action.id ? null : state.selectedLibraryDatasetId,
       };
+    case "selectLibraryDataset":
+      return { ...state, selectedLibraryDatasetId: action.id };
     case "pinFromLibrary": {
       const entry = (state.library[action.kind] as LibraryEntry[]).find((e) => e.id === action.libraryId);
       if (!entry) return state;
@@ -125,11 +140,14 @@ function reducer(state: State, action: Action): State {
           if (s.id !== action.specId) return s;
           switch (action.kind) {
             case "assertions":
-              return applyLibraryAssertionToSpec(s, entry as LibraryAssertion);
+              // Loading from the Library isn't a Generate call either — it's still a hand
+              // pick, so it counts as a manual edit for staleness purposes.
+              return markArtifactManuallyEdited(applyLibraryAssertionToSpec(s, entry as LibraryAssertion), "assertions");
             case "datasets":
-              return applyLibraryDatasetToSpec(s, entry as LibraryDataset, action.datasetMode ?? "append");
-            case "judgePolicies":
-              return applyLibraryJudgeToSpec(s, entry as LibraryJudgePolicy);
+              return markArtifactManuallyEdited(
+                applyLibraryDatasetToSpec(s, entry as LibraryDataset, action.datasetMode ?? "append"),
+                "dataset",
+              );
             default:
               return s;
           }
@@ -189,29 +207,11 @@ function reducer(state: State, action: Action): State {
         selectedPromptVersionId: null,
       };
     }
-    case "insertPromptIntoSpec": {
-      const source = state.prompts.find((p) => p.id === action.sourcePromptId);
-      const spec = state.specs.find((s) => s.id === action.specId);
-      if (!source || !spec) return state;
-      const version = activePromptVersion(source);
-      const specs = state.specs.map((s) =>
-        s.id === action.specId
-          ? applyPromptEditToSpec(
-              s,
-              {
-                promptContent: version.promptContent,
-                model: version.model,
-                temperature: version.temperature,
-                messages: version.messages,
-                tools: version.tools,
-                outputSchema: version.outputSchema,
-              },
-              source.id,
-            )
-          : s,
-      );
-      const updatedSpec = specs.find((s) => s.id === action.specId);
-      return { ...state, specs, prompts: updatedSpec ? syncPromptForSpec(state.prompts, updatedSpec) : state.prompts };
+    case "publishPrompt": {
+      const prompt = state.prompts.find((p) => p.id === action.id);
+      // Spec-linked Prompts publish through the Spec's Target (see lifecycle.publishSpec).
+      if (!prompt || prompt.specId) return state;
+      return { ...state, prompts: state.prompts.map((p) => (p.id === prompt.id ? publishActiveVersion(p) : p)) };
     }
     case "duplicatePromptAsStandalone": {
       const source = state.prompts.find((p) => p.id === action.sourcePromptId);
@@ -242,6 +242,8 @@ interface StoreValue {
   selectedPrompt: Prompt | null;
   selectedPromptVersionId: string | null;
   library: Library;
+  selectedLibraryDatasetId: string | null;
+  selectedLibraryDataset: LibraryDataset | null;
   users: MockUser[];
   currentUserId: string;
   currentUser: MockUser;
@@ -253,12 +255,14 @@ interface StoreValue {
   saveToLibrary: (kind: LibraryKind, entry: LibraryEntry) => void;
   pinFromLibrary: (kind: LibraryKind, libraryId: string, specId: string, datasetMode?: "append" | "replace") => void;
   setLibraryVisibility: (kind: LibraryKind, id: string, visibility: LibraryVisibility) => void;
+  updateLibraryEntry: (kind: LibraryKind, id: string, updater: (e: LibraryEntry) => LibraryEntry) => void;
   deleteLibraryEntry: (kind: LibraryKind, id: string) => void;
+  selectLibraryDataset: (id: string | null) => void;
   selectPrompt: (id: string | null, versionId?: string | null) => void;
   createPrompt: (name: string, ownerId: string, visibility?: LibraryVisibility) => void;
   savePromptDraft: (promptId: string, draft: PromptDraft | null) => void;
   savePromptVersion: (promptId: string, patch: PromptVersionPatch) => void;
-  insertPromptIntoSpec: (specId: string, sourcePromptId: string) => void;
+  publishPrompt: (id: string) => void;
   duplicatePromptAsStandalone: (sourcePromptId: string, meta: DuplicatePromptMeta) => void;
   updatePromptMeta: (id: string, updater: (p: Prompt) => Prompt) => void;
   deletePrompt: (id: string) => void;
@@ -276,6 +280,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       selectedPromptId: null,
       selectedPromptVersionId: null,
       library: seedLibrary(),
+      selectedLibraryDatasetId: null,
       users: seedUsers(),
       currentUserId: USER_VERONICA,
     };
@@ -290,6 +295,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     selectedPrompt: state.prompts.find((p) => p.id === state.selectedPromptId) ?? null,
     selectedPromptVersionId: state.selectedPromptVersionId,
     library: state.library,
+    selectedLibraryDatasetId: state.selectedLibraryDatasetId,
+    selectedLibraryDataset: state.library.datasets.find((d) => d.id === state.selectedLibraryDatasetId) ?? null,
     users: state.users,
     currentUserId: state.currentUserId,
     currentUser: state.users.find((u) => u.id === state.currentUserId) ?? state.users[0],
@@ -302,12 +309,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     pinFromLibrary: (kind, libraryId, specId, datasetMode) =>
       dispatch({ type: "pinFromLibrary", kind, libraryId, specId, datasetMode }),
     setLibraryVisibility: (kind, id, visibility) => dispatch({ type: "setLibraryVisibility", kind, id, visibility }),
+    updateLibraryEntry: (kind, id, updater) => dispatch({ type: "updateLibraryEntry", kind, id, updater }),
     deleteLibraryEntry: (kind, id) => dispatch({ type: "deleteLibraryEntry", kind, id }),
+    selectLibraryDataset: (id) => dispatch({ type: "selectLibraryDataset", id }),
     selectPrompt: (id, versionId) => dispatch({ type: "selectPrompt", id, versionId }),
     createPrompt: (name, ownerId, visibility) => dispatch({ type: "createPrompt", name, ownerId, visibility }),
     savePromptDraft: (promptId, draft) => dispatch({ type: "savePromptDraft", promptId, draft }),
     savePromptVersion: (promptId, patch) => dispatch({ type: "savePromptVersion", promptId, patch }),
-    insertPromptIntoSpec: (specId, sourcePromptId) => dispatch({ type: "insertPromptIntoSpec", specId, sourcePromptId }),
+    publishPrompt: (id) => dispatch({ type: "publishPrompt", id }),
     duplicatePromptAsStandalone: (sourcePromptId, meta) => dispatch({ type: "duplicatePromptAsStandalone", sourcePromptId, meta }),
     updatePromptMeta: (id, updater) => dispatch({ type: "updatePromptMeta", id, updater }),
     deletePrompt: (id) => dispatch({ type: "deletePrompt", id }),

@@ -1,6 +1,7 @@
-import type { SpecProject } from "../src/types";
+import type { RunInsights, SpecProject } from "../src/types";
 import { DEFAULT_JUDGE_SYSTEM_PROMPT, DEFAULT_JUDGE_TEMPERATURE } from "../src/judgeDefaults";
 import { ASSISTANT_SYSTEM_PROMPT } from "../src/assistantKnowledge";
+import { ASSISTANT_TOOLS, type AssistantMessage, type AssistantToolCall, type AssistantViewContext } from "../src/assistantTools";
 
 const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
 
@@ -20,8 +21,12 @@ export function hasApiKey(): boolean {
 }
 
 export interface ChatMessage {
-  role: "system" | "user" | "assistant";
-  content: string;
+  role: "system" | "user" | "assistant" | "tool";
+  content: string | null;
+  /** Set on an `assistant` message that requested tool calls — content is typically null alongside this. */
+  tool_calls?: { id: string; type: "function"; function: { name: string; arguments: string } }[];
+  /** Set on a `tool` message — correlates this result back to the `tool_calls` entry that requested it. */
+  tool_call_id?: string;
 }
 
 export interface ToolSpec {
@@ -35,9 +40,28 @@ export interface ResponseFormatSpec {
   schema: unknown;
 }
 
-interface ChatCompletionResult {
+/** The Playground's "Config gear" — every field optional so it degrades to provider defaults. */
+export interface CompletionSettings {
+  maxTokens?: number;
+  topP?: number;
+  frequencyPenalty?: number;
+  presencePenalty?: number;
+  seed?: number;
+  stopSequences?: string[];
+  logitBias?: Record<string, number>;
+  timeoutMs?: number;
+}
+
+export interface UsageInfo {
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+}
+
+export interface ChatCompletionResult {
   content: string | null;
-  toolCalls?: { name: string; arguments: string }[];
+  toolCalls?: AssistantToolCall[];
+  usage: UsageInfo;
 }
 
 /**
@@ -51,10 +75,12 @@ async function chatCompleteRaw(opts: {
   jsonMode?: boolean;
   tools?: ToolSpec[];
   responseFormat?: ResponseFormatSpec | null;
+  settings?: CompletionSettings;
 }): Promise<ChatCompletionResult> {
   const apiKey = getApiKey();
   if (!apiKey) throw new Error("OPENAI_API_KEY is not configured");
 
+  const s = opts.settings;
   const body: Record<string, unknown> = {
     model: opts.model,
     temperature: opts.temperature ?? 0.7,
@@ -74,15 +100,36 @@ async function chatCompleteRaw(opts: {
       function: { name: t.name, description: t.description, parameters: t.parameters },
     }));
   }
+  if (s?.maxTokens !== undefined) body.max_completion_tokens = s.maxTokens;
+  if (s?.topP !== undefined) body.top_p = s.topP;
+  if (s?.frequencyPenalty !== undefined) body.frequency_penalty = s.frequencyPenalty;
+  if (s?.presencePenalty !== undefined) body.presence_penalty = s.presencePenalty;
+  if (s?.seed !== undefined) body.seed = s.seed;
+  if (s?.stopSequences && s.stopSequences.length > 0) body.stop = s.stopSequences;
+  if (s?.logitBias && Object.keys(s.logitBias).length > 0) body.logit_bias = s.logitBias;
 
-  const res = await fetch(OPENAI_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify(body),
-  });
+  const controller = new AbortController();
+  const timeout = s?.timeoutMs ? setTimeout(() => controller.abort(), s.timeoutMs) : null;
+
+  let res: Response;
+  try {
+    res = await fetch(OPENAI_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+  } catch (e) {
+    if (e instanceof Error && e.name === "AbortError") {
+      throw new Error(`Request timed out after ${s?.timeoutMs}ms`);
+    }
+    throw e;
+  } finally {
+    if (timeout) clearTimeout(timeout);
+  }
 
   if (!res.ok) {
     const errBody = await res.text().catch(() => "");
@@ -93,20 +140,29 @@ async function chatCompleteRaw(opts: {
     choices?: {
       message?: {
         content?: string | null;
-        tool_calls?: { function?: { name?: string; arguments?: string } }[];
+        tool_calls?: { id?: string; function?: { name?: string; arguments?: string } }[];
       };
     }[];
+    usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
   };
   const message = data.choices?.[0]?.message;
   if (!message) throw new Error("OpenAI response had no message");
 
   const toolCalls = message.tool_calls
-    ?.map((tc) => ({ name: tc.function?.name ?? "", arguments: tc.function?.arguments ?? "{}" }))
+    ?.map((tc) => ({ id: tc.id ?? "", name: tc.function?.name ?? "", arguments: tc.function?.arguments ?? "{}" }))
     .filter((tc) => tc.name.length > 0);
+
+  const promptTokens = data.usage?.prompt_tokens ?? 0;
+  const completionTokens = data.usage?.completion_tokens ?? 0;
 
   return {
     content: typeof message.content === "string" ? message.content : null,
     toolCalls: toolCalls && toolCalls.length > 0 ? toolCalls : undefined,
+    usage: {
+      promptTokens,
+      completionTokens,
+      totalTokens: data.usage?.total_tokens ?? promptTokens + completionTokens,
+    },
   };
 }
 
@@ -121,26 +177,44 @@ async function chatComplete(opts: {
   return content;
 }
 
+function ioFieldBrief(f: { name: string; type: string; required: boolean; description: string }): string {
+  return `- ${f.name} (${f.type}${f.required ? ", required" : ", optional"})${f.description ? `: ${f.description}` : ""}`;
+}
+
 export function specBrief(spec: SpecProject): string {
   const lines: string[] = [];
   lines.push(`Name: ${spec.name}`);
-  lines.push(`Goal / business context: ${spec.goal || "(not provided)"}`);
-  lines.push(`Input contract: ${spec.inputContract || "(not provided)"}`);
-  lines.push(`Output contract: ${spec.outputContract || "(not provided)"}`);
-  if (spec.guardrails.length) {
-    lines.push(`Guardrails (must never do):`);
-    spec.guardrails.forEach((g) => lines.push(`- ${g.text}`));
+  lines.push(`Goal: ${spec.goal || "(not provided)"}`);
+  if (spec.context) lines.push(`Context: ${spec.context}`);
+  if (spec.inputFields.length) {
+    lines.push(`Input contract:`);
+    spec.inputFields.forEach((f) => lines.push(ioFieldBrief(f)));
+  } else {
+    lines.push(`Input contract: (not provided)`);
   }
-  if (spec.criteria.length) {
-    lines.push(`Success criteria (must always satisfy):`);
-    spec.criteria.forEach((c) => lines.push(`- ${c.text}`));
+  if (spec.outputFields.length) {
+    const modeNote = spec.outputMode === "tool_call" ? ` — delivered via a forced tool call${spec.outputToolName ? ` (${spec.outputToolName})` : ""}` : spec.outputMode === "json_schema" ? " — delivered as JSON" : " — delivered as plain text";
+    lines.push(`Output contract${modeNote}:`);
+    spec.outputFields.forEach((f) => lines.push(ioFieldBrief(f)));
+  } else {
+    lines.push(`Output contract: (not provided)`);
+  }
+  if (spec.requirements.length) {
+    lines.push(`Requirements (things the output must always or must never do):`);
+    spec.requirements.forEach((r) => lines.push(`- ${r.name}: ${r.statement}`));
   }
   if (spec.examples.length) {
     lines.push(`Worked examples:`);
     spec.examples.forEach((e) => {
       lines.push(`- Input: ${e.input}`);
       if (e.expectedOutput) lines.push(`  Expected output: ${e.expectedOutput}`);
+      if (e.comment) lines.push(`  Why: ${e.comment}`);
     });
+  }
+  const unresolved = spec.openQuestions.filter((q) => !q.resolved);
+  if (unresolved.length) {
+    lines.push(`Open questions (unresolved — flag if relevant, don't silently assume an answer):`);
+    unresolved.forEach((q) => lines.push(`- ${q.text}`));
   }
   return lines.join("\n");
 }
@@ -157,7 +231,7 @@ export async function draftPromptWithLLM(spec: SpecProject, model: string): Prom
           "You are an expert prompt engineer. Given a structured product brief (a 'Spec'), write the " +
           "system prompt for the LLM that will actually perform this task in production. " +
           "Write ONLY the system prompt itself — no preamble, no markdown fences, no commentary about " +
-          "what you wrote. Bake every guardrail and success criterion into clear, direct instructions. " +
+          "what you wrote. Bake every requirement into clear, direct instructions. " +
           "If the output contract specifies a strict format (e.g. a single enum value, or JSON), state " +
           "that constraint unambiguously and show the exact output format at the end.",
       },
@@ -180,8 +254,8 @@ export async function generateDatasetWithLLM(spec: SpecProject, count: number): 
         content:
           "You write realistic test cases for evaluating an LLM prompt. Given a Spec brief, produce " +
           `exactly ${count} diverse, realistic sample INPUTS that a real user/system would send to this ` +
-          "prompt in production. Deliberately include edge cases and situations implied by the guardrails " +
-          "(the kind of input that would tempt the model to violate a guardrail) — don't just repeat the " +
+          "prompt in production. Deliberately include edge cases and situations implied by the requirements " +
+          "(the kind of input that would tempt the model to violate one) — don't just repeat the " +
           "worked examples. Respond as JSON: {\"items\": [\"input 1\", \"input 2\", ...]}. Each item is the " +
           "raw input text only, no labels or numbering.",
       },
@@ -205,66 +279,38 @@ export async function runTargetWithLLM(opts: {
   model: string;
   temperature: number;
   input: string;
-}): Promise<string> {
-  const content = await chatComplete({
+  settings?: CompletionSettings;
+}): Promise<{ content: string; usage: UsageInfo }> {
+  const { content, usage } = await chatCompleteRaw({
     model: opts.model,
     temperature: opts.temperature,
     messages: [
       { role: "system", content: opts.promptContent },
       { role: "user", content: opts.input },
     ],
+    settings: opts.settings,
   });
-  return content.trim();
+  if (typeof content !== "string") throw new Error("OpenAI response had no message content");
+  return { content: content.trim(), usage };
 }
 
 /** Runs the Playground's structured, multi-message template — supports tools and a JSON output schema. */
 export async function runPlaygroundWithLLM(opts: {
-  messages: ChatMessage[];
+  messages: { role: "system" | "user" | "assistant"; content: string }[];
   model: string;
   temperature: number;
   tools?: ToolSpec[];
   responseFormat?: ResponseFormatSpec | null;
-}): Promise<{ content: string | null; toolCalls?: { name: string; arguments: string }[] }> {
+  settings?: CompletionSettings;
+}): Promise<ChatCompletionResult> {
   return chatCompleteRaw({
     model: opts.model,
     temperature: opts.temperature,
     messages: opts.messages,
     tools: opts.tools,
     responseFormat: opts.responseFormat,
+    settings: opts.settings,
   });
-}
-
-/**
- * Suggests 1-3 short "what does this power" tags (e.g. "Chatbot Conversation Module") from the
- * Spec's Goal and Output contract — always a suggestion for a human to review, never applied
- * directly, matching how the rest of this app treats AI output as draft-only.
- */
-export async function suggestPowerTagsWithLLM(spec: SpecProject): Promise<string[]> {
-  const content = await chatComplete({
-    model: "gpt-4o-mini",
-    temperature: 0.3,
-    jsonMode: true,
-    messages: [
-      {
-        role: "system",
-        content:
-          "You label which product surface or feature a prompt Spec powers, based on its goal and " +
-          "output contract. Suggest 1-3 short, concrete tags (2-5 words each, Title Case) that a " +
-          "product person would recognize, e.g. 'Chatbot Conversation Module', 'Support Ticket Routing'. " +
-          'Respond as JSON: {"tags": ["tag 1", "tag 2"]}.',
-      },
-      { role: "user", content: specBrief(spec) },
-    ],
-  });
-  try {
-    const parsed = JSON.parse(content) as { tags?: unknown };
-    if (Array.isArray(parsed.tags)) {
-      return parsed.tags.filter((x): x is string => typeof x === "string" && x.trim().length > 0).slice(0, 3);
-    }
-  } catch {
-    // fall through
-  }
-  return [];
 }
 
 /** LLM-as-judge grading for a rubric_grading assertion, against the real output. */
@@ -277,7 +323,7 @@ export async function judgeWithLLM(opts: {
   systemPrompt?: string;
   /** Judge Policy override of the grading temperature — falls back to `DEFAULT_JUDGE_TEMPERATURE`. */
   temperature?: number;
-}): Promise<{ passed: boolean; reason: string }> {
+}): Promise<{ passed: boolean; reason: string; score?: number }> {
   const content = await chatComplete({
     model: opts.model,
     temperature: opts.temperature ?? DEFAULT_JUDGE_TEMPERATURE,
@@ -294,19 +340,16 @@ export async function judgeWithLLM(opts: {
     ],
   });
   try {
-    const parsed = JSON.parse(content) as { passed?: unknown; reason?: unknown };
+    const parsed = JSON.parse(content) as { passed?: unknown; reason?: unknown; score?: unknown };
+    const score = typeof parsed.score === "number" && parsed.score >= 0 && parsed.score <= 1 ? parsed.score : undefined;
     return {
       passed: !!parsed.passed,
       reason: typeof parsed.reason === "string" ? parsed.reason : "Judge did not return a reason.",
+      score,
     };
   } catch {
     return { passed: false, reason: "Judge response could not be parsed as JSON." };
   }
-}
-
-export interface AssistantChatMessage {
-  role: "user" | "assistant";
-  content: string;
 }
 
 /** Compact per-assertion summary for the assistant's context — the tier plus whichever field carries its actual logic. */
@@ -322,33 +365,120 @@ function assertionBrief(spec: SpecProject): string[] {
   });
 }
 
+/** Converts the client's isomorphic `AssistantMessage` log into OpenAI's wire format, including tool_calls/tool_call_id. */
+function toWireMessage(m: AssistantMessage): ChatMessage {
+  if (m.role === "assistant") {
+    return {
+      role: "assistant",
+      content: m.content,
+      tool_calls: m.toolCalls?.map((tc) => ({
+        id: tc.id,
+        type: "function" as const,
+        function: { name: tc.name, arguments: tc.arguments },
+      })),
+    };
+  }
+  if (m.role === "tool") {
+    return { role: "tool", content: m.content, tool_call_id: m.toolCallId };
+  }
+  return { role: "user", content: m.content };
+}
+
+export interface AssistantAgentTurnResult {
+  content: string | null;
+  toolCalls?: AssistantToolCall[];
+}
+
 /**
- * North Star's live chat turn — grounds `ASSISTANT_SYSTEM_PROMPT` with whichever Spec/tab the user
- * is currently looking at, so guidance (e.g. "tune this rubric") doesn't require re-explaining context.
+ * North Star's live agentic turn — grounds `ASSISTANT_SYSTEM_PROMPT` with whichever Spec/tab the
+ * user is currently looking at, and offers the full tool catalog so the model can act (create a
+ * Spec, generate/run/publish, etc.) rather than only describe what to do. The client owns the
+ * conversation and executes any returned `toolCalls` itself (there's no server-side data store),
+ * then calls this again with the tool results appended to continue the same turn.
  */
-export async function assistantChat(opts: {
-  messages: AssistantChatMessage[];
+export async function assistantAgentTurn(opts: {
+  messages: AssistantMessage[];
   spec?: SpecProject | null;
-  tab?: string | null;
-}): Promise<string> {
+  view?: AssistantViewContext | null;
+}): Promise<AssistantAgentTurnResult> {
   const contextLines: string[] = [];
   if (opts.spec) {
     contextLines.push(`Current Spec brief:\n${specBrief(opts.spec)}`);
-    if (opts.tab === "eval" && opts.spec.assertions.length > 0) {
+    if (opts.view?.tab === "eval" && opts.spec.assertions.length > 0) {
       contextLines.push(`Current assertions:\n${assertionBrief(opts.spec).join("\n")}`);
     }
+    contextLines.push(
+      `Spec state: Prompt ${opts.spec.target ? `generated (${opts.spec.target.status})` : "not generated yet"}; ` +
+        `${opts.spec.assertions.length} assertion(s); ${opts.spec.dataset.length} dataset row(s); ${opts.spec.runs.length} run(s).`,
+    );
   } else {
-    contextLines.push("No Spec is currently open — the user is browsing lists/library/dashboard.");
+    contextLines.push("No Spec is currently open — the user is browsing lists/library/dashboard. Use create_spec if they want to build something new.");
   }
-  if (opts.tab) contextLines.push(`The user is currently on the "${opts.tab}" tab.`);
+  if (opts.view?.section) contextLines.push(`Current section: "${opts.view.section}".`);
+  if (opts.view?.tab) contextLines.push(`The user is currently on the "${opts.view.tab}" tab.`);
 
-  const content = await chatComplete({
+  const result = await chatCompleteRaw({
     model: "gpt-4o-mini",
     temperature: 0.4,
+    tools: ASSISTANT_TOOLS,
     messages: [
       { role: "system", content: `${ASSISTANT_SYSTEM_PROMPT}\n\n## Current context\n${contextLines.join("\n\n")}` },
-      ...opts.messages.map((m): ChatMessage => ({ role: m.role, content: m.content })),
+      ...opts.messages.map(toWireMessage),
     ],
   });
-  return content.trim();
+  return { content: result.content, toolCalls: result.toolCalls };
+}
+
+/**
+ * Deeper, opt-in "what to review first / how to improve" pass over a finished Run — a richer
+ * alternative to `engine.ts`'s free `suggestRunInsightsHeuristic`. `resultsBrief` is a pre-built,
+ * bounded text summary (failing rows + assertion fail rates) so this never ships full transcripts
+ * of every row to the model. `validItemIds` guards against the model inventing a row id that
+ * doesn't exist in this Run.
+ */
+export async function suggestReviewInsightsWithLLM(opts: {
+  specBrief: string;
+  resultsBrief: string;
+  validItemIds: string[];
+}): Promise<RunInsights> {
+  const content = await chatComplete({
+    model: "gpt-4o-mini",
+    temperature: 0.3,
+    jsonMode: true,
+    messages: [
+      {
+        role: "system",
+        content:
+          "You help a prompt engineer triage the results of an eval run. Given the Spec brief and a " +
+          "summary of failing rows/checks, identify: (1) up to 5 rows most worth reviewing first, by " +
+          "their exact row id, with a one-sentence reason each; (2) up to 4 concrete, specific " +
+          "suggestions for improving the prompt or checks (not generic advice). Respond as JSON: " +
+          '{"reviewFirst": [{"datasetItemId": "<exact id from the summary>", "reason": "..."}], ' +
+          '"improvements": ["...", "..."]}. Only use row ids that literally appear in the summary.',
+      },
+      { role: "user", content: `${opts.specBrief}\n\n${opts.resultsBrief}` },
+    ],
+  });
+  try {
+    const parsed = JSON.parse(content) as { reviewFirst?: unknown; improvements?: unknown };
+    const validIds = new Set(opts.validItemIds);
+    const reviewFirst = Array.isArray(parsed.reviewFirst)
+      ? parsed.reviewFirst
+          .filter(
+            (r): r is { datasetItemId: string; reason: string } =>
+              !!r &&
+              typeof r === "object" &&
+              typeof (r as Record<string, unknown>).datasetItemId === "string" &&
+              typeof (r as Record<string, unknown>).reason === "string" &&
+              validIds.has((r as { datasetItemId: string }).datasetItemId),
+          )
+          .slice(0, 5)
+      : [];
+    const improvements = Array.isArray(parsed.improvements)
+      ? parsed.improvements.filter((x): x is string => typeof x === "string" && x.trim().length > 0).slice(0, 4)
+      : [];
+    return { reviewFirst, improvements };
+  } catch {
+    return { reviewFirst: [], improvements: [] };
+  }
 }

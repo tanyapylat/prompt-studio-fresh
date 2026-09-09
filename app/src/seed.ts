@@ -1,20 +1,19 @@
 import type {
   Assertion,
   AssertionScore,
-  DatasetItem,
   Library,
   LibraryAssertion,
-  LibraryJudgePolicy,
   MockUser,
   Prompt,
   RunItemResult,
   SpecProject,
 } from "./types";
-import { createBlankSpec, newCriterion, newExample, newPowerTag } from "./specFactory";
-import { classifyAssertionsFor, finalizeRun, scoreCodeAssertion } from "./engine";
+import { createBlankSpec, newExample, newIOField, newOpenQuestion, newRequirement } from "./specFactory";
+import { finalizeRun } from "./engine";
 import { newId } from "./utils/id";
-import { assertionToLibraryEntry, datasetToLibraryEntry, judgeToLibraryEntry } from "./libraryFactory";
-import { addStandalonePromptVersion, createStandalonePrompt, mirrorPromptFromSpec } from "./promptFactory";
+import { buildDatasetItem } from "./dataset";
+import { assertionToLibraryEntry, datasetToLibraryEntry } from "./libraryFactory";
+import { mirrorPromptFromSpec } from "./promptFactory";
 
 /** Mock users, standing in for real auth — lets Private vs. Org-wide visibility actually be demoed. */
 export const USER_VERONICA = "user_veronica";
@@ -29,589 +28,866 @@ export function seedUsers(): MockUser[] {
   ];
 }
 
-/**
- * Three seed Specs, each demonstrating a different point in the workflow:
- *  - Pre-Connection Assurance Message: reverse-engineered from a real production function-calling
- *    config ("device_brand"/Pearl), fully baked and ready to publish.
- *  - Company Identity Guardrail: reverse-engineered from a real production function-calling judge
- *    config, fully baked (with one deliberate known miss to review).
- *  - Incoming Question Routing: brief only, nothing generated yet — click Generate to see the
- *    real (or simulated, if no OPENAI_API_KEY) pipeline run live.
- * All three are hand-authored rather than produced by calling generateAndRun() at load time, so
- * the app has good-looking content immediately with no network call and no per-reload API cost.
- * They're also stamped with different mock owners/visibility so the Library and Home Mine/Org
- * filters have something real to demonstrate right away.
- * Naming note: avoid the word "triage" anywhere in Spec/product names in this file.
- */
+// The real, live production system prompt for the "ccheadline" Target — verbatim from
+// prompt_ccheadlineaistudio.txt, including its quirks (e.g. the mismatched quote around "free").
+// Uses {{Pearl_User_Chat}} (double-brace, the production convention) rather than AI Studio's
+// native single-brace {variable} — see promptTemplate.ts, which recognizes both.
+const CCHEADLINE_PROMPT = [
+  "Read the customer and assistant interaction for context.",
+  "",
+  "Use the following variables to create a headline based on the chat: Brand (example: Ford, Toyota, etc.)",
+  "Model (example: F150, Camry, etc.)",
+  "Year (example: 2016, 2022, etc.)",
+  "Vehicle (example: SUV, motorcycle, RV, etc.)",
+  "Problem (example: starting issue, stuck, need manual, etc.)",
+  "Part (example: starter, battery, hood, door, tires)",
+  "",
+  "IMPORTANT: Use two or three variables in an organic, conversational headline.",
+  "Examples:",
+  "Get your Toyota RAV4 started again today",
+  "Easily fix your Ford SUV's starting problem",
+  "Restore cooling in your BMW's AC now",
+  "Quickly fix your VW radiator's cooling issue",
+  "Keep your mobile home cool and running smoothly",
+  "Get your car's AC system working again effortlessly",
+  "Start your Toyota without any problems",
+  "Fix your Mercedes transmission's shifting issue now",
+  "",
+  "Adjust the [problem] variable if necessary so that it makes sense in the headline.",
+  "",
+  'ALWAYS use ONE [problem] issue ONLY. NEVER "[problem] and [problem]".',
+  "NEVER use more than TWO words to describe the [problem].",
+  "ALWAYS capitalize Brand names (Example: Ford, Toyota, etc.)",
+  'NEVER use the words "advice", "consult", "consultation", \'free", "com", or ".com"',
+  "ALWAYS use sentence case for the headline.",
+  "",
+  "IMPORTANT: NEVER use more than 9 words in the headline.",
+  "IMPORTANT: NEVER use more than THREE variables in a headline",
+  "",
+  "Conversation:",
+  "{{Pearl_User_Chat}}",
+].join("\n");
+
+// The 13 real Pearl_User_Chat transcripts from eval_ccheadlineaistudio.txt's tests[].vars — used
+// verbatim, no invented rows. Rows 6-8 contain literal \u0000 characters in the source data itself
+// (an apostrophe-encoding glitch upstream, not something introduced here) — kept as-is since the
+// point of this fixture is to reflect real production data, warts included.
+const CCHEADLINE_CHATS: string[] = [
+  "Hi, my Ford F-150 won\u2019t start and the battery is good. Could it be the starter?Hi. Is the engine cranking at all when you turn the key?No, just a click and then nothing.Are the dash lights dimming or staying bright?They stay bright, but the truck still won\u2019t start.Is there anything else the Auto Expert should know before I connect you? Rest assured that they\u2019ll be able to help you.Nothing else.",
+  "Hello, my 2022 Toyota Camry AC blows warm air at idle and the cabin never cools down. Could this be the compressor?Hi. Does the AC get colder when you\u2019re driving?Yes, a little, but it\u2019s still not cold enough.Is the fan working normally on all speeds?Yes, the fan is fine, just warm air most of the time.Is there anything else the Auto Expert should know before I connect you? Rest assured that they\u2019ll be able to help you.No, that\u2019s it.",
+  "My BMW SUV has a hood latch problem and it won\u2019t open after I pulled the release. I need to check the battery.Hi. Did you hear the latch pop when you pulled the handle?Yes, it popped once, then nothing.Are you able to access the car from the grille area or underneath?No, I can\u2019t get to it that way either.Is there anything else the Auto Expert should know before I connect you? Rest assured that they\u2019ll be able to help you.Just need the hood open.",
+  "My 2018 Ford F-150 won\u2019t start after sitting overnight. The battery seems fine, but it just clicks. Is the starter bad?Hi. Did you try a jump start, and are the lights strong?Yes, lights are normal and a jump didn\u2019t helpIs there anything else the Vehicle Expert should know before I connect you?",
+  "My 2021 Toyota Camry AC blows warm air on the driver side and cold on the passenger side. Could it be a blend door problem?Hi. Have you checked the cabin temperature settings and refrigerant level?The settings are normal, but I haven\u2019t checked refrigerantIs there anything else the Auto Expert should know before I connect you?",
+  "I have a 2016 BMW X5 with a rear door that won\u2019t open from the outside or inside. The child lock isn\u2019t on, so I\u2019m wondering if the latch is stuck.Hi. Does the door handle feel loose or completely normal?It feels normal, but the door stays shutIs there anything else the Car Expert should know before I connect you?",
+  "Hi, my 2018 Toyota RAV4 has a starting issue. It clicks but won\u0000t turn over. Could it be the battery or starter?Hi. To help narrow that down, does it happen in park and neutral, and are the lights dim?The lights seem okay, but it still won\u0000t start after sitting overnightIs there anything else the Automotive Expert should know before I connect you? Rest assured that they\u0000ll be able to help you.no, just want to get it running again",
+  "Hello, my 2021 Ford F150 truck AC is blowing warm air on the driver side and cold on the passenger side. I need help fastHi. Is the compressor running, and do you hear any clicking from behind the dash?Yes, the compressor seems to cycle, but the air is still mixed and weirdIs there anything else the Automotive Expert should know before I connect you? Rest assured that they\u0000ll be able to help you.only on hot days",
+  "Hey, my 2014 BMW X5 has a door problem. The rear door won\u0000t open from the outside, but it opens from inside. Is the latch broken?Hi. Has the child lock been checked, and does the handle feel loose?The handle feels normal, but the door stays stuck unless I pull hard from insideIs there anything else the Automotive Expert should know before I connect you? Rest assured that they\u0000ll be able to help you.need it fixed before school pickup",
+  "Hi, my 2018 Ford F150 won\u2019t start after sitting overnight. The battery is new, but it still just clicks when I turn the key. Is there anything else the Automotive Expert should know before I connect you? Rest assured that they\u2019ll be able to help you. It started after I replaced the battery and now the starter seems weak.",
+  "hacked facebook accHave you reported this to Facebook?tried having problesHave you ensured your other accounts are safe? Especially if they use the same username or password.yaIs there anything else the Computer Expert should know before I connect you? Rest assured that they'll be able to help you.don't want lose pic of family",
+  "Hello, I have a Roland V Grand that I am very satisfied with, but the Value dial for selecting other preset tones, for example, jumps from 001 to 004 or other values. Can I disconnect this dial from the outside to clean it? Kind regards, WillemHi. Is there anything else the Instrument Expert should know before I connect you? Rest assured that they'll be able to help you.Hello, I'm talking about button 9 in the V-Piano Grand manual page 12 (Panel descriptions). Could compressed air be a solution?OK. Got it. I'm sending you to a secure page to join JustAnswer for only 1 \u20ac (fully-refundable). While you're filling out that form, I'll tell the Instrument Technician about your situation and then connect you two.",
+  "Hi. I am being asked to varsity my email on the site, but the verification email is not comming into my email adress. I cannot do anything on the siite now. Need to track my orders urgentlyHi. How's your internet connection? Are you checking your email from a browser or a mail client (e.g. Outlook)?I am getting all other emails and my connection is perfectly fineAre there any antivirus or firewall settings that could block you from receiving mail?No antivirus, working only on Apple platformsIs there anything else the Email Expert should know before I connect you? Rest assured that they'll be able to help you.nothing",
+];
 
 /**
- * Reverse-engineered from a real production artifact: an OpenAI function-calling config
- * ("device_brand") for Pearl, JustAnswer's virtual assistant — generates the final message right
- * before connecting a customer to an Expert. Genuinely a generation task (produces customer-facing
- * text), unlike the Company Identity Guardrail spec below, which only grades existing replies.
+ * Real Run v1 results from eval-vWC-2026-09-01T18_12_26.json — the actual production headlines
+ * and the actual componentResults (pass/score/reason) from all 5 real assertions, in the same
+ * order the eval config declares them: organic headline, problem wording, brand capitalization,
+ * banned words, word count. Nothing here is simulated.
  */
-function buildPreConnectionAssuranceSpec(): SpecProject {
-  let spec = createBlankSpec("Pre-Connection Assurance Message", USER_PRIYA, "org");
+const CCHEADLINE_RUN_V1: { headline: string; scores: { pass: boolean; score: number; reason: string }[] }[] = [
+  {
+    headline: "Fix your Ford F-150 starter no crank issue",
+    scores: [
+      { pass: false, score: 0.3, reason: "The headline 'Fix your Ford F-150 starter no crank issue' sounds somewhat forced and list-like rather than organic and conversational." },
+      { pass: false, score: 0, reason: "The phrase 'starter no crank issue' is awkward and not a standard way to describe the problem; a more natural phrasing would be 'no crank starter issue' or 'starter no-crank issue'." },
+      { pass: true, score: 1, reason: "The brand name 'Ford' is capitalized correctly in the headline." },
+      { pass: true, score: 1, reason: "Assertion passed" },
+      { pass: true, score: 1, reason: "Assertion passed" },
+    ],
+  },
+  {
+    headline: "Fix your 2022 Toyota Camry AC warm air issue",
+    scores: [
+      { pass: false, score: 0.3, reason: "The headline 'Fix your 2022 Toyota Camry AC warm air issue' sounds somewhat forced and list-like rather than organic and conversational. It reads more like a direct instruction or a search query than a natural headline." },
+      { pass: true, score: 1, reason: "The phrase 'AC warm air issue' is grammatically correct and contextually appropriate for a headline about fixing a car air conditioning problem." },
+      { pass: true, score: 1, reason: "The brand name 'Toyota' is correctly capitalized in the headline." },
+      { pass: true, score: 1, reason: "Assertion passed" },
+      { pass: true, score: 1, reason: "Assertion passed" },
+    ],
+  },
+  {
+    headline: "Fix your BMW SUV hood latch problem today",
+    scores: [
+      { pass: false, score: 0.3, reason: "The headline 'Fix your BMW SUV hood latch problem today' sounds somewhat forced and list-like rather than organic and conversational. It reads more like a direct call to action or advertisement rather than a natural headline discussing the issue." },
+      { pass: true, score: 1, reason: "The phrase 'hood latch problem' is grammatical and contextually appropriate for a BMW SUV, making the headline clear and sensible." },
+      { pass: true, score: 1, reason: "The brand name 'BMW' is capitalized correctly in the headline." },
+      { pass: true, score: 1, reason: "Assertion passed" },
+      { pass: true, score: 1, reason: "Assertion passed" },
+    ],
+  },
+  {
+    headline: "Fix your 2018 Ford F-150 starter issue today",
+    scores: [
+      { pass: false, score: 0.3, reason: "The headline 'Fix your 2018 Ford F-150 starter issue today' sounds somewhat forced and list-like rather than organic and conversational. It reads more like a direct call to action or advertisement than a natural headline." },
+      { pass: true, score: 1, reason: "The phrase 'starter issue' is grammatically correct and contextually appropriate for a car repair headline." },
+      { pass: true, score: 1, reason: "The brand name 'Ford' is correctly capitalized in the headline." },
+      { pass: true, score: 1, reason: "Assertion passed" },
+      { pass: true, score: 1, reason: "Assertion passed" },
+    ],
+  },
+  {
+    headline: "Fix your 2021 Toyota Camry AC temperature issue",
+    scores: [
+      { pass: false, score: 0.4, reason: "The headline 'Fix your 2021 Toyota Camry AC temperature issue' is straightforward and clear but sounds somewhat forced and list-like rather than organic and conversational. It reads more like an instruction or a title in a manual rather than a natural headline." },
+      { pass: true, score: 1, reason: "The phrase 'AC temperature issue' is grammatical and contextually appropriate for a headline about fixing a car's air conditioning problem." },
+      { pass: true, score: 1, reason: "The brand name 'Toyota' is capitalized correctly in the headline." },
+      { pass: true, score: 1, reason: "Assertion passed" },
+      { pass: true, score: 1, reason: "Assertion passed" },
+    ],
+  },
+  {
+    headline: "Fix your 2016 BMW X5 rear door latch issue",
+    scores: [
+      { pass: false, score: 0.3, reason: "The headline 'Fix your 2016 BMW X5 rear door latch issue' sounds somewhat forced and list-like rather than organic and conversational. It reads more like an instruction or a title for a how-to guide rather than a natural headline." },
+      { pass: true, score: 1, reason: "The problem phrase 'rear door latch issue' is grammatical and contextually appropriate for the headline about fixing a BMW X5's rear door latch." },
+      { pass: true, score: 1, reason: "The brand name 'BMW' is correctly capitalized in the headline." },
+      { pass: true, score: 1, reason: "Assertion passed" },
+      { pass: true, score: 1, reason: "Assertion passed" },
+    ],
+  },
+  {
+    headline: "Get your 2018 Toyota RAV4 starting again",
+    scores: [
+      { pass: true, score: 1, reason: "The headline 'Get your 2018 Toyota RAV4 starting again' reads naturally and conversationally, addressing the issue directly without sounding forced or list-like." },
+      { pass: true, score: 1, reason: "The phrase 'Get your 2018 Toyota RAV4 starting again' is grammatical and contextually appropriate as a headline about fixing a starting problem with the vehicle." },
+      { pass: true, score: 1, reason: "The brand name 'Toyota' is capitalized correctly in the headline." },
+      { pass: true, score: 1, reason: "Assertion passed" },
+      { pass: true, score: 1, reason: "Assertion passed" },
+    ],
+  },
+  {
+    headline: "Fix your 2021 Ford F150 AC blowing warm air",
+    scores: [
+      { pass: false, score: 0, reason: "The headline 'Fix your 2021 Ford F150 AC blowing warm air' sounds forced and list-like rather than organic and conversational." },
+      { pass: false, score: 0, reason: "The phrase 'Fix your 2021 Ford F150 AC blowing warm air' is somewhat awkward because it lacks a clear structure; a more natural headline would be 'Fix your 2021 Ford F150 AC that is blowing warm air' or 'Fix your 2021 Ford F150 AC blowing warm air issue'. As is, the problem phrase is not fully grammatical or contextually smooth." },
+      { pass: true, score: 1, reason: "The brand name 'Ford' is capitalized correctly in the headline." },
+      { pass: true, score: 1, reason: "Assertion passed" },
+      { pass: true, score: 1, reason: "Assertion passed" },
+    ],
+  },
+  {
+    headline: "Fix your 2014 BMW X5 rear door issue today",
+    scores: [
+      { pass: false, score: 0.4, reason: "The headline is straightforward and clear but sounds somewhat forced and list-like rather than organic and conversational." },
+      { pass: true, score: 1, reason: "The phrase 'rear door issue' is grammatical and contextually appropriate for a car repair headline." },
+      { pass: true, score: 1, reason: "The brand name 'BMW' is capitalized correctly in the headline." },
+      { pass: true, score: 1, reason: "Assertion passed" },
+      { pass: true, score: 1, reason: "Assertion passed" },
+    ],
+  },
+  {
+    headline: "Fix your 2018 Ford F150 starter issue today",
+    scores: [
+      { pass: false, score: 0.3, reason: "The headline 'Fix your 2018 Ford F150 starter issue today' sounds somewhat forced and list-like rather than organic and conversational. It reads more like a direct call to action or advertisement than a natural headline." },
+      { pass: true, score: 1, reason: "The phrase 'starter issue' is grammatically correct and contextually appropriate for a headline about fixing a Ford F150 problem." },
+      { pass: true, score: 1, reason: "The brand name 'Ford' is correctly capitalized in the headline." },
+      { pass: true, score: 1, reason: "Assertion passed" },
+      { pass: true, score: 1, reason: "Assertion passed" },
+    ],
+  },
+  {
+    headline: "Recover your hacked Facebook account safely today",
+    scores: [
+      { pass: false, score: 0.4, reason: "The headline is straightforward and clear but sounds somewhat promotional and forced rather than organic and conversational." },
+      { pass: true, score: 1, reason: "The phrase 'hacked Facebook account' is grammatical and contextually appropriate in the headline." },
+      { pass: true, score: 1, reason: "The brand name 'Facebook' is capitalized correctly in the headline." },
+      { pass: true, score: 1, reason: "Assertion passed" },
+      { pass: true, score: 1, reason: "Assertion passed" },
+    ],
+  },
+  {
+    headline: "Fix your Roland V Grand value dial issue easily",
+    scores: [
+      { pass: false, score: 0.4, reason: "The headline is straightforward and clear but sounds somewhat forced and list-like rather than organic and conversational." },
+      { pass: false, score: 0, reason: "The phrase 'Roland V Grand value dial issue' is somewhat awkward and unclear; it would be more natural to say 'Roland V-Grand value dial issue' or 'Roland V-Grand's value dial issue'. As is, the problem wording is not fully grammatical or contextually smooth." },
+      { pass: true, score: 1, reason: "The brand name 'Roland' is capitalized correctly in the headline." },
+      { pass: true, score: 1, reason: "Assertion passed" },
+      { pass: true, score: 1, reason: "Assertion passed" },
+    ],
+  },
+  {
+    headline: "Fix your email verification issue quickly",
+    scores: [
+      { pass: false, score: 0, reason: "The headline 'Fix your email verification issue quickly' sounds more like a direct command or list-like instruction rather than a natural, conversational headline." },
+      { pass: true, score: 1, reason: "The phrase 'email verification issue' is grammatical and contextually appropriate in the headline." },
+      { pass: true, score: 1, reason: "No brand names are present in the headline, so the capitalization rule does not apply." },
+      { pass: true, score: 1, reason: "Assertion passed" },
+      { pass: true, score: 1, reason: "Assertion passed" },
+    ],
+  },
+];
 
-  const gPrice = newCriterion("Must never mention price.", "guardrail");
-  const gAnswerDirectly = newCriterion("Must never answer the customer's question directly.", "guardrail");
-  const gAskClarify = newCriterion("Must never ask the customer to clarify their question.", "guardrail");
-  const cOneQuestion = newCriterion(
-    "Must always ask exactly one question — whether there's anything else the Expert should know before connecting.",
+/**
+ * The one and only seed Spec: a real, live production artifact ("ccheadline" — generates the
+ * short problem-summary headline shown elsewhere in the product, e.g. a ticket/queue label, from
+ * a Pearl chat transcript). Sourced verbatim from three real files (spec, prompt, eval config) plus
+ * one real Run v1 result set — nothing here is invented, including its rough edges. AI Studio ships
+ * with only this one Spec so the "generate everything from a Spec, then iterate on real results"
+ * happy path can be polished end-to-end against a single, real, non-trivial case.
+ */
+export function buildCcheadlineSpec(): SpecProject {
+  let spec = createBlankSpec("Conversational Chat Headline", USER_VERONICA, "org");
+
+  // Requirements — a flat list, no guardrail/criteria split (that split proved artificial against
+  // real Spec documents). rSingleProblem, rNoConjunctions, rVariableCount, and rSentenceCase
+  // deliberately have NO matching assertion below — see the openQuestions further down. This
+  // isn't a mistake to "fix" here; it's a faithful reflection of what's actually shipped and
+  // graded in production today. rSentenceCase used to have one (a regex check, requirementId 972)
+  // until it was removed for actively contradicting the spec (it enforced Title Case) — that
+  // removal was correct, but it leaves sentence case with zero coverage now, not fixed coverage.
+  const rSingleProblem = newRequirement(
+    "Only one problem/issue may be used in the headline; if multiple problems are present, select or condense to the single most relevant one.",
+    "Single problem only",
   );
-  const cReassurance = newCriterion(
-    "Must include a reassurance sentence referencing the customer's specific problem and confirming the Expert will be able to help.",
+  const rNoConjunctions = newRequirement(
+    'Must not join problem phrases with "and" or other conjunctions — exactly one problem issue only.',
+    "No conjunctions",
   );
-  const cBrandOnly = newCriterion(
-    'brand must be the literal string "None" unless a device brand is explicitly mentioned in the customer message.',
+  const rBannedWords = newRequirement(
+    'Must never contain "advice", "consult", "consultation", "free", "com", or ".com" (or variations).',
+    "No banned words",
   );
-  const cBrandCapitalized = newCriterion('brand must be properly capitalized (e.g. "Samsung", not "samsung").');
+  const rHeadlineLength = newRequirement("Headline must not exceed nine words.", "Max 9 words");
+  const rVariableCount = newRequirement(
+    "Headline must include exactly two or three variables from brand/model/year/vehicle/problem/part.",
+    "2-3 variables",
+  );
+  const rProblemAdjustment = newRequirement(
+    "If the problem description is longer than two words, truncate to the most relevant two-word phrase.",
+    "Truncate long problem",
+  );
+  const rBrandCapitalization = newRequirement("Brand names must be capitalized as proper nouns.", "Capitalize brand");
+  const rHeadlineStyle = newRequirement(
+    "Headline must read as a natural, organic, conversational phrase, not a mechanical listing.",
+    "Organic tone",
+  );
+  const rOptionalInputs = newRequirement(
+    "Year, model, part, and vehicle are optional — gracefully omit them from the headline when empty/missing.",
+    "Optional fields omitted gracefully",
+  );
+  const rSentenceCase = newRequirement(
+    "Headline must use sentence case — only the first word and proper nouns capitalized.",
+    "Sentence case",
+  );
 
   spec = {
     ...spec,
     goal:
-      "Generate Pearl's (JustAnswer's virtual assistant) final message to the customer right before connecting them to an Expert: extract the device brand if one is mentioned, and ask exactly one follow-up question that reassures the customer by name-checking their specific problem — without answering the question or discussing price.",
-    inputContract:
-      'Two inputs: shortexpertsingular (the Expert-type label used in the message, e.g. "Technician"), and ae_customer_message (the customer\'s raw problem description).',
-    outputContract:
-      'Returned via a forced tool call (not free text): brand (string — the device brand exactly as mentioned, properly capitalized, or the literal "None" if none is mentioned) and assurance_message (exactly two sentences: the follow-up question, then the reassurance).',
-    guardrails: [gPrice, gAnswerDirectly, gAskClarify],
-    criteria: [cOneQuestion, cReassurance, cBrandOnly, cBrandCapitalized],
-    examples: [
-      newExample(
-        "Expert type: Technician. Customer message: My Samsung laptop makes a clicking noise and won't boot.",
-        '{"brand": "Samsung", "assurance_message": "Is there anything else the Technician should know before I connect you? Rest assured they will be able to help with your Samsung laptop that is making a clicking noise and will not boot."}',
+      "Generate a natural, conversational headline that accurately summarizes the customer's problem from a Pearl chat transcript, using two or three input variables, obeying all stylistic and content rules, resulting in a concise headline of no more than nine words.",
+    context:
+      "Generated headlines are shown elsewhere in the product as a ticket/queue label summarizing the customer's problem at a glance, so support staff can triage without re-reading the full chat.",
+    inputFields: [
+      {
+        ...newIOField("Pearl_User_Chat", "string"),
+        description: "The full Pearl chat transcript (customer + assistant turns).",
+      },
+    ],
+    outputFields: [
+      {
+        ...newIOField("headline", "string"),
+        description:
+          "A single headline string — sentence case, no more than nine words, no banned words, with any brand name used capitalized correctly.",
+      },
+    ],
+    outputMode: "text",
+    requirements: [
+      rSingleProblem,
+      rNoConjunctions,
+      rBannedWords,
+      rHeadlineLength,
+      rVariableCount,
+      rProblemAdjustment,
+      rBrandCapitalization,
+      rHeadlineStyle,
+      rOptionalInputs,
+      rSentenceCase,
+    ],
+    openQuestions: [
+      newOpenQuestion(
+        "The Examples below carry structured brand/model/year/vehicle/problem/part fields from the " +
+          "original spec document, but the real production Target (Prompt tab) only ever receives " +
+          "Pearl_User_Chat — the model infers brand/model/problem/etc. from the chat text itself. Should " +
+          "the Examples be rewritten to drop the field annotations and match what the Target actually " +
+          "receives, or is the structured breakdown still useful context for whoever edits this Spec?",
       ),
-      newExample(
-        "Expert type: Technician. Customer message: My Asus desktop is overheating and shutting down.",
-        '{"brand": "Asus", "assurance_message": "Is there anything else the Technician should know before I connect you? Rest assured they will be able to help with your Asus desktop that is overheating and shutting down."}',
+      newOpenQuestion(
+        '"Sentence case" (see Requirements) has zero assertion coverage today — a draft heuristic ' +
+          "replacement already exists in the Library (private, not yet pinned in). Is a rough heuristic " +
+          "good enough here, or does this need real judge coverage instead?",
       ),
-      newExample(
-        "Expert type: Technician. Customer message: My Lenovo laptop suddenly can't connect to WiFi.",
-        '{"brand": "Lenovo", "assurance_message": "Is there anything else the Technician should know before I connect you? Rest assured they will be able to help with your Lenovo laptop that suddenly cannot connect to WiFi."}',
+      newOpenQuestion(
+        '"Single problem only" and "No conjunctions" also have no assertion coverage — is the "Organic ' +
+          'tone" rubric catching these implicitly (a multi-problem, conjunction-joined headline would ' +
+          "probably also read as unnatural), or do they need their own explicit check?",
       ),
     ],
-    powers: [newPowerTag("Pearl Pre-Connection Assistant", "ai")],
-    access: [{ userId: USER_VERONICA, role: "editor" }],
+    examples: [
+      newExample(
+        "Pearl_User_Chat: \"User: I'm having trouble starting my Toyota RAV4.\nAssistant: Let's try some quick checks to get it running.\"",
+        "Get your Toyota RAV4 started again today",
+      ),
+      newExample(
+        "Pearl_User_Chat: \"User: My Ford SUV won't start.\nAssistant: Have you checked the battery connections?\"",
+        "Easily fix your Ford SUV's starting problem",
+      ),
+      newExample(
+        "Pearl_User_Chat: \"User: The AC in my BMW is not cooling.\nAssistant: Let's check the cooling system settings and filters.\"",
+        "Restore cooling in your BMW's AC now",
+      ),
+      newExample(
+        "Pearl_User_Chat: \"User: My Facebook account was hacked.\nAssistant: Have you reported this to Facebook and changed your password?\"",
+        "Recover your hacked Facebook account safely today",
+      ),
+      newExample(
+        "Pearl_User_Chat: \"User: My Mercedes car is having trouble shifting gears.\nAssistant: We should inspect the transmission fluid levels first.\"",
+        "Fix your Mercedes transmission's shifting issue now",
+      ),
+      newExample(
+        "Pearl_User_Chat: \"User: My Ford SUV won't start and the AC is also not cooling.\nAssistant: Let's focus on the starting problem first to get you moving.\"",
+        "Easily fix your Ford SUV's starting problem",
+        "Two problems are present (starting AND cooling) — \"Single problem only\" means we pick the more urgent one (starting) rather than combining both.",
+      ),
+      newExample(
+        "Pearl_User_Chat: \"User: I'm asked to verify my email but the verification email never arrives.\nAssistant: Are you checking your inbox and spam folder? Is your internet connection stable?\"",
+        "Fix your email verification issue to track orders easily",
+        "No vehicle/brand involved at all — the same generator handles non-automotive JustAnswer categories using the same problem-summary pattern.",
+      ),
+      newExample(
+        "Pearl_User_Chat: \"User: I need the manual for my product.\nAssistant: I can help you find the manual quickly.\"",
+        "Get your manual quickly and easily",
+        "No brand, model, or vehicle info available at all — optional fields (\"Optional fields omitted gracefully\") are simply dropped rather than leaving placeholder text.",
+      ),
+      newExample(
+        "Pearl_User_Chat: \"User: My Roland V Grand's value dial skips numbers.\nAssistant: You may want to clean the dial carefully to resolve the issue.\"",
+        "Fix your Roland V Grand value dial issue easily",
+      ),
+    ],
+    access: [{ userId: USER_DAN, role: "editor" }],
+    // Mocked adoption metadata — in production, sourced from real Dynatrace/LiteLLM telemetry.
+    // Last touched by Dan (not the owner) so the "Last updated by" column has something to show.
+    updatedByUserId: USER_DAN,
+    appliedFeature: "CC Headline",
+    // Executions >> fetches: a fetch is cached by the caller and reused across many production
+    // calls, so one fetch typically backs many executions — never the other way around.
+    usageStats: { windowHours: 24, promptFetches: 482, productionExecutions: 21347 },
   };
 
-  const assertions = classifyAssertionsFor(spec);
-  const byCriterion = (id: string) => assertions.find((a) => a.sourceCriterionId === id)!;
-
-  // Human-in-the-loop edits (EVAL-4): the auto-classifier left these two as free-form rubric
-  // judgments, but both are cheaply and more reliably checked mechanically against the tool's
-  // structured output — the same kind of fix a Prompt Engineer makes right after a first Generate.
-  const aOneQuestion = byCriterion(cOneQuestion.id);
-  aOneQuestion.tier = "deterministic";
-  aOneQuestion.check = { mode: "regex_match", value: "^[^?]*\\?[^?]*$" };
-  aOneQuestion.description = "assurance_message must contain exactly one question mark";
-  aOneQuestion.group = "Output shape";
-
-  const aBrandCapitalized = byCriterion(cBrandCapitalized.id);
-  aBrandCapitalized.tier = "deterministic";
-  aBrandCapitalized.check = { mode: "regex_match", value: '"brand":\\s*"(None|[A-Z][A-Za-z]*)"' };
-  aBrandCapitalized.description = 'brand field must be "None" or start with a capital letter';
-  aBrandCapitalized.group = "Output shape";
-
-  const aBrandOnly = byCriterion(cBrandOnly.id);
-  aBrandOnly.group = "Output shape";
-
-  const aReassurance = byCriterion(cReassurance.id);
-  aReassurance.group = "Content quality";
-  // Rubric-graded and inherently a little fuzzy — allow an occasional miss rather than demanding 100%.
-  aReassurance.passThreshold = 0.9;
-
-  const aAnswerDirectly = byCriterion(gAnswerDirectly.id);
-  aAnswerDirectly.group = "Guardrails";
-  byCriterion(gPrice.id).group = "Guardrails";
-  byCriterion(gAskClarify.id).group = "Guardrails";
-
-  spec.assertions = assertions;
-  spec.judge = {
-    id: newId("judge"),
-    model: "gpt-4o-mini",
+  // The real, currently-shipped eval config has exactly 5 assertions — mapped 1:1 from
+  // eval_ccheadlineaistudio.txt's assert[]. Deliberately hand-built rather than run through the
+  // auto-classifier: this is the actual production eval, not a freshly-generated draft, and
+  // preserving its real coverage gaps (see comments above) is the whole point of this fixture.
+  const aOrganicHeadline: Assertion = {
+    id: newId("assert"),
+    sourceRequirementId: rHeadlineStyle.id,
+    tier: "rubric_grading",
+    description: "Write an organic headline",
+    rubric:
+      "Create an organic, conversational headline. The headline should read like a natural headline for the issue and should not sound forced or list-like.",
+    group: "Style & wording",
   };
+  const aProblemWording: Assertion = {
+    id: newId("assert"),
+    sourceRequirementId: rProblemAdjustment.id,
+    tier: "rubric_grading",
+    description: "Adjust problem wording",
+    rubric:
+      "Adjust the Problem variable if necessary so it makes sense in the headline. Pass if the problem wording is grammatical and contextually appropriate in the final headline; fail if the problem phrase is awkward or nonsensical.",
+    group: "Style & wording",
+  };
+  const aBrandCapitalization: Assertion = {
+    id: newId("assert"),
+    sourceRequirementId: rBrandCapitalization.id,
+    tier: "rubric_grading",
+    description: "Capitalize brand names",
+    rubric:
+      "Capitalize brand names. Pass if any brand name used in the headline is capitalized correctly; fail if a brand name appears in lowercase or mixed case.",
+    group: "Formatting",
+  };
+  // Real check type is promptfoo's `not-contains-any` over a literal word list — matches exactly
+  // now that the deterministic catalog has a native mode for it (case-insensitive variant, since
+  // the real eval doesn't care about casing of these words).
+  const aBannedWords: Assertion = {
+    id: newId("assert"),
+    sourceRequirementId: rBannedWords.id,
+    tier: "deterministic",
+    description: "Forbid banned words (advice / consult / consultation / free / com / .com)",
+    check: { mode: "not_icontains_any", value: "advice, consult, consultation, free, .com" },
+    group: "Guardrails",
+  };
+  // Real check type is promptfoo's `word-count` (max: 9) — matches exactly now that the
+  // deterministic catalog has a native mode for it, instead of a custom_code approximation.
+  const aHeadlineLength: Assertion = {
+    id: newId("assert"),
+    sourceRequirementId: rHeadlineLength.id,
+    tier: "deterministic",
+    description: "Limit headline length to 9 words or fewer",
+    check: { mode: "word_count", value: "", max: 9 },
+    group: "Formatting",
+  };
+
+  spec.assertions = [aOrganicHeadline, aProblemWording, aBrandCapitalization, aBannedWords, aHeadlineLength];
+
+  // Not specified in the real eval config (promptfoo's default grading provider was used, no
+  // explicit judge system prompt) — AI Studio's own reasonable default, flagged as inferred.
+  spec.judge = { id: newId("judge"), model: "gpt-4o-mini" };
 
   spec.target = {
     id: newId("target"),
-    model: "gpt-4o",
-    temperature: 0.2,
-    status: "draft",
-    createdAt: Date.now() - 4 * 24 * 60 * 60 * 1000,
-    // Close to verbatim from the real production tool-calling config.
-    promptContent: [
-      "You are Pearl, a virtual assistant for JustAnswer. You connect customers with the {{shortexpertsingular}} who will be able to help with the customer's problem.",
-      "",
-      "Based on the customer's question, ALWAYS and ONLY ask EXACTLY 1 question and provide the brand of the customer's device if mentioned.",
-      "NEVER discuss price. NEVER answer the customer's question. NEVER ask the customer to clarify their question.",
-      "",
-      "Your question MUST consist of ONLY two sentences:",
-      "1. Ask whether there is anything else the {{shortexpertsingular}} needs to know.",
-      "2. Tell the customer to rest assured the {{shortexpertsingular}} will be able to help with [customer's problem]. Make sure to refer to the customer's specific problem.",
-      "",
-      "Respond by calling the device_brand tool with exactly two fields:",
-      "- brand: the brand of the customer's device, capitalized. Return the brand ONLY IF it is mentioned, else return \"None\".",
-      "- assurance_message: the two-sentence message described above.",
-      "",
-      "Example: \"Is there anything else the Computer expert should know before I connect you? Rest assured they'll be able to help with your question about your broken computer screen.\"",
-    ].join("\n"),
+    // Real config: "openai/gpt-4.1-mini-2025-04-14" (provider-prefixed); normalized here to match
+    // how every other seed Target names a model (no provider prefix).
+    model: "gpt-4.1-mini-2025-04-14",
+    temperature: 0,
+    status: "published",
+    createdAt: Date.now() - 5 * 24 * 60 * 60 * 1000,
+    promptContent: CCHEADLINE_PROMPT,
+    // A single system message, exactly matching the real production config's shape (no separate
+    // human "{input}" turn) — this is what makes the live Playground run send {{Pearl_User_Chat}}
+    // through variable substitution instead of a hardcoded second turn. The real config's
+    // max_completion_tokens/presence_penalty/seed values weren't recorded when this was captured,
+    // so `settings` is left at its defaults here even though `TargetVersion` now models it.
+    messages: [{ id: newId("msg"), role: "system", content: CCHEADLINE_PROMPT }],
   };
 
-  const dataset: DatasetItem[] = spec.examples.map((e) => ({
-    id: newId("item"),
-    input: e.input,
-    source: "seed",
-    expectedOutput: e.expectedOutput,
-  }));
-  spec.dataset = dataset;
+  spec.dataset = CCHEADLINE_CHATS.map((chat) => buildDatasetItem({ Pearl_User_Chat: chat }, ["Pearl_User_Chat"], "seed"));
 
-  // Row 1 (Asus desktop) is a deliberate miss: the model slips in real troubleshooting advice
-  // instead of sticking to the one-question format — exactly what gAnswerDirectly exists to catch,
-  // and it drops the required question mark as a natural side effect (caught automatically by the
-  // aOneQuestion code check below, no separate authoring needed).
-  const outputs = [
-    dataset[0].expectedOutput!,
-    '{"brand": "Asus", "assurance_message": "It sounds like your Asus desktop just needs some airflow \u2014 try cleaning out the vents and letting it cool down. Rest assured the Technician will be able to help with your overheating desktop."}',
-    dataset[2].expectedOutput!,
+  const results: RunItemResult[] = spec.dataset.map((item, i) => {
+    const row = CCHEADLINE_RUN_V1[i];
+    const scores: AssertionScore[] = [aOrganicHeadline, aProblemWording, aBrandCapitalization, aBannedWords, aHeadlineLength].map(
+      (assertion, j) => ({
+        assertionId: assertion.id,
+        passed: row.scores[j].pass,
+        reason: row.scores[j].reason,
+        score: row.scores[j].score,
+      }),
+    );
+    return { datasetItemId: item.id, output: row.headline, scores };
+  });
+
+  results[0].note =
+    'Pattern across the run: 8 of 13 generated headlines literally start with "Fix your..." — a repetitive template the model settled on. That\'s exactly what "Write an organic headline" is catching (scores 0-0.4 on 10 of 13 rows, the dominant failure). Tightening the Target\'s phrasing guidance/examples to break this pattern is the natural first fix to try, then re-run against these same 13 rows to see the score move — that\'s "launch v2" for this Spec.';
+
+  spec.runs = [finalizeRun(results, "live")];
+  return spec;
+}
+
+// The real, live production system+user messages for the "CQA pricing help" Target — verbatim
+// from CQA-prompt.txt, warts included (e.g. "Justnaswer" typo, the two-space "== K-shot ==" gap).
+// Uses {{Conversation}} (capital C), the real Target's actual variable name — distinct from this
+// Spec's own documented input field name "conversation" (lowercase), see the openQuestion below.
+const CQA_SYSTEM_PROMPT =
+  "== Context ==\nJustAnswer is a subscription-based service that connects customers with specialized experts to answer their questions across a wide range of fields, including law, medicine, vehicle repair, technology, home repair, finance, and more. Customers start by submitting their questions, and the platform matches them with the appropriate Expert who can provide a detailed and personalized response in interactive support experience in a page called CQA. The Expert is expected to help the customer with a diagnosis, or direct answer, provide links, provide manual or instructions to troubleshoot, or next staps. Note that, the Expert is NOT expected to provide customer support with respect to Justanswer service membership or refunds.\n\n== Role ==\nRead the conversation for context and grade conversation as true or false based on function below.\n\nIMPORTANT: True ONLY IF the customers makes a direct reference to Justanswer membership fee, supported by word like 'you'. False if cost issue is regarding non-Justnaswer service or vendor like Uber, Amazon, passport, mail, hospital, clinic etc. Pay close attention to the context for mention of a company, referencing words like 'they'. Also false if the discussion is regarding follow-up or additional services like document review.\n\n== K-shot ==\n\"I want my money back\" - true\n\"why did you charge me $55\" -true\n\"The $85 you mentioned is for the biometrics fee\" - false\n\"They just send me another bill.\" - false\n\n== Output format example ==\ntrue\nfalse";
+const CQA_USER_PROMPT = "CQA conversation so far:{{Conversation}}";
+
+/**
+ * 13 real conversations from cqa-evals.txt's tests[].vars, chosen to span both classes (true/false)
+ * and a wide mix of non-automotive JustAnswer categories (tax, medical, vet, legal, appliance,
+ * tech) — plus one clearly-labeled synthetic row appended after, to exercise the failing-row
+ * review flow (every one of the 45 real rows in the source file actually passed).
+ */
+const CQA_CONVERSATIONS: { conversation: string; pricingHelp: boolean }[] = [
+  {
+    conversation:
+      "Customer: Hi, I have a question about my 2018 Honda Accord\nExpert: Hello! I'm Mike, a certified mechanic. I'd be happy to help with your Honda. What seems to be the issue?\nCustomer: wait before we continue, I just noticed a charge on my credit card for $46 from you guys\nCustomer: I thought this was supposed to be free??\nExpert: I understand your concern. I'm here to help with your vehicle question, but for billing matters you'd need to contact JustAnswer's customer support team.\nCustomer: no I want my money back first before anything else",
+    pricingHelp: true,
+  },
+  {
+    conversation:
+      "Customer: my toilet is making a gurgling noise when I flush\nExpert: Hi there! I'm a licensed plumber. That gurgling usually indicates a venting issue. Is it just the one toilet or multiple fixtures?\nCustomer: just the one in the master bathroom\nExpert: Ok, that helps narrow it down. Have you noticed any slow draining?\nCustomer: actually hold on - why did you charge me $55??? I only agreed to pay $5 for this question!",
+    pricingHelp: true,
+  },
+  {
+    conversation:
+      "Customer: Need help with Windows 11 update problem\nExpert: Hi, I'm a certified tech. What's happening with your update?\nCustomer: it keeps failing at 47%\nExpert: Let's try a few things. First, can you run the Windows Update troubleshooter?\nCustomer: before we do that - can you explain why there's a $50 subscription on my bank statement from justanswer? I didnt sign up for that\nExpert: I apologize for any confusion but I'm only able to assist with technical questions. You'll need to reach out to customer service for billing issues.\nCustomer: this is ridiculous. I want a refund immediately",
+    pricingHelp: true,
+  },
+  {
+    conversation:
+      "Customer: Question about my dog's behavior\nExpert: Hello! I'm Dr. Sarah, a veterinarian. What's going on with your pup?\nCustomer: she keeps scratching her ear\nExpert: How long has this been happening? Any discharge or odor?\nCustomer: about a week. no smell that i notice\nExpert: It could be an ear infection or allergies. I'd recommend...\nCustomer: sorry to interrupt but i just checked my email and saw you billed me $46?? why did you charge my card without permission",
+    pricingHelp: true,
+  },
+  {
+    conversation:
+      "Customer: I have a tax question about home office deduction\nExpert: Hi, I'm a CPA with 15 years experience. Happy to help with your tax question!\nCustomer: actually nevermind the tax question. I need to know how to cancel this membership you signed me up for\nCustomer: I never agreed to $55/month\nExpert: I understand your frustration. Unfortunately, I can only help with tax-related questions. For membership issues please contact JustAnswer support.\nCustomer: this is a scam. give me back my money",
+    pricingHelp: true,
+  },
+  {
+    conversation:
+      "Customer: hi i have chest pain should i be worried\nExpert: Hello, I'm Dr. James. Chest pain can have many causes. Can you describe the pain - is it sharp, dull, constant?\nCustomer: its like a pressure feeling\nExpert: How long have you had this? Any shortness of breath?\nCustomer: couple hours. no trouble breathing\nCustomer: hey wait a minute why does my bank show a pending charge of $55 from this website??\nCustomer: i only paid $1 to ask this question!",
+    pricingHelp: true,
+  },
+  {
+    conversation:
+      "Customer: i need help with my iphone\nExpert: Hi there! What's going on with your iPhone?\nCustomer: the screen is frozen and wont turn off\nExpert: Have you tried a force restart? Hold the volume up button, then volume down, then hold the side button until you see the Apple logo.\nCustomer: ok trying now\nCustomer: it worked! thanks\nExpert: Great! Is there anything else I can help you with?\nCustomer: no thats it",
+    pricingHelp: false,
+  },
+  {
+    conversation:
+      "Customer: my dog has been vomiting for 2 days\nExpert: I'm sorry to hear that. How old is your dog and what breed?\nCustomer: shes a 4 year old lab mix\nExpert: Has she eaten anything unusual recently? Any changes in diet or getting into trash?\nCustomer: not that i know of but she does get into things sometimes\nExpert: Is she still drinking water? And how frequent is the vomiting?\nCustomer: she drinks a little. vomits maybe 3-4 times a day\nExpert: I'd recommend withholding food for 12 hours but keeping water available. If she can't keep water down or shows signs of lethargy, she should see a vet today.\nCustomer: ok thank you. they quoted me $200 for an exam at the emergency vet, is that normal?",
+    pricingHelp: false,
+  },
+  {
+    conversation:
+      "Customer: I need to know about eviction laws in Texas\nExpert: I'd be happy to help with Texas eviction law. Are you a landlord or tenant?\nCustomer: tenant. my landlord is trying to evict me but didnt give proper notice\nExpert: In Texas, landlords must provide written notice before filing for eviction. What type of notice did you receive, if any?\nCustomer: just a text message saying i have 3 days to leave\nExpert: A text message alone is generally not sufficient legal notice in Texas. The landlord typically must provide written notice that meets specific requirements.",
+    pricingHelp: false,
+  },
+  {
+    conversation:
+      "Customer: My Amazon order never arrived and they won't refund me\nExpert: I'm sorry to hear about that frustrating situation. How long ago was the order supposed to arrive?\nCustomer: 2 weeks ago. they keep saying it was delivered but I never got it\nExpert: Have you checked with neighbors or your building's package room? Sometimes carriers mark items delivered before actual delivery.\nCustomer: yes checked everywhere. they charged me $89 and won't give it back\nExpert: I'd recommend filing a claim through Amazon's A-to-Z Guarantee program. You can also dispute the charge with your credit card company if Amazon won't help.",
+    pricingHelp: false,
+  },
+  {
+    conversation:
+      "Customer: Question about my Toyota Camry\nExpert: Hi! What's going on with your Camry?\nCustomer: The AC stopped blowing cold air\nExpert: When did you first notice this? And does it blow warm air, or no air at all?\nCustomer: warm air. started about a week ago\nExpert: This could be a refrigerant leak or a failing compressor. First, I'd recommend having the refrigerant level checked. Many shops offer free AC checks.\nCustomer: how much does that cost usually\nExpert: Most shops charge between $100-$200 just to diagnose the issue. Repair costs depend on what they find.",
+    pricingHelp: false,
+  },
+  {
+    conversation:
+      "Customer: I need help understanding my hospital bill\nExpert: I can try to help explain medical billing. What specifically are you confused about?\nCustomer: they charged me $500 for a 10 minute visit and that seems way too high\nExpert: Hospital billing can be complex. The $500 likely includes facility fees, not just the doctor's time. Do you have the itemized bill?\nCustomer: yes it says facility fee $300, physician fee $150, supplies $50\nExpert: That breakdown is actually pretty standard for a hospital visit. The facility fee covers overhead, equipment, and support staff even for short visits.",
+    pricingHelp: false,
+  },
+  {
+    conversation:
+      "Customer: need help with QuickBooks\nExpert: I can help with QuickBooks. What issue are you experiencing?\nCustomer: i cant get my bank feed to connect\nExpert: Which bank are you trying to connect? And what error message are you seeing?\nCustomer: chase bank. it says connection failed\nExpert: Chase recently updated their security protocols. Try removing the existing connection and re-adding it. You'll need to log into Chase directly and authorize the connection again.\nCustomer: ok let me try\nCustomer: that worked! thank you so much",
+    pricingHelp: false,
+  },
+];
+
+/**
+ * The one synthetic row in this Spec's seed dataset (`source: "synthetic"`, unlike the 13 real
+ * rows above from `source: "seed"`) — every one of the 45 real rows in cqa-evals.txt actually
+ * passed (see eval-A7J-2026-05-26T12_17_05.csv, 100% PASS), so a deliberately tricky row is added
+ * here to demonstrate reviewing/promoting a failing case, matching the exact ambiguous-"they"
+ * failure mode the system prompt's own K-shot examples warn about.
+ */
+const CQA_SYNTHETIC_CONVERSATION =
+  "Customer: My photo restoration order got messed up.\nExpert: I'm sorry to hear that — can you tell me what went wrong with the restoration?\nCustomer: They also charged my card twice for it, I only agreed to one payment.\nExpert: Let's sort out the restoration issue first — do you have the order confirmation?\nCustomer: Yeah, one sec.";
+
+/**
+ * A second real, live production artifact ("CQA pricing help" — classifies whether a CQA chat
+ * turn is actually about the JustAnswer membership fee/refund, as opposed to some other cost the
+ * customer mentioned) — sourced verbatim from CQA-spec.txt, CQA-prompt.txt, and cqa-evals.txt,
+ * plus the real eval-A7J run's per-row pass data. A deliberately different shape of Spec from
+ * ccheadline: a boolean classifier via a forced tool call, not free-text generation — exercises
+ * `outputMode: "tool_call"` and the golden-answer-style eval that comes with a classifier.
+ */
+export function buildCqaSpec(): SpecProject {
+  let spec = createBlankSpec("CQA Pricing/Refund Detection", USER_PRIYA, "org");
+
+  const rTrueCriteria = newRequirement(
+    "Classify as true ONLY if the customer explicitly references the JustAnswer membership fee, supported by words like 'you' (indicating direct address to JustAnswer).",
+    "True classification criteria",
+  );
+  const rFalseOtherCosts = newRequirement(
+    "Classify as false if the cost issue relates to other services or vendors such as Uber, Amazon, passport, mail, hospital, clinic, or similar.",
+    "False: non-JustAnswer costs",
+  );
+  const rFalseFollowUp = newRequirement(
+    "Classify as false if the discussion concerns follow-up or additional services like document review, not related to JustAnswer membership fees.",
+    "False: follow-up/additional services",
+  );
+  const rOutputFormat = newRequirement(
+    "Output must include a boolean classification and the original conversation text under 'cqaConversationSoFar'.",
+    "Output format",
+  );
+
+  spec = {
+    ...spec,
+    goal:
+      "Determine whether a customer's statement refers directly to the JustAnswer membership fee, classifying the conversation as true or false accordingly.",
+    context:
+      "JustAnswer is a subscription-based service connecting customers with specialized experts who provide detailed, personalized responses to customer inquiries. Experts do not handle questions about JustAnswer membership fees or refunds themselves — this classifier flags conversations that need to be routed there instead. It's true only if the customer explicitly references the JustAnswer membership fee; false if the cost-related discussion concerns other services, vendors, or follow-up/additional services.",
+    inputFields: [
+      {
+        ...newIOField("conversation", "string"),
+        description: "The full conversation between the customer and the expert so far, read for context to determine classification.",
+      },
+    ],
+    // Real production output: a single forced tool call (your_func_1) returning one boolean field
+    // — see the openQuestion below about how this differs from this Spec's own outputSchema.
+    outputFields: [
+      {
+        ...newIOField("pricing_help", "boolean"),
+        description: "True only if the customer clearly asks a question or complains about JustAnswer pricing or refund; false otherwise.",
+      },
+    ],
+    outputMode: "tool_call",
+    outputToolName: "your_func_1",
+    requirements: [rTrueCriteria, rFalseOtherCosts, rFalseFollowUp, rOutputFormat],
+    openQuestions: [
+      newOpenQuestion(
+        "This Spec's original design (see \"Output format\" above) described a two-field output — a boolean " +
+          "classification plus the original conversation text under cqaConversationSoFar — and an input field " +
+          "named \"conversation\". The real production Target instead returns a single boolean (pricing_help) " +
+          "via a forced tool call, and reads its input as {{Conversation}} (capital C). The Input/Output " +
+          "contracts above have been aligned to match what's actually live; should the original two-field " +
+          "output design be revived, or is the simplified single-boolean shape final?",
+      ),
+      newOpenQuestion(
+        "The real production eval grades each row with an exact equality check (output.pricing_help === the " +
+          "row's known-correct answer) — a golden-answer comparison. AI Studio's assertion model doesn't yet " +
+          "let a deterministic or custom-code check see a dataset row's own expectedOutput (only the output " +
+          "itself), so \"Correct pricing/refund classification\" below is a rubric asking the judge to " +
+          "re-derive the right answer from the Requirements instead of comparing to a stored one. Same intent, " +
+          "different mechanism — worth adding native expected-output comparison for classifier-style Specs " +
+          "like this one.",
+      ),
+    ],
+    examples: [
+      newExample(
+        '"I want my money back"',
+        "true",
+        "Customer explicitly requests refund, implying reference to JustAnswer membership fees - classified true.",
+      ),
+      newExample(
+        '"why did you charge me $55"',
+        "true",
+        "Customer directly asks 'you' about a charge, indicating JustAnswer membership fee - classified true.",
+      ),
+      newExample(
+        '"The $85 you mentioned is for the biometrics fee"',
+        "false",
+        "Cost is for biometrics fee, not JustAnswer membership - classified false.",
+      ),
+      newExample(
+        '"They just sent me another bill."',
+        "false",
+        "'They' references another company, not JustAnswer - classified false.",
+      ),
+    ],
+    access: [{ userId: USER_VERONICA, role: "editor" }],
+    updatedByUserId: USER_PRIYA,
+    appliedFeature: "CQA (Chat Q&A)",
+    usageStats: { windowHours: 24, promptFetches: 1180, productionExecutions: 58940 },
+  };
+
+  const aClassification: Assertion = {
+    id: newId("assert"),
+    sourceRequirementId: rTrueCriteria.id,
+    tier: "rubric_grading",
+    description: "Correct pricing/refund classification",
+    rubric:
+      "Given the conversation and this Spec's classification rules (true only if the customer explicitly references the JustAnswer membership fee, e.g. via 'you'; false if the cost concerns another vendor/service, or a follow-up/additional service), determine the correct pricing_help value, then check whether the output's pricing_help matches it.",
+    group: "Classification",
+  };
+  const aOutputShape: Assertion = {
+    id: newId("assert"),
+    sourceRequirementId: rOutputFormat.id,
+    tier: "deterministic",
+    description: "Tool call returns a boolean pricing_help field",
+    check: { mode: "contains", value: '"pricing_help"' },
+    group: "Formatting",
+  };
+  spec.assertions = [aClassification, aOutputShape];
+
+  spec.judge = { id: newId("judge"), model: "gpt-4o-mini" };
+
+  spec.target = {
+    id: newId("target"),
+    model: "gpt-4o-2024-08-06",
+    temperature: 0,
+    status: "published",
+    createdAt: Date.now() - 3 * 24 * 60 * 60 * 1000,
+    promptContent: CQA_SYSTEM_PROMPT,
+    messages: [
+      { id: newId("msg"), role: "system", content: CQA_SYSTEM_PROMPT },
+      { id: newId("msg"), role: "human", content: CQA_USER_PROMPT },
+    ],
+    tools: [
+      {
+        id: newId("tool"),
+        name: "your_func_1",
+        description: "",
+        parameters: JSON.stringify(
+          {
+            type: "object",
+            properties: {
+              pricing_help: {
+                type: "boolean",
+                description: "True only if user clearly asks a question or complains about Justanswer pricing or refund. False otherwise",
+              },
+            },
+            required: ["pricing_help"],
+          },
+          null,
+          2,
+        ),
+      },
+    ],
+    settings: { maxTokens: 100, presencePenalty: 0.6, seed: 0 },
+  };
+
+  spec.dataset = [
+    ...CQA_CONVERSATIONS.map((c) =>
+      buildDatasetItem({ Conversation: c.conversation }, ["Conversation"], "seed", String(c.pricingHelp)),
+    ),
+    buildDatasetItem({ Conversation: CQA_SYNTHETIC_CONVERSATION }, ["Conversation"], "synthetic", "false"),
   ];
 
-  const results: RunItemResult[] = dataset.map((item, i) => {
-    const output = outputs[i];
-    const scores: AssertionScore[] = assertions.map((a) => {
-      if (a.tier === "deterministic" && a.check) {
-        const r = scoreCodeAssertion(a.check, output);
-        return { assertionId: a.id, passed: r.passed, reason: r.reason };
-      }
-      if (i === 1 && a.id === aAnswerDirectly.id) {
-        return {
-          assertionId: a.id,
-          passed: false,
-          reason:
-            'Judge: the message gives unsolicited troubleshooting advice ("try cleaning out the vents") instead of only asking the follow-up question — this answers the customer\'s problem directly.',
-        };
-      }
-      return { assertionId: a.id, passed: true, reason: `Judge: consistent with "${a.description}".` };
-    });
+  const results: RunItemResult[] = spec.dataset.map((item, i) => {
+    const isSynthetic = i === CQA_CONVERSATIONS.length;
+    const expected = CQA_CONVERSATIONS[i]?.pricingHelp ?? false;
+    // The one synthetic row is deliberately misclassified — see the comment on
+    // CQA_SYNTHETIC_CONVERSATION above.
+    const modelSaid = isSynthetic ? true : expected;
+    const output = JSON.stringify({ pricing_help: modelSaid });
+    const classificationPassed = modelSaid === expected;
+    const scores: AssertionScore[] = [
+      {
+        assertionId: aClassification.id,
+        passed: classificationPassed,
+        reason: classificationPassed
+          ? "All assertions passed"
+          : "Incorrectly classified as JustAnswer billing — 'they' refers to the photo restoration vendor's double charge, not JustAnswer's membership fee (see \"False: non-JustAnswer costs\" / the system prompt's own warning about words like 'they').",
+        score: classificationPassed ? 1 : 0,
+      },
+      {
+        assertionId: aOutputShape.id,
+        passed: true,
+        reason: "Output includes a boolean pricing_help field, as required.",
+        score: 1,
+      },
+    ];
     return { datasetItemId: item.id, output, scores };
   });
 
-  results[1].note =
-    'The model slipped in real troubleshooting advice ("try cleaning out the vents") instead of sticking to the one-question format — which also means it dropped the required follow-up question entirely. A clean example of why the "never answer the question" guardrail matters; worth a few-shot example showing the assistant staying in its lane even when the fix seems obvious.';
+  results[results.length - 1].note =
+    "Synthetic row, not from the real July eval run (every one of the 45 real rows there passed) — added to " +
+    "exercise the failing-row review flow. It reproduces the exact ambiguous-\"they\" failure mode the system " +
+    "prompt's own K-shot examples warn about, just with a different vendor (a photo-restoration order instead " +
+    "of a biometrics fee).";
 
-  spec.runs = [finalizeRun(spec, results, "simulated")];
+  spec.runs = [finalizeRun(results, "live")];
   return spec;
-}
-
-/**
- * Reverse-engineered from a real production artifact: an OpenAI function-calling judge config
- * ("wrong_company_check") that grades a single Expert/AI Assistant reply for whether it implies
- * working for a company other than JustAnswer. Kept as its own Spec rather than folded into a
- * broader conversation-quality classifier — it grades one reply at a time (not a full transcript)
- * and its output shape (ok/wrong via a forced tool call) doesn't match a true/false classifier's,
- * so treating it as a separate thing is more faithful to what's actually running in production.
- */
-function buildCompanyIdentityGuardrailSpec(): SpecProject {
-  let spec = createBlankSpec("Company Identity Guardrail", USER_DAN, "org");
-
-  const cMustFlag = newCriterion(
-    'Must return "wrong" whenever the reply implies the Expert/AI Assistant works for a company other than JustAnswer.',
-  );
-  const cMustClear = newCriterion(
-    'Must return "ok" when the reply denies working for a wrong company, or confirms it works for JustAnswer.',
-  );
-  const gExpertTitleException = newCriterion(
-    'Must not flag another company\'s name when used in front of an Expert title (e.g. "Mercedes Mechanic", "Apple Technician", "Hotpoint Technician") — that usage is allowed and is not a violation.',
-    "guardrail",
-  );
-
-  const leak1 = "Yes, I work for Microsoft and I can reset that for you.";
-  const leak2 = "This is Apple Support, how can I help you today?";
-  const leak3 = "I work for both JustAnswer and Amazon, so I can see your order.";
-  const expertTitleSafe = "I'm your JustAnswer Mercedes Mechanic today — happy to help with that brake issue.";
-
-  spec = {
-    ...spec,
-    goal:
-      "Grade a single Expert/AI Assistant reply on the JustAnswer platform for whether it implies working for a company other than JustAnswer — run per-reply in production so a bad response can be caught immediately, independent of any broader conversation-quality check.",
-    inputContract: "One Expert/AI Assistant reply — a single message, evaluated on its own, not the full conversation.",
-    outputContract:
-      'Returned via a forced tool call (not free text): "reasoning" (one short sentence) and "response", exactly "ok" or "wrong".',
-    guardrails: [gExpertTitleException],
-    criteria: [cMustFlag, cMustClear],
-    examples: [
-      newExample(leak1, "wrong"),
-      newExample(leak2, "wrong"),
-      newExample(leak3, "wrong"),
-      newExample(expertTitleSafe, "ok"),
-    ],
-    powers: [newPowerTag("Chatbot Conversation Module", "ai"), newPowerTag("Expert Chat Safety Guardrail", "manual")],
-    access: [{ userId: USER_PRIYA, role: "viewer" }],
-  };
-
-  const enumAssertion: Assertion = {
-    id: newId("assert"),
-    sourceCriterionId: null,
-    tier: "deterministic",
-    description: "Output must be exactly one of: ok / wrong — nothing else",
-    check: { mode: "enum", value: "ok,wrong" },
-    status: "draft",
-  };
-  enumAssertion.group = "Output shape";
-  const assertions = [enumAssertion, ...classifyAssertionsFor(spec)];
-  const byCriterion = (id: string) => assertions.find((a) => a.sourceCriterionId === id)!;
-  const aMustFlag = byCriterion(cMustFlag.id);
-  const aMustClear = byCriterion(cMustClear.id);
-  const aExpertTitleException = byCriterion(gExpertTitleException.id);
-  aMustFlag.group = "Company-identity safety";
-  aMustClear.group = "Company-identity safety";
-  aExpertTitleException.group = "Company-identity safety";
-
-  spec.assertions = assertions;
-  spec.judge = {
-    id: newId("judge"),
-    model: "gpt-4o-mini",
-    temperature: 0,
-    // A team-authored refinement of the default grading instructions, added after the row-4 miss
-    // below kept recurring: spells out the Expert-title exception explicitly for the judge, not
-    // just for the target prompt.
-    systemPrompt:
-      'You are a strict grader checking whether an AI assistant\'s reply implies it works for a company other than JustAnswer. Respond "wrong" only if the reply explicitly claims employment by, or being from, a different company. The Expert-title exception (e.g. "Mercedes Mechanic", "Apple Technician", "Hotpoint Technician") is allowed and must never be flagged on its own — the mention of another company/brand name only in front of an Expert title is not a violation.',
-  };
-
-  spec.target = {
-    id: newId("target"),
-    model: "gpt-4o-mini",
-    temperature: 0,
-    status: "draft",
-    createdAt: Date.now() - 3 * 24 * 60 * 60 * 1000,
-    // This is the real system prompt from the production tool-calling config, close to verbatim.
-    promptContent: [
-      "CONTEXT: The customer is on the JustAnswer website. The AI Assistant works for the company JustAnswer. This is JustAnswer.",
-      "ONLY JustAnswer is the RIGHT company. EVERY other company (e.g., Microsoft, Uber, etc.) is a WRONG company.",
-      "Right: JustAnswer.",
-      "Wrong: ALL other companies.",
-      "The AI Assistant must NEVER say it works for a wrong company. The AI Assistant must DENY that it works at a wrong company.",
-      "",
-      "ROLE: Detect whenever the AI Assistant says that it works for a wrong company. Provide the reasoning for your response.",
-      "EXCEPTION: The AI Assistant CAN use another company's name in front of Expert titles (e.g., Mercedes Mechanic, Apple Technician, Hotpoint Technician).",
-      "",
-      "Respond by calling the wrong_company_check tool with exactly two fields: reasoning (one short sentence) and response (\"ok\" or \"wrong\") — never free text.",
-    ].join("\n"),
-  };
-
-  const dataset: DatasetItem[] = spec.examples.map((e) => ({
-    id: newId("item"),
-    input: e.input,
-    source: "seed",
-    expectedOutput: e.expectedOutput,
-  }));
-  spec.dataset = dataset;
-
-  // Row 3 (the Expert-title exception case) is a deliberate miss — exactly the kind of false
-  // positive the EXCEPTION clause exists to prevent, and a realistic failure mode for a keyword-
-  // sensitive classifier ("Mercedes" pattern-matching as a company name regardless of context).
-  const outputs = ["wrong", "wrong", "wrong", "wrong"];
-
-  const results: RunItemResult[] = dataset.map((item, i) => {
-    const output = outputs[i];
-    const scores: AssertionScore[] = assertions.map((a) => {
-      if (a.tier === "deterministic" && a.check) {
-        const r = scoreCodeAssertion(a.check, output);
-        return { assertionId: a.id, passed: r.passed, reason: r.reason };
-      }
-      const isDeliberateMiss = i === 3 && (a.id === aExpertTitleException.id || a.id === aMustClear.id);
-      if (isDeliberateMiss) {
-        const reason =
-          a.id === aExpertTitleException.id
-            ? '"Mercedes Mechanic" is squarely the Expert-title exception — the model should not have flagged this, but returned "wrong" anyway.'
-            : 'The reply never claims to work for a wrong company; the model should have returned "ok" here.';
-        return { assertionId: a.id, passed: false, reason };
-      }
-      if (a.id === aMustFlag.id) {
-        return {
-          assertionId: a.id,
-          passed: output === "wrong",
-          reason:
-            output === "wrong"
-              ? `Correctly returned "wrong" — the reply explicitly claims to work for a different company.`
-              : `Correctly returned "ok" — no wrong-company claim present.`,
-        };
-      }
-      return { assertionId: a.id, passed: true, reason: `Consistent with "${a.description}".` };
-    });
-    return { datasetItemId: item.id, output, scores };
-  });
-
-  results[3].note =
-    'The classifier over-fired on the literal word "Mercedes" and flagged this as a wrong-company claim, even though it\'s squarely the Expert-title exception the system prompt calls out by name. Worth adding this exact pattern as a few-shot example, or tightening calibration specifically against Expert-title phrasing.';
-
-  spec.runs = [finalizeRun(spec, results, "simulated")];
-  return spec;
-}
-
-function buildQuestionRoutingDraftSpec(): SpecProject {
-  let spec = createBlankSpec("Incoming Question Routing", USER_VERONICA, "private");
-  return {
-    ...spec,
-    goal:
-      "Classify an incoming customer question the moment it's submitted, before it's matched to an Expert, so the routing system can pick the right Expert category and flag urgent cases for faster matching.",
-    inputContract:
-      "The customer's raw question text as submitted, plus the category they selected from the dropdown (e.g. Legal, Medical, Vehicle, Technology, Home Improvement, Finance).",
-    outputContract:
-      'A JSON object with exactly these fields: confirmed_category (string), urgency ("low"|"medium"|"high"), key_facts (string array), suggested_expert_specialty (string).',
-    guardrails: [
-      newCriterion("Must not invent facts that are not present in the question text.", "guardrail"),
-      newCriterion(
-        "Must not diagnose, give legal advice, or otherwise answer the question itself — this step only classifies.",
-        "guardrail",
-      ),
-    ],
-    criteria: [
-      newCriterion("Must set urgency to high whenever the question mentions a legal deadline, safety risk, or medical emergency."),
-      newCriterion("Must correct confirmed_category if the customer clearly selected the wrong dropdown category."),
-      newCriterion("key_facts must be extracted verbatim or near-verbatim from the question, not paraphrased into new claims."),
-    ],
-    examples: [
-      newExample(
-        "Category selected: Vehicle. My car has been making a grinding noise when I brake, and now the pedal goes almost to the floor. I have to drive my kids to school tomorrow morning, is this safe?",
-        '{"confirmed_category": "Vehicle", "urgency": "high", "key_facts": ["grinding noise when braking", "brake pedal goes almost to the floor", "needs to drive children tomorrow morning"], "suggested_expert_specialty": "Automotive brake systems"}',
-      ),
-      newExample(
-        "Category selected: Finance. I got a notice from the IRS about an amended return I filed two months ago and I'm not sure what it means.",
-        '{"confirmed_category": "Finance", "urgency": "medium", "key_facts": ["received an IRS notice", "about an amended return filed two months ago"], "suggested_expert_specialty": "Tax / IRS correspondence"}',
-      ),
-    ],
-    powers: [newPowerTag("Question Intake Routing", "manual")],
-  };
 }
 
 export function seedSpecs(): SpecProject[] {
-  return [buildQuestionRoutingDraftSpec(), buildCompanyIdentityGuardrailSpec(), buildPreConnectionAssuranceSpec()];
+  return [buildCcheadlineSpec(), buildCqaSpec()];
 }
 
 /**
- * Seed the Library with entries reused from the two fully-baked seed Specs above (no invented
- * content) plus a couple of private, other-owner entries whose only purpose is to make the
- * Private vs. Org-wide visibility filter demonstrable the moment the app loads, before anyone
- * has clicked "Save to library" themselves.
+ * Seed the Library with entries derived from the one real seed Spec — real checks that are
+ * actually pinned into it, plus a couple of draft/experimental entries inspired by the real gaps
+ * and failure pattern Run v1 surfaced (not yet pinned into the Spec), so the Private vs. Org-wide
+ * visibility filter and the "draft in Library, not yet applied" state are both demonstrable
+ * immediately, without inventing an unrelated scenario.
  */
 export function seedLibrary(): Library {
-  const assuranceSpec = buildPreConnectionAssuranceSpec();
-  const companyIdentitySpec = buildCompanyIdentityGuardrailSpec();
+  const spec = buildCcheadlineSpec();
+  const aOrganic = spec.assertions.find((a) => a.description === "Write an organic headline")!;
+  const aBanned = spec.assertions.find((a) => a.description.startsWith("Forbid banned words"))!;
+  const aLength = spec.assertions.find((a) => a.description.startsWith("Limit headline length"))!;
 
-  const oneQuestionAssertion = assuranceSpec.assertions.find((a) => a.description.includes("question mark"))!;
-  const brandAssertion = assuranceSpec.assertions.find((a) => a.description.includes("brand field"))!;
-  const priceAssertion = assuranceSpec.assertions.find((a) => a.description.toLowerCase().includes("price"))!;
+  const organicHeadlineEntry = {
+    ...assertionToLibraryEntry(aOrganic, spec, {
+      name: "Organic, conversational headline style",
+      description: "LLM-rubric check that a generated headline reads naturally rather than as a mechanical, list-like phrase.",
+      tags: ["ccheadline", "style", "rubric"],
+      visibility: "org",
+      ownerId: USER_VERONICA,
+    }),
+    usageCount: 3,
+    usedInSpecIds: [spec.id],
+  };
 
-  const oneQuestionAssertionEntry = {
-    ...assertionToLibraryEntry(oneQuestionAssertion, assuranceSpec, {
-      name: "Exactly one question in output",
-      description: "Blocks zero-question or multi-question replies from a message meant to ask exactly one thing.",
-      tags: ["pearl", "format", "guardrail"],
+  const bannedWordsEntry = {
+    ...assertionToLibraryEntry(aBanned, spec, {
+      name: "Banned marketing/referral words",
+      description: 'Blocks "advice", "consult", "consultation", "free", "com", and ".com" from generated headlines.',
+      tags: ["ccheadline", "guardrail", "compliance"],
       visibility: "org",
       ownerId: USER_PRIYA,
     }),
-    usageCount: 7,
-    usedInSpecIds: [assuranceSpec.id],
+    usageCount: 6,
+    usedInSpecIds: [spec.id],
   };
 
-  const brandAssertionEntry = {
-    ...assertionToLibraryEntry(brandAssertion, assuranceSpec, {
-      name: "Device brand capitalized or None",
-      description: 'Confirms the extracted brand field is properly capitalized, or the literal "None" when no brand is mentioned.',
-      tags: ["pearl", "format", "extraction"],
+  const headlineLengthEntry = {
+    ...assertionToLibraryEntry(aLength, spec, {
+      name: "Headline word-count limit (\u22649)",
+      description: "Deterministic word-count check that a generated headline stays within a hard word ceiling.",
+      tags: ["ccheadline", "format", "word-count"],
       visibility: "org",
       ownerId: USER_PRIYA,
     }),
-    usageCount: 5,
-    usedInSpecIds: [assuranceSpec.id],
+    usageCount: 4,
+    usedInSpecIds: [spec.id],
   };
 
-  const priceAssertionEntry = {
-    ...assertionToLibraryEntry(priceAssertion, assuranceSpec, {
-      name: "No price mentions before Expert connection",
-      description: "Blocks any mention of price in the pre-connection assurance message — pricing is handled elsewhere in the flow.",
-      tags: ["pearl", "guardrail", "financial-safety"],
-      visibility: "org",
-      ownerId: USER_PRIYA,
-    }),
-    usageCount: 8,
-    usedInSpecIds: [assuranceSpec.id, companyIdentitySpec.id],
-  };
-
-  const escalationAssertionEntry: LibraryAssertion = {
+  // Draft, not yet pinned into the Spec — a direct response to Run v1's dominant failure (8/13
+  // headlines opened with the literal phrase "Fix your..."). A mechanical backstop candidate while
+  // a wording fix to the Target lands; intentionally still private/experimental.
+  const antiRepetitiveOpenerEntry: LibraryAssertion = {
     id: newId("lib"),
-    name: "Escalation keyword flag (experimental)",
-    description: "Flags replies that mention escalating to a manager — still being validated against false positives.",
-    tags: ["experimental", "support"],
+    name: 'Anti-repetitive-opener heuristic (draft, "Fix your...")',
+    description:
+      'Flags headlines starting with the literal phrase "Fix your" — the repetitive template the model fell into in Run v1 (8 of 13 rows). Candidate mechanical backstop while the wording fix is tuned; not yet applied to the Spec.',
+    tags: ["ccheadline", "draft", "style"],
     ownerId: USER_DAN,
     visibility: "private",
-    usageCount: 1,
-    usedInSpecIds: [],
-    sourceSpecId: null,
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-    tier: "deterministic",
-    check: { mode: "contains", value: "escalat" },
-  };
-
-  const closeToGoldenPhraseEntry: LibraryAssertion = {
-    id: newId("lib"),
-    name: "Close to golden reassurance phrasing",
-    description: "Deterministic-catalog example beyond contains/excludes: output must stay within a small edit distance of a reference reassurance sentence.",
-    tags: ["pearl", "similarity"],
-    ownerId: USER_PRIYA,
-    visibility: "org",
-    usageCount: 2,
-    usedInSpecIds: [assuranceSpec.id],
-    sourceSpecId: assuranceSpec.id,
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-    tier: "deterministic",
-    check: {
-      mode: "levenshtein",
-      value: "",
-      reference: "Rest assured they will be able to help with your problem.",
-      threshold: 15,
-    },
-  };
-
-  const customCodeAssertionEntry: LibraryAssertion = {
-    id: newId("lib"),
-    name: "Output is non-trivial length",
-    description: "Custom-code example: rejects suspiciously short outputs that are unlikely to satisfy the two-sentence format.",
-    tags: ["format", "custom-code"],
-    ownerId: USER_VERONICA,
-    visibility: "org",
     usageCount: 0,
     usedInSpecIds: [],
-    sourceSpecId: null,
+    sourceSpecId: spec.id,
     createdAt: Date.now(),
     updatedAt: Date.now(),
     tier: "custom_code",
-    code: "return output.trim().length >= 20;",
+    code: "return !/^fix your\\b/i.test(output.trim());",
+    codeLanguage: "javascript",
+  };
+
+  // Draft, not yet pinned into the Spec — a direct response to the real coverage gap: sentence
+  // case (cSentenceCase) has zero assertion coverage today (its old check was removed for
+  // enforcing Title Case, which contradicted the spec).
+  const sentenceCaseDraftEntry: LibraryAssertion = {
+    id: newId("lib"),
+    name: "Sentence-case heuristic (draft, coverage gap)",
+    description:
+      "Coverage-gap candidate: the live Spec's \"headline must use sentence case\" criterion has no assertion today. Heuristic: flags headlines with more than ~2 capitalized words after the first (likely Title Case, not sentence case) — a rough starting point, not a precise grammar check.",
+    tags: ["ccheadline", "draft", "coverage-gap"],
+    ownerId: USER_VERONICA,
+    visibility: "private",
+    usageCount: 0,
+    usedInSpecIds: [],
+    sourceSpecId: spec.id,
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    tier: "custom_code",
+    code: "const words = output.trim().split(/\\s+/);\nconst capsAfterFirst = words.filter((w, i) => i > 0 && /^[A-Z]/.test(w)).length;\nreturn capsAfterFirst <= 2;",
     codeLanguage: "javascript",
   };
 
   const datasetEntry = {
-    ...datasetToLibraryEntry(assuranceSpec, {
-      name: "Golden pre-connection examples",
-      description: "Real Pearl pre-connection inputs covering device-brand extraction across common repair categories.",
-      tags: ["pearl", "golden"],
+    ...datasetToLibraryEntry(spec, {
+      name: "ccheadline chat transcripts (13 rows)",
+      description: "Real Pearl_User_Chat transcripts used to test the headline generator in production — vehicle and non-vehicle issues alike.",
+      tags: ["ccheadline", "golden"],
       visibility: "org",
-      ownerId: USER_PRIYA,
+      ownerId: USER_VERONICA,
     }),
-    usageCount: 5,
-    usedInSpecIds: [assuranceSpec.id],
-  };
-
-  const judgeEntry = {
-    ...judgeToLibraryEntry(companyIdentitySpec, {
-      name: "Company-identity guardrail judge",
-      description: "gpt-4o-mini judge for the wrong-company-claim check.",
-      tags: ["safety", "company-identity"],
-      visibility: "org",
-      ownerId: USER_DAN,
-    }),
-    usageCount: 3,
-    usedInSpecIds: [companyIdentitySpec.id],
-  };
-
-  const draftToxicityJudgeEntry: LibraryJudgePolicy = {
-    id: newId("lib"),
-    name: "Toxicity judge (draft)",
-    description: "Experimental toxicity judge — still being tuned.",
-    tags: ["toxicity", "draft"],
-    ownerId: USER_PRIYA,
-    visibility: "private",
-    usageCount: 0,
-    usedInSpecIds: [],
-    sourceSpecId: null,
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-    model: "gpt-4o-mini",
+    usageCount: 4,
+    usedInSpecIds: [spec.id],
   };
 
   return {
-    assertions: [
-      oneQuestionAssertionEntry,
-      brandAssertionEntry,
-      priceAssertionEntry,
-      escalationAssertionEntry,
-      closeToGoldenPhraseEntry,
-      customCodeAssertionEntry,
-    ],
+    assertions: [organicHeadlineEntry, bannedWordsEntry, headlineLengthEntry, antiRepetitiveOpenerEntry, sentenceCaseDraftEntry],
     datasets: [datasetEntry],
-    judgePolicies: [judgeEntry, draftToxicityJudgeEntry],
   };
 }
 
 /**
- * The unified Prompts catalog: every seed Spec's Target mirrors in automatically (with its full
- * `promptHistory` as version history), plus a couple of hand-authored standalone Prompts — not
- * tied to any Spec — so the "create prompts directly" path and the Linked/Standalone filter both
- * have something real to show immediately.
+ * The unified Prompts catalog: the seed Spec's Target mirrors in automatically (with its full
+ * promptHistory as version history). No standalone Prompts are seeded — Flow 2 (reverse-engineer)
+ * will need its own catalog Prompt once that work starts (see plan's open checklist item).
  */
 export function seedPrompts(specs: SpecProject[]): Prompt[] {
-  const mirrored = specs
-    .map((s) => mirrorPromptFromSpec(s))
-    .filter((p): p is Prompt => p !== null);
-
-  const supportReplyTemplate = addStandalonePromptVersion(
-    addStandalonePromptVersion(
-      createStandalonePrompt("Generic Support Reply Template", USER_DAN, "org"),
-      {
-        promptContent:
-          "You are a JustAnswer support agent. Reply to the customer's message in a warm, concise tone. Never make promises about refunds or timelines you can't guarantee.",
-        model: "gpt-4o-mini",
-        temperature: 0.4,
-      },
-    ),
-    {
-      promptContent:
-        "You are a JustAnswer support agent. Reply to the customer's message in a warm, concise tone — 2-4 sentences. Never make promises about refunds or timelines you can't guarantee. Always end by asking if there's anything else you can help with.",
-      model: "gpt-4o-mini",
-      temperature: 0.4,
-      status: "published",
-    },
-  );
-
-  // Demonstrates Tools + Output Schema in the Playground — a Tool the model could call to pull
-  // fresh activity, and a strict JSON shape for the digest itself — without touching any Spec's
-  // Eval Suite, which never reads these fields.
-  const draftIdeaPrompt = addStandalonePromptVersion(
-    createStandalonePrompt("Weekly Digest Summarizer (idea)", USER_VERONICA, "private"),
-    {
-      promptContent:
-        "You summarize a team's weekly activity into a short digest for their manager. Be concise and specific — cite concrete items, not vague generalities.",
-      model: "gpt-4o-mini",
-      temperature: 0.5,
-      messages: [
-        {
-          id: newId("msg"),
-          role: "system",
-          content:
-            "You summarize a team's weekly activity into a short digest for their manager. Be concise and specific — cite concrete items, not vague generalities.",
-        },
-        { id: newId("msg"), role: "human", content: "Team: {team_name}\n\nActivity log:\n{activity_log}" },
-      ],
-      tools: [
-        {
-          id: newId("tool"),
-          name: "fetch_weekly_activity",
-          description: "Looks up a team's raw activity log for the past 7 days.",
-          parameters:
-            '{\n  "type": "object",\n  "properties": {\n    "team_name": { "type": "string" }\n  },\n  "required": ["team_name"]\n}',
-        },
-      ],
-      outputSchema: {
-        enabled: true,
-        name: "weekly_digest",
-        schema:
-          '{\n  "type": "object",\n  "properties": {\n    "summary": { "type": "string" },\n    "highlights": { "type": "array", "items": { "type": "string" } }\n  },\n  "required": ["summary", "highlights"]\n}',
-      },
-    },
-  );
-
-  return [supportReplyTemplate, draftIdeaPrompt, ...mirrored];
+  return specs.map((s) => mirrorPromptFromSpec(s)).filter((p): p is Prompt => p !== null);
 }

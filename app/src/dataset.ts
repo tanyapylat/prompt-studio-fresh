@@ -1,4 +1,4 @@
-import type { DatasetItem, DatasetItemSource, PromptMessage } from "./types";
+import type { DatasetItem, DatasetItemSource, LibraryDataset, PromptMessage } from "./types";
 import { extractVariableNames } from "./promptTemplate";
 import { newId } from "./utils/id";
 
@@ -11,6 +11,18 @@ import { newId } from "./utils/id";
 export function datasetVariableNames(messages?: PromptMessage[] | null): string[] {
   const names = messages && messages.length > 0 ? extractVariableNames(messages) : [];
   return names.length > 0 ? names : ["input"];
+}
+
+/**
+ * Field/variable names for a standalone library Dataset, which has no Target/prompt to derive
+ * them from. Prefers the names chosen at creation (`variableNames`); falls back to whatever keys
+ * the first row actually has, for datasets saved from a Spec before this field existed.
+ */
+export function libraryDatasetVariableNames(entry: Pick<LibraryDataset, "variableNames" | "items">): string[] {
+  if (entry.variableNames && entry.variableNames.length > 0) return entry.variableNames;
+  const first = entry.items[0];
+  if (first?.variables && Object.keys(first.variables).length > 0) return Object.keys(first.variables);
+  return ["input"];
 }
 
 /** Every value for `names` on one row, falling back to the legacy `input` field for `"input"`. */
@@ -39,12 +51,15 @@ export function buildDatasetItem(
   expectedOutput?: string,
 ): DatasetItem {
   const input = values[primaryVariableName(names)] ?? "";
+  const now = Date.now();
   return {
     id: newId("item"),
     input,
     source,
     expectedOutput: expectedOutput?.trim() ? expectedOutput.trim() : undefined,
     variables: { ...values },
+    createdAt: now,
+    updatedAt: now,
   };
 }
 
@@ -52,7 +67,22 @@ export function buildDatasetItem(
 export function withUpdatedVariable(item: DatasetItem, names: string[], name: string, value: string): DatasetItem {
   const values = { ...resolveDatasetItemValues(item, names), [name]: value };
   const primary = primaryVariableName(names);
-  return { ...item, input: values[primary] ?? item.input, variables: values };
+  return { ...item, input: values[primary] ?? item.input, variables: values, updatedAt: Date.now() };
+}
+
+/** Returns a copy of `item` with every variable replaced at once (e.g. from the panel's JSON editor). */
+export function withUpdatedVariables(item: DatasetItem, names: string[], values: Record<string, string>): DatasetItem {
+  const primary = primaryVariableName(names);
+  return { ...item, input: values[primary] ?? item.input, variables: { ...values }, updatedAt: Date.now() };
+}
+
+/** Returns a copy of `item` with its reference/expected output replaced. */
+export function withUpdatedExpectedOutput(item: DatasetItem, expectedOutput: string): DatasetItem {
+  return {
+    ...item,
+    expectedOutput: expectedOutput.trim() ? expectedOutput : undefined,
+    updatedAt: Date.now(),
+  };
 }
 
 /** One-line, human-readable summary of a row — every variable when there's more than one, else just the value. */
@@ -70,4 +100,37 @@ export function pickRandomIds(ids: string[], count: number): string[] {
     [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
   }
   return shuffled.slice(0, Math.max(0, Math.min(count, shuffled.length)));
+}
+
+/**
+ * One-line preview of a row's inputs for a compact table cell — every variable inlined as
+ * `name: value` (matching `datasetItemLabel`) when there's more than one, else just the raw value.
+ * Newlines are collapsed so long, multi-line pasted text doesn't blow out row height in compact mode.
+ */
+export function datasetItemInputsPreview(item: DatasetItem, names: string[]): string {
+  return datasetItemLabel(item, names).replace(/\s+/g, " ").trim();
+}
+
+/** Pretty-printed JSON of every variable on this row — the "JSON" side of the Fields/JSON toggle. */
+export function stringifyVariables(item: DatasetItem, names: string[]): string {
+  return JSON.stringify(resolveDatasetItemValues(item, names), null, 2);
+}
+
+/**
+ * Parses the JSON text from the panel's JSON editor back into a flat name→string values map.
+ * Non-string values are stringified rather than rejected, so pasting numbers/booleans/nested
+ * JSON still round-trips instead of hard-erroring — "something else" formats degrade gracefully
+ * rather than being blocked outright. Throws only when the text isn't valid JSON or isn't an object.
+ */
+export function parseVariablesJson(json: string, names: string[]): Record<string, string> {
+  const parsed = JSON.parse(json);
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+    throw new Error("Expected a JSON object of variable name → value.");
+  }
+  const values: Record<string, string> = {};
+  for (const name of names) {
+    const raw = (parsed as Record<string, unknown>)[name];
+    values[name] = raw === undefined || raw === null ? "" : typeof raw === "string" ? raw : JSON.stringify(raw);
+  }
+  return values;
 }

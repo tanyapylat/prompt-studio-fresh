@@ -1,43 +1,64 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  ArrowDown,
+  ArrowUp,
   Braces,
   ChevronDown,
   ChevronRight,
+  Clock3,
+  Code2,
+  DollarSign,
   History,
   Loader2,
+  Maximize2,
   Paperclip,
   Play,
   Plus,
   Save,
+  Settings2,
   Trash2,
   Undo2,
   Wrench,
-  Zap,
-  ZapOff,
 } from "lucide-react";
 import { useStore } from "../../store";
 import { activePromptVersion } from "../../promptFactory";
-import { checkApiHealth, runPlaygroundRemote, type PlaygroundChatMessage, type PlaygroundToolCall } from "../../api";
 import {
+  runPlaygroundRemote,
+  type PlaygroundChatMessage,
+  type PlaygroundSettings as PlaygroundSettingsRequest,
+  type PlaygroundToolCall,
+  type PlaygroundUsage,
+} from "../../api";
+import {
+  ROLE_TO_API,
   defaultMessages,
   defaultOutputSchema,
+  defaultPromptSettings,
   emptyTool,
   extractVariableNames,
   flattenSystemContent,
   substituteVariables,
 } from "../../promptTemplate";
-import type { Prompt, PromptDraft, PromptMessage, PromptOutputSchema, PromptRole, PromptTool } from "../../types";
+import type {
+  Prompt,
+  PromptDraft,
+  PromptMessage,
+  PromptOutputSchema,
+  PromptRole,
+  PromptSettings,
+  PromptTool,
+} from "../../types";
 import { newId } from "../../utils/id";
-import { AutoGrowTextArea, Badge, Button, TextInput } from "../ui";
+import { AutoGrowTextarea } from "@/components/ui/auto-grow-textarea";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogBody, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { RawPromptModal } from "./RawPromptModal";
 
 export const MODELS = ["gpt-4o-mini", "gpt-4o", "claude-3-7-sonnet", "gemini-1.5-pro"];
 
 const ROLE_LABEL: Record<PromptRole, string> = { system: "System", human: "Human", ai: "AI" };
-const ROLE_TO_API: Record<PromptRole, "system" | "user" | "assistant"> = {
-  system: "system",
-  human: "user",
-  ai: "assistant",
-};
 
 /** How long editing pauses before the working copy is persisted onto the Prompt. */
 const DRAFT_PERSIST_MS = 400;
@@ -48,6 +69,7 @@ interface Draft {
   temperature: number;
   tools: PromptTool[];
   outputSchema: PromptOutputSchema;
+  settings: PromptSettings;
 }
 
 interface VersionLike {
@@ -57,6 +79,7 @@ interface VersionLike {
   messages?: PromptMessage[];
   tools?: PromptTool[];
   outputSchema?: PromptOutputSchema;
+  settings?: PromptSettings;
 }
 
 function draftFromVersion(v: VersionLike): Draft {
@@ -66,6 +89,7 @@ function draftFromVersion(v: VersionLike): Draft {
     temperature: v.temperature,
     tools: v.tools ?? [],
     outputSchema: v.outputSchema ?? defaultOutputSchema(),
+    settings: v.settings ?? defaultPromptSettings(),
   };
 }
 
@@ -84,6 +108,23 @@ function sameOutputSchema(a: PromptOutputSchema, b: PromptOutputSchema): boolean
   return a.enabled === b.enabled && a.name === b.name && a.schema === b.schema;
 }
 
+function sameStringArray(a: string[], b: string[]): boolean {
+  return a.length === b.length && a.every((v, i) => v === b[i]);
+}
+
+function sameSettings(a: PromptSettings, b: PromptSettings): boolean {
+  return (
+    a.maxTokens === b.maxTokens &&
+    a.topP === b.topP &&
+    a.frequencyPenalty === b.frequencyPenalty &&
+    a.presencePenalty === b.presencePenalty &&
+    a.seed === b.seed &&
+    a.timeoutMs === b.timeoutMs &&
+    (a.logitBias ?? "") === (b.logitBias ?? "") &&
+    sameStringArray(a.stopSequences ?? [], b.stopSequences ?? [])
+  );
+}
+
 /** Structural comparison (ignoring message/tool ids), since the draft can add/remove/reorder rows. */
 function sameContent(a: Draft, b: VersionLike): boolean {
   const other = draftFromVersion(b);
@@ -92,7 +133,8 @@ function sameContent(a: Draft, b: VersionLike): boolean {
     a.temperature === other.temperature &&
     sameMessages(a.messages, other.messages) &&
     sameTools(a.tools, other.tools) &&
-    sameOutputSchema(a.outputSchema, other.outputSchema)
+    sameOutputSchema(a.outputSchema, other.outputSchema) &&
+    sameSettings(a.settings, other.settings)
   );
 }
 
@@ -175,19 +217,20 @@ export function PromptPlaygroundBody({
 
   const [viewingVersionId, setViewingVersionId] = useState(() => openingState(prompt, initialVersionId).versionId);
   const [draft, setDraft] = useState<Draft>(() => openingState(prompt, initialVersionId).draft);
-  const [hasApiKey, setHasApiKey] = useState<boolean | null>(null);
   const [collapsedMessageIds, setCollapsedMessageIds] = useState<Set<string>>(() => new Set());
   const [toolsExpanded, setToolsExpanded] = useState(false);
   const [schemaExpanded, setSchemaExpanded] = useState(false);
+  const [settingsExpanded, setSettingsExpanded] = useState(false);
+  const [expandedMessageId, setExpandedMessageId] = useState<string | null>(null);
+  const [showRaw, setShowRaw] = useState(false);
   const [variableValues, setVariableValues] = useState<Record<string, string>>({});
   const [testBusy, setTestBusy] = useState(false);
   const [testError, setTestError] = useState<string | null>(null);
   const [testOutput, setTestOutput] = useState<string | null>(null);
   const [testToolCalls, setTestToolCalls] = useState<PlaygroundToolCall[] | null>(null);
-
-  useEffect(() => {
-    checkApiHealth().then((h) => setHasApiKey(h.hasApiKey));
-  }, []);
+  const [testUsage, setTestUsage] = useState<PlaygroundUsage | null>(null);
+  const [testLatencyMs, setTestLatencyMs] = useState<number | null>(null);
+  const [testCostUsd, setTestCostUsd] = useState<number | null>(null);
 
   // Only edits made here are written back to the store, so merely opening an older version can
   // never wipe a draft the author left behind on a different one.
@@ -215,6 +258,9 @@ export function PromptPlaygroundBody({
     setTestOutput(null);
     setTestToolCalls(null);
     setTestError(null);
+    setTestUsage(null);
+    setTestLatencyMs(null);
+    setTestCostUsd(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [prompt.id, prompt.versions.length, initialVersionId]);
 
@@ -245,6 +291,7 @@ export function PromptPlaygroundBody({
         messages: draft.messages,
         tools: draft.tools,
         outputSchema: draft.outputSchema,
+        settings: draft.settings,
         baseVersionId: viewingVersion.id,
         updatedAt: Date.now(),
       });
@@ -280,6 +327,7 @@ export function PromptPlaygroundBody({
       messages: draft.messages,
       tools: draft.tools,
       outputSchema: draft.outputSchema,
+      settings: draft.settings,
     });
   }
 
@@ -293,6 +341,15 @@ export function PromptPlaygroundBody({
     if (draft.messages.length <= 1) return;
     editDraft({ messages: draft.messages.filter((m) => m.id !== id) });
   }
+  /** Swaps the message at `id` with its neighbor one slot toward `direction` — a no-op at either end. */
+  function moveMessage(id: string, direction: -1 | 1) {
+    const index = draft.messages.findIndex((m) => m.id === id);
+    const targetIndex = index + direction;
+    if (index === -1 || targetIndex < 0 || targetIndex >= draft.messages.length) return;
+    const next = [...draft.messages];
+    [next[index], next[targetIndex]] = [next[targetIndex], next[index]];
+    editDraft({ messages: next });
+  }
   function toggleCollapsed(id: string) {
     setCollapsedMessageIds((prev) => {
       const next = new Set(prev);
@@ -300,6 +357,12 @@ export function PromptPlaygroundBody({
       else next.add(id);
       return next;
     });
+  }
+  function collapseAllMessages() {
+    setCollapsedMessageIds(new Set(draft.messages.map((m) => m.id)));
+  }
+  function expandAllMessages() {
+    setCollapsedMessageIds(new Set());
   }
 
   function addTool() {
@@ -315,6 +378,16 @@ export function PromptPlaygroundBody({
 
   function updateOutputSchema(patch: Partial<PromptOutputSchema>) {
     editDraft({ outputSchema: { ...draft.outputSchema, ...patch } });
+  }
+
+  function updateSettings(patch: Partial<PromptSettings>) {
+    editDraft({ settings: { ...draft.settings, ...patch } });
+  }
+  /** Number inputs round-trip through text, so an empty box means "unset" rather than 0. */
+  function numberOrUndefined(raw: string): number | undefined {
+    if (raw.trim() === "") return undefined;
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : undefined;
   }
 
   // Variables are derived live from the messages, and their test values persist across edits to
@@ -333,13 +406,17 @@ export function PromptPlaygroundBody({
 
   const toolsJsonValid = draft.tools.every((t) => isValidJson(t.parameters));
   const schemaJsonValid = !draft.outputSchema.enabled || isValidJson(draft.outputSchema.schema);
-  const canRun = toolsJsonValid && schemaJsonValid && hasContent;
+  const logitBiasJsonValid = !draft.settings.logitBias?.trim() || isValidJson(draft.settings.logitBias);
+  const canRun = toolsJsonValid && schemaJsonValid && logitBiasJsonValid && hasContent;
 
   async function handleRun() {
     setTestBusy(true);
     setTestError(null);
     setTestOutput(null);
     setTestToolCalls(null);
+    setTestUsage(null);
+    setTestLatencyMs(null);
+    setTestCostUsd(null);
     try {
       const messages: PlaygroundChatMessage[] = draft.messages
         .filter((m) => m.content.trim().length > 0)
@@ -358,15 +435,31 @@ export function PromptPlaygroundBody({
           ? { name: draft.outputSchema.name || "output", schema: JSON.parse(draft.outputSchema.schema) }
           : null;
 
+      const s = draft.settings;
+      const settings: PlaygroundSettingsRequest = {
+        maxTokens: s.maxTokens,
+        topP: s.topP,
+        frequencyPenalty: s.frequencyPenalty,
+        presencePenalty: s.presencePenalty,
+        seed: s.seed,
+        stopSequences: s.stopSequences && s.stopSequences.length > 0 ? s.stopSequences : undefined,
+        logitBias: s.logitBias?.trim() ? JSON.parse(s.logitBias) : undefined,
+        timeoutMs: s.timeoutMs,
+      };
+
       const result = await runPlaygroundRemote({
         messages,
         model: draft.model,
         temperature: draft.temperature,
         tools: tools.length > 0 ? tools : undefined,
         responseFormat,
+        settings,
       });
       setTestOutput(result.content);
       setTestToolCalls(result.toolCalls ?? null);
+      setTestUsage(result.usage);
+      setTestLatencyMs(result.latencyMs);
+      setTestCostUsd(result.costUsd);
     } catch (e) {
       setTestError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -387,24 +480,29 @@ export function PromptPlaygroundBody({
 
   return (
     <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-      <div className="space-y-4">
+      <div className="min-w-0 space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <label className="flex items-center gap-1.5 text-xs text-slate-600">
-            <History size={13} />
-            <select
-              value={viewingVersionId}
-              onChange={(e) => handleSelectVersion(e.target.value)}
-              className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-800 outline-none"
-            >
-              {sortedVersions.map((v) => (
-                <option key={v.id} value={v.id}>
-                  v{v.version} · {v.status}
-                  {v.id === prompt.activeVersionId ? " (current)" : ""}
-                  {isDirty && v.id === viewingVersionId ? " + unsaved edits" : ""}
-                </option>
-              ))}
-            </select>
-          </label>
+          <div className="flex items-center gap-2">
+            <label className="flex items-center gap-1.5 text-xs text-slate-600">
+              <History size={13} />
+              <select
+                value={viewingVersionId}
+                onChange={(e) => handleSelectVersion(e.target.value)}
+                className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-800 outline-none"
+              >
+                {sortedVersions.map((v) => (
+                  <option key={v.id} value={v.id}>
+                    v{v.version} · {v.status}
+                    {v.id === prompt.activeVersionId ? " (current)" : ""}
+                    {isDirty && v.id === viewingVersionId ? " + unsaved edits" : ""}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <Button size="sm" onClick={() => setShowRaw(true)} title="View the raw prompt text and request JSON">
+              <Code2 size={13} /> Raw
+            </Button>
+          </div>
           <div className="flex items-center gap-2">
             {isDirty ? (
               <Badge tone="warning">Unsaved draft</Badge>
@@ -438,17 +536,50 @@ export function PromptPlaygroundBody({
         </div>
 
         <div className="space-y-2">
-          <label className="text-xs font-medium text-slate-500">Messages</label>
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-medium text-slate-500">Messages</label>
+            {draft.messages.length > 1 && (
+              <div className="flex items-center gap-2 text-[11px] text-slate-400">
+                <button type="button" onClick={expandAllMessages} className="hover:text-slate-700">
+                  Expand all
+                </button>
+                <span>·</span>
+                <button type="button" onClick={collapseAllMessages} className="hover:text-slate-700">
+                  Collapse all
+                </button>
+              </div>
+            )}
+          </div>
           <div className="space-y-2">
-            {draft.messages.map((message) => {
+            {draft.messages.map((message, index) => {
               const collapsed = collapsedMessageIds.has(message.id);
               return (
                 <div key={message.id} className="rounded-lg border border-slate-200 bg-slate-50 p-2">
                   <div className="flex items-center gap-1">
+                    <div className="flex shrink-0 flex-col">
+                      <button
+                        type="button"
+                        onClick={() => moveMessage(message.id, -1)}
+                        disabled={index === 0}
+                        title="Move up"
+                        className="rounded-sm p-0.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-20"
+                      >
+                        <ArrowUp size={11} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => moveMessage(message.id, 1)}
+                        disabled={index === draft.messages.length - 1}
+                        title="Move down"
+                        className="rounded-sm p-0.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-20"
+                      >
+                        <ArrowDown size={11} />
+                      </button>
+                    </div>
                     <select
                       value={message.role}
                       onChange={(e) => updateMessage(message.id, { role: e.target.value as PromptRole })}
-                      className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700 outline-none focus:border-sky-500"
+                      className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700 outline-none focus:border-ring"
                     >
                       {(Object.keys(ROLE_LABEL) as PromptRole[]).map((role) => (
                         <option key={role} value={role}>
@@ -461,6 +592,14 @@ export function PromptPlaygroundBody({
                       title="Insert a text file's contents"
                       onText={(text) => updateMessage(message.id, { content: text })}
                     />
+                    <button
+                      type="button"
+                      onClick={() => setExpandedMessageId(message.id)}
+                      title="Expand to full screen — handy for long messages"
+                      className="shrink-0 rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                    >
+                      <Maximize2 size={13} />
+                    </button>
                     <button
                       type="button"
                       onClick={() => removeMessage(message.id)}
@@ -480,7 +619,7 @@ export function PromptPlaygroundBody({
                     </button>
                   </div>
                   {!collapsed && (
-                    <AutoGrowTextArea
+                    <AutoGrowTextarea
                       value={message.content}
                       onChange={(e) => updateMessage(message.id, { content: e.target.value })}
                       placeholder={
@@ -490,6 +629,8 @@ export function PromptPlaygroundBody({
                             ? "e.g. {input}"
                             : "Example assistant reply"
                       }
+                      minHeight={58}
+                      maxHeight={420}
                       className="mt-1.5 font-mono text-xs leading-relaxed"
                     />
                   )}
@@ -501,6 +642,44 @@ export function PromptPlaygroundBody({
             <Plus size={13} /> Message
           </Button>
         </div>
+
+        {expandedMessageId &&
+          (() => {
+            const message = draft.messages.find((m) => m.id === expandedMessageId);
+            if (!message) return null;
+            return (
+              <Dialog open onOpenChange={(open) => !open && setExpandedMessageId(null)}>
+                <DialogContent width="lg">
+                  <DialogHeader>
+                    <DialogTitle>{`Edit ${ROLE_LABEL[message.role]} message`}</DialogTitle>
+                  </DialogHeader>
+                  <DialogBody>
+                    <textarea
+                      autoFocus
+                      value={message.content}
+                      onChange={(e) => updateMessage(message.id, { content: e.target.value })}
+                      placeholder={
+                        message.role === "system"
+                          ? "System instructions"
+                          : message.role === "human"
+                            ? "e.g. {input}"
+                            : "Example assistant reply"
+                      }
+                      className="h-[60vh] w-full resize-none rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 font-mono text-xs leading-relaxed text-slate-900 outline-none focus:border-ring"
+                    />
+                  </DialogBody>
+                </DialogContent>
+              </Dialog>
+            );
+          })()}
+
+        {showRaw && (
+          <RawPromptModal
+            source={draft}
+            title={`Raw prompt — v${viewingVersion.version}${isDirty ? " + unsaved edits" : ""}`}
+            onClose={() => setShowRaw(false)}
+          />
+        )}
 
         <div className="rounded-lg border border-slate-200">
           <button
@@ -523,7 +702,7 @@ export function PromptPlaygroundBody({
               {draft.tools.map((tool) => (
                 <div key={tool.id} className="space-y-1.5 rounded-lg border border-slate-200 bg-slate-50 p-2.5">
                   <div className="flex items-center gap-1.5">
-                    <TextInput
+                    <Input
                       value={tool.name}
                       onChange={(e) => updateTool(tool.id, { name: e.target.value })}
                       placeholder="tool_name"
@@ -538,7 +717,7 @@ export function PromptPlaygroundBody({
                       <Trash2 size={13} />
                     </button>
                   </div>
-                  <TextInput
+                  <Input
                     value={tool.description}
                     onChange={(e) => updateTool(tool.id, { description: e.target.value })}
                     placeholder="What does this tool do?"
@@ -550,7 +729,7 @@ export function PromptPlaygroundBody({
                     onChange={(e) => updateTool(tool.id, { parameters: e.target.value })}
                     className={`w-full resize-none rounded-lg border px-2.5 py-1.5 font-mono text-xs outline-none ${
                       isValidJson(tool.parameters)
-                        ? "border-slate-200 bg-white text-slate-800 focus:border-sky-500"
+                        ? "border-slate-200 bg-white text-slate-800 focus:border-ring"
                         : "border-rose-300 bg-rose-50 text-rose-800"
                     }`}
                   />
@@ -591,7 +770,7 @@ export function PromptPlaygroundBody({
               </label>
               {draft.outputSchema.enabled && (
                 <>
-                  <TextInput
+                  <Input
                     value={draft.outputSchema.name}
                     onChange={(e) => updateOutputSchema({ name: e.target.value })}
                     placeholder="schema name"
@@ -603,7 +782,7 @@ export function PromptPlaygroundBody({
                     onChange={(e) => updateOutputSchema({ schema: e.target.value })}
                     className={`w-full resize-none rounded-lg border px-2.5 py-1.5 font-mono text-xs outline-none ${
                       isValidJson(draft.outputSchema.schema)
-                        ? "border-slate-200 bg-white text-slate-800 focus:border-sky-500"
+                        ? "border-slate-200 bg-white text-slate-800 focus:border-ring"
                         : "border-rose-300 bg-rose-50 text-rose-800"
                     }`}
                   />
@@ -612,6 +791,131 @@ export function PromptPlaygroundBody({
                   )}
                 </>
               )}
+            </div>
+          )}
+        </div>
+
+        <div className="rounded-lg border border-slate-200">
+          <button
+            type="button"
+            onClick={() => setSettingsExpanded((v) => !v)}
+            className="flex w-full items-center justify-between px-3 py-2 text-left"
+          >
+            <span className="flex items-center gap-1.5 text-xs font-medium text-slate-700">
+              <Settings2 size={13} /> Advanced settings
+            </span>
+            {settingsExpanded ? (
+              <ChevronDown size={14} className="text-slate-400" />
+            ) : (
+              <ChevronRight size={14} className="text-slate-400" />
+            )}
+          </button>
+          {settingsExpanded && (
+            <div className="space-y-3 border-t border-slate-200 p-3">
+              <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+                <label className="text-[11px] text-slate-500">
+                  Max tokens
+                  <input
+                    type="number"
+                    min={1}
+                    value={draft.settings.maxTokens ?? ""}
+                    onChange={(e) => updateSettings({ maxTokens: numberOrUndefined(e.target.value) })}
+                    placeholder="model default"
+                    className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-800 outline-none focus:border-ring"
+                  />
+                </label>
+                <label className="text-[11px] text-slate-500">
+                  Top P
+                  <input
+                    type="number"
+                    min={0}
+                    max={1}
+                    step={0.05}
+                    value={draft.settings.topP ?? ""}
+                    onChange={(e) => updateSettings({ topP: numberOrUndefined(e.target.value) })}
+                    placeholder="1"
+                    className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-800 outline-none focus:border-ring"
+                  />
+                </label>
+                <label className="text-[11px] text-slate-500">
+                  Seed
+                  <input
+                    type="number"
+                    value={draft.settings.seed ?? ""}
+                    onChange={(e) => updateSettings({ seed: numberOrUndefined(e.target.value) })}
+                    placeholder="random"
+                    className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-800 outline-none focus:border-ring"
+                  />
+                </label>
+                <label className="text-[11px] text-slate-500">
+                  Frequency penalty
+                  <input
+                    type="number"
+                    min={-2}
+                    max={2}
+                    step={0.1}
+                    value={draft.settings.frequencyPenalty ?? ""}
+                    onChange={(e) => updateSettings({ frequencyPenalty: numberOrUndefined(e.target.value) })}
+                    placeholder="0"
+                    className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-800 outline-none focus:border-ring"
+                  />
+                </label>
+                <label className="text-[11px] text-slate-500">
+                  Presence penalty
+                  <input
+                    type="number"
+                    min={-2}
+                    max={2}
+                    step={0.1}
+                    value={draft.settings.presencePenalty ?? ""}
+                    onChange={(e) => updateSettings({ presencePenalty: numberOrUndefined(e.target.value) })}
+                    placeholder="0"
+                    className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-800 outline-none focus:border-ring"
+                  />
+                </label>
+                <label className="text-[11px] text-slate-500">
+                  Timeout (ms)
+                  <input
+                    type="number"
+                    min={0}
+                    value={draft.settings.timeoutMs ?? ""}
+                    onChange={(e) => updateSettings({ timeoutMs: numberOrUndefined(e.target.value) })}
+                    placeholder="none"
+                    className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-800 outline-none focus:border-ring"
+                  />
+                </label>
+              </div>
+              <label className="block text-[11px] text-slate-500">
+                Stop sequences (comma-separated)
+                <Input
+                  value={(draft.settings.stopSequences ?? []).join(", ")}
+                  onChange={(e) =>
+                    updateSettings({
+                      stopSequences: e.target.value
+                        .split(",")
+                        .map((s) => s.trim())
+                        .filter(Boolean),
+                    })
+                  }
+                  placeholder="e.g. \\n\\n, END"
+                  className="mt-1 text-xs"
+                />
+              </label>
+              <label className="block text-[11px] text-slate-500">
+                Logit bias — token id → bias (JSON)
+                <textarea
+                  rows={3}
+                  value={draft.settings.logitBias ?? ""}
+                  onChange={(e) => updateSettings({ logitBias: e.target.value })}
+                  placeholder={'{"50256": -100}'}
+                  className={`mt-1 w-full resize-none rounded-lg border px-2.5 py-1.5 font-mono text-xs outline-none ${
+                    logitBiasJsonValid
+                      ? "border-slate-200 bg-white text-slate-800 focus:border-ring"
+                      : "border-rose-300 bg-rose-50 text-rose-800"
+                  }`}
+                />
+              </label>
+              {!logitBiasJsonValid && <p className="text-[11px] text-rose-600">Invalid JSON.</p>}
             </div>
           )}
         </div>
@@ -628,7 +932,7 @@ export function PromptPlaygroundBody({
             <Button size="sm" onClick={handleDiscardDraft} disabled={!isDirty}>
               <Undo2 size={13} /> Discard draft
             </Button>
-            <Button variant="primary" size="sm" onClick={handleSave} disabled={!isDirty || !hasContent}>
+            <Button variant="default" size="sm" onClick={handleSave} disabled={!isDirty || !hasContent}>
               <Save size={13} /> Save as new version
             </Button>
           </div>
@@ -638,19 +942,6 @@ export function PromptPlaygroundBody({
       <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold text-slate-900">Try it</h3>
-          {hasApiKey === false && (
-            <span
-              className="inline-flex items-center gap-1 text-xs text-amber-600/80"
-              title="No OPENAI_API_KEY configured — using an offline simulation."
-            >
-              <ZapOff size={12} /> Simulated
-            </span>
-          )}
-          {hasApiKey === true && (
-            <span className="inline-flex items-center gap-1 text-xs text-emerald-600/80">
-              <Zap size={12} /> Live LLM
-            </span>
-          )}
         </div>
 
         <div className="space-y-2">
@@ -665,8 +956,8 @@ export function PromptPlaygroundBody({
               {variableNames.map((name) => (
                 <div key={name} className="flex items-start gap-1.5">
                   <div className="min-w-0 flex-1">
-                    <label className="mb-0.5 block font-mono text-[11px] text-sky-700">{`{${name}}`}</label>
-                    <AutoGrowTextArea
+                    <label className="mb-0.5 block font-mono text-[11px] text-primary">{`{${name}}`}</label>
+                    <AutoGrowTextarea
                       value={variableValues[name] ?? ""}
                       onChange={(e) => setVariableValues((v) => ({ ...v, [name]: e.target.value }))}
                       minHeight={36}
@@ -689,10 +980,27 @@ export function PromptPlaygroundBody({
           {testBusy ? <Loader2 size={13} className="animate-spin" /> : <Play size={13} />}
           {testBusy ? "Running" : "Run"}
         </Button>
-        {(!toolsJsonValid || !schemaJsonValid) && (
+        {(!toolsJsonValid || !schemaJsonValid || !logitBiasJsonValid) && (
           <p className="text-xs text-rose-600">Fix the invalid JSON above before running.</p>
         )}
         {testError && <p className="text-xs text-rose-600">{testError}</p>}
+
+        {testUsage && (
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600">
+            <span className="flex items-center gap-1" title="Estimated cost of this run">
+              <DollarSign size={12} className="text-slate-400" />
+              {testCostUsd !== null && testCostUsd < 0.01 ? `$${testCostUsd.toFixed(4)}` : `$${(testCostUsd ?? 0).toFixed(2)}`}
+            </span>
+            <span className="flex items-center gap-1" title="Round-trip latency">
+              <Clock3 size={12} className="text-slate-400" />
+              {testLatencyMs !== null ? `${testLatencyMs.toLocaleString()} ms` : "—"}
+            </span>
+            <span title="Prompt tokens in / completion tokens out">
+              {testUsage.totalTokens.toLocaleString()} tokens ({testUsage.promptTokens} in / {testUsage.completionTokens}{" "}
+              out)
+            </span>
+          </div>
+        )}
 
         {testToolCalls && testToolCalls.length > 0 && (
           <div className="space-y-2">
@@ -722,7 +1030,7 @@ export function PromptPlaygroundBody({
 
         {prompt.specId && (
           <p className="text-[11px] text-slate-400">
-            This is an ad-hoc single test — to run the full Eval suite for this Spec, use Run in the Spec's Workspace.
+            This is an ad-hoc single test — to run the full Eval suite against the Dataset, see below.
           </p>
         )}
       </div>

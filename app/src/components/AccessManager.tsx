@@ -3,7 +3,9 @@ import { Globe2, Lock, Trash2, UserPlus } from "lucide-react";
 import { useStore } from "../store";
 import type { LibraryVisibility, SpecProject, SpecRole } from "../types";
 import { canManageAccess, ROLE_LABEL } from "../permissions";
-import { Avatar, Badge, Button } from "./ui";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
 /**
  * Per-Spec role management: owner (implicit), plus explicit editor/viewer grants on top of the
@@ -18,6 +20,8 @@ export function AccessManager({ spec }: { spec: SpecProject }) {
   const [pickRole, setPickRole] = useState<SpecRole>("viewer");
 
   const grantable = users.filter((u) => u.id !== spec.ownerId && !spec.access.some((a) => a.userId === u.id));
+  // Defensive: an owner should never also appear as an explicit grant row, even if stale/bad data has one.
+  const grants = spec.access.filter((a) => a.userId !== spec.ownerId);
 
   function setVisibility(v: LibraryVisibility) {
     updateSpec(spec.id, (s) => ({ ...s, visibility: v, updatedAt: Date.now() }));
@@ -55,12 +59,12 @@ export function AccessManager({ spec }: { spec: SpecProject }) {
                 key={v}
                 onClick={() => setVisibility(v)}
                 className={`flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium transition-colors ${
-                  spec.visibility === v ? "bg-sky-600 text-white" : "text-slate-600 hover:text-slate-800"
+                  spec.visibility === v ? "bg-primary text-primary-foreground" : "text-slate-600 hover:text-slate-800"
                 }`}
               >
                 {v === "org" ? (
                   <>
-                    <Globe2 size={11} /> Org-wide
+                    <Globe2 size={11} /> Public
                   </>
                 ) : (
                   <>
@@ -74,7 +78,7 @@ export function AccessManager({ spec }: { spec: SpecProject }) {
           <Badge tone={spec.visibility === "org" ? "success" : "neutral"}>
             {spec.visibility === "org" ? (
               <>
-                <Globe2 size={11} /> Org-wide
+                <Globe2 size={11} /> Public
               </>
             ) : (
               <>
@@ -88,11 +92,14 @@ export function AccessManager({ spec }: { spec: SpecProject }) {
       <div className="space-y-1.5">
         <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5">
           <span className="flex items-center gap-1.5 text-xs text-slate-700">
-            <Avatar name={owner?.name ?? "Unknown"} initials={owner?.initials ?? "?"} /> {owner?.name ?? "Unknown"}
+            <Avatar title={owner?.name ?? "Unknown"}>
+              <AvatarFallback>{owner?.initials ?? "?"}</AvatarFallback>
+            </Avatar>{" "}
+            {owner?.name ?? "Unknown"}
           </span>
           <Badge tone="accent">Owner</Badge>
         </div>
-        {spec.access.map((grant) => {
+        {grants.map((grant) => {
           const u = users.find((x) => x.id === grant.userId);
           return (
             <div
@@ -100,7 +107,10 @@ export function AccessManager({ spec }: { spec: SpecProject }) {
               className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5"
             >
               <span className="flex items-center gap-1.5 text-xs text-slate-700">
-                <Avatar name={u?.name ?? "Unknown"} initials={u?.initials ?? "?"} /> {u?.name ?? "Unknown"}
+                <Avatar title={u?.name ?? "Unknown"}>
+                  <AvatarFallback>{u?.initials ?? "?"}</AvatarFallback>
+                </Avatar>{" "}
+                {u?.name ?? "Unknown"}
               </span>
               {isOwner ? (
                 <div className="flex items-center gap-1.5">
@@ -122,7 +132,7 @@ export function AccessManager({ spec }: { spec: SpecProject }) {
             </div>
           );
         })}
-        {spec.access.length === 0 && (
+        {grants.length === 0 && (
           <p className="px-0.5 text-[11px] text-slate-400">No individual grants yet — access follows the default above.</p>
         )}
       </div>

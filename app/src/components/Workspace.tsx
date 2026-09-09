@@ -2,35 +2,37 @@
 import clsx from "clsx";
 import {
   AlertTriangle,
+  Braces,
   ChevronLeft,
-  Loader2,
+  Maximize2,
   PanelLeftClose,
   PanelLeftOpen,
   Play,
   Rocket,
   Sparkles,
-  Zap,
-  ZapOff,
+  Square,
 } from "lucide-react";
 import { useStore } from "../store";
-import { useSetAssistantView } from "../assistantContext";
-import { generateFromSpec, rerun } from "../specFactory";
+import { useAssistantActions, useRequestedTab, useSetAssistantView } from "../assistantContext";
+import { getArtifactStaleness, isSpecPublished, rerun } from "../specFactory";
 import { publishSpec } from "../lifecycle";
+import type { GenerateArtifact } from "../types";
 import { computeCoverage } from "../coverage";
-import { checkApiHealth } from "../api";
 import { pickRandomIds } from "../dataset";
-import type { GenerateSelection } from "../types";
-import { Badge, Button } from "./ui";
-import { GenerateOptionsModal } from "./GenerateOptionsModal";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogBody, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { SpecPane } from "./panes/SpecPane";
+import { SpecJsonModal } from "./panes/SpecJsonModal";
 import { PromptPane } from "./panes/PromptPane";
 import { EvalPane } from "./panes/EvalPane";
 import { DatasetPane } from "./panes/DatasetPane";
 import { ResultsPane } from "./panes/ResultsPane";
 import { ReviewPane } from "./panes/ReviewPane";
+import { ObservabilityPane } from "./panes/ObservabilityPane";
 
-type Tab = "prompt" | "eval" | "dataset" | "results" | "review";
-type Busy = "generate" | "run" | "sample" | "publish" | null;
+type Tab = "prompt" | "eval" | "dataset" | "results" | "review" | "observability";
+type Busy = "sample" | "full" | "publish" | null;
 
 const DEFAULT_SPEC_WIDTH = 380;
 const MIN_SPEC_WIDTH = 280;
@@ -58,13 +60,18 @@ function saveSpecWidth(width: number) {
   }
 }
 
-const TABS: { id: Tab; label: string }[] = [
+const TABS: { id: Tab; label: string; planned?: boolean }[] = [
   { id: "prompt", label: "Prompt" },
   { id: "eval", label: "Eval" },
   { id: "dataset", label: "Dataset" },
   { id: "results", label: "Results" },
   { id: "review", label: "Review" },
+  { id: "observability", label: "Observability", planned: true },
 ];
+
+const ARTIFACTS: GenerateArtifact[] = ["prompt", "assertions", "dataset"];
+const ARTIFACT_TAB: Record<GenerateArtifact, Tab> = { prompt: "prompt", assertions: "eval", dataset: "dataset" };
+const ARTIFACT_LABEL: Record<GenerateArtifact, string> = { prompt: "Prompt", assertions: "Assertions", dataset: "Dataset" };
 
 function readStoredTab(specId?: string): Tab {
   if (!specId) return "prompt";
@@ -76,7 +83,7 @@ function readStoredTab(specId?: string): Tab {
   }
 }
 
-function saveTab(specId: string, tab: Tab) {
+export function saveTab(specId: string, tab: Tab) {
   try {
     localStorage.setItem(`${WORKSPACE_TAB_STORAGE_PREFIX}${specId}`, tab);
   } catch {
@@ -89,17 +96,20 @@ export function Workspace() {
   const [tab, setTab] = useState<Tab>(() => readStoredTab(spec?.id));
   const [specCollapsed, setSpecCollapsed] = useState(false);
   const [specWidth, setSpecWidth] = useState(readStoredSpecWidth);
+  const [specJsonOpen, setSpecJsonOpen] = useState(false);
+  const [specFullScreen, setSpecFullScreen] = useState(false);
   const [busy, setBusy] = useState<Busy>(null);
   const [error, setError] = useState<string | null>(null);
-  const [hasApiKey, setHasApiKey] = useState<boolean | null>(null);
-  const [showGenerateOptions, setShowGenerateOptions] = useState(false);
+  const { openWithPrompt } = useAssistantActions();
+  const { requestedTab, consumeRequestedTab } = useRequestedTab();
   useSetAssistantView({
     specId: spec?.id ?? null,
     specName: spec?.name ?? null,
     tab: spec ? tab : null,
-    status: spec?.status ?? null,
+    status: spec ? (isSpecPublished(spec) ? "published" : "draft") : null,
   });
   const [selectedDatasetIds, setSelectedDatasetIds] = useState<Set<string>>(new Set());
+  const abortControllerRef = useRef<AbortController | null>(null);
   const workAreaRef = useRef<HTMLDivElement>(null);
   const specWidthRef = useRef(specWidth);
   const resizeStartRef = useRef<{ pointerId: number; x: number; width: number } | null>(null);
@@ -137,13 +147,23 @@ export function Workspace() {
   }
 
   useEffect(() => {
-    checkApiHealth().then((h) => setHasApiKey(h.hasApiKey));
-  }, []);
-
-  useEffect(() => {
     setTab(readStoredTab(spec?.id));
     setSelectedDatasetIds(new Set());
   }, [spec?.id]);
+
+  // North Star's `navigate` tool lands here after it generates/runs something, so the user sees the result.
+  useEffect(() => {
+    if (!spec || !requestedTab) return;
+    if (TABS.some((t) => t.id === requestedTab)) {
+      setTab(requestedTab as Tab);
+      saveTab(spec.id, requestedTab as Tab);
+    }
+    consumeRequestedTab();
+  }, [spec, requestedTab, consumeRequestedTab]);
+
+  useEffect(() => {
+    return () => abortControllerRef.current?.abort();
+  }, []);
 
   useEffect(() => {
     function handleResize() {
@@ -168,51 +188,64 @@ export function Workspace() {
   const lastRun = spec.runs[spec.runs.length - 1] ?? null;
   const coverage = computeCoverage(spec);
   const hasCurrentRun = !!lastRun && lastRun.createdAt >= spec.updatedAt;
-  const canPublish = hasCurrentRun && spec.status !== "published" && !busy;
+  const published = isSpecPublished(spec);
+  const staleArtifacts = ARTIFACTS.map((artifact) => ({ artifact, ...getArtifactStaleness(spec, artifact) })).filter(
+    (s) => s.manuallyEdited || s.briefChangedSince,
+  );
 
   function selectTab(nextTab: Tab) {
     setTab(nextTab);
     saveTab(specId, nextTab);
   }
 
-  async function run<T>(kind: Busy, task: () => Promise<T>, onDone: (result: T) => void, nextTab?: Tab) {
+  async function run<T>(
+    kind: Busy,
+    task: (signal: AbortSignal) => Promise<T>,
+    onDone: (result: T) => void,
+    nextTab?: Tab,
+  ) {
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
     setBusy(kind);
     setError(null);
     try {
-      const result = await task();
+      const result = await task(controller.signal);
       onDone(result);
       if (nextTab) selectTab(nextTab);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      if (!(e instanceof DOMException && e.name === "AbortError")) {
+        setError(e instanceof Error ? e.message : String(e));
+      }
     } finally {
       setBusy(null);
+      abortControllerRef.current = null;
     }
   }
 
-  function handleGenerate(selection: GenerateSelection) {
-    setShowGenerateOptions(false);
-    run(
-      "generate",
-      () => generateFromSpec(spec!, selection),
-      (updated) => updateSpec(specId, () => updated),
-    );
+  function handleStop() {
+    abortControllerRef.current?.abort();
   }
-  function handleRerun() {
-    run(
-      "run",
-      () => rerun(spec!),
-      (updated) => updateSpec(specId, () => updated),
-      "results",
-    );
-  }
+
   function handleRunSample(itemIds: string[]) {
     if (itemIds.length === 0) return;
     run(
       "sample",
-      () => rerun(spec!, itemIds),
+      (signal) => rerun(spec!, itemIds, signal),
       (updated) => updateSpec(specId, () => updated),
       "results",
     );
+  }
+  function handleRunRandomN(count: number) {
+    handleRunSample(pickRandomIds(spec!.dataset.map((d) => d.id), count));
+  }
+  // Run and Publish are direct actions (not AI generation), so they execute immediately — no
+  // North Star round-trip. Generate/Regenerate is the one thing here that's actually AI-authored,
+  // so that one still opens North Star, narrated, per the rest of the app's convention.
+  function handleRunFull() {
+    run("full", (signal) => rerun(spec!, undefined, signal), (updated) => updateSpec(specId, () => updated), "results");
+  }
+  function handlePublish() {
+    run("publish", (signal) => publishSpec(spec!, signal), (updated) => updateSpec(specId, () => updated), "results");
   }
   function toggleDatasetSelect(id: string) {
     setSelectedDatasetIds((prev) => {
@@ -222,18 +255,6 @@ export function Workspace() {
       return next;
     });
   }
-  function selectRandomDatasetRows(count: number) {
-    setSelectedDatasetIds(new Set(pickRandomIds(spec!.dataset.map((d) => d.id), count)));
-  }
-  function handlePublish() {
-    run(
-      "publish",
-      () => publishSpec(spec!),
-      (updated) => updateSpec(specId, () => updated),
-      "review",
-    );
-  }
-
   return (
     <div className="flex h-full flex-col">
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3">
@@ -249,47 +270,44 @@ export function Workspace() {
             }
             className="bg-transparent text-sm font-semibold text-slate-900 outline-none"
           />
-          <Badge tone={spec.status === "published" ? "success" : "neutral"}>
-            {spec.status === "published" ? "Published" : "Draft"}
-          </Badge>
-          {lastRun?.citable && <Badge tone="accent">Citable run</Badge>}
-          {hasApiKey === false && (
-            <span
-              title="No OPENAI_API_KEY configured — Generate/Run use an offline simulation. Add app/.env to enable live calls."
-              className="inline-flex items-center gap-1 text-xs text-amber-600/80"
-            >
-              <ZapOff size={12} /> Simulated mode
-            </span>
-          )}
-          {hasApiKey === true && (
-            <span className="inline-flex items-center gap-1 text-xs text-emerald-600/80">
-              <Zap size={12} /> Live LLM
-            </span>
-          )}
+          <Badge tone={published ? "success" : "neutral"}>{published ? "Published" : "Draft"}</Badge>
           <span className="text-xs text-slate-400">
             {coverage.covered}/{coverage.total} covered
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="secondary" onClick={() => setShowGenerateOptions(true)} disabled={!!busy}>
-            {busy === "generate" ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
-            {busy === "generate" ? "Generating…" : spec.target ? "Regenerate" : "Generate"}
+          <Button
+            variant="secondary"
+            disabled={busy !== null}
+            onClick={() =>
+              openWithPrompt(
+                spec.target
+                  ? "Regenerate the Prompt, Assertions, and Dataset for this Spec."
+                  : "Generate the Prompt, Assertions, and Dataset for this Spec.",
+              )
+            }
+            title="Opens North Star to generate — every AI-authored change is narrated there, not fired silently from a button."
+          >
+            <Sparkles size={14} /> {spec.target ? "Regenerate" : "Generate"}
           </Button>
           {spec.target && (
-            <Button variant="secondary" onClick={handleRerun} disabled={!!busy}>
-              {busy === "run" ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
-              {busy === "run" ? "Running…" : "Run"}
+            <Button variant="secondary" disabled={busy !== null} onClick={handleRunFull} title="Runs the full eval suite directly.">
+              <Play size={14} /> Run
             </Button>
           )}
           <Button
-            variant="primary"
-            disabled={!canPublish}
+            variant="default"
+            disabled={!hasCurrentRun || published || busy !== null}
             onClick={handlePublish}
-            title={!hasCurrentRun ? "Run the current generated bundle before publishing" : undefined}
+            title={!hasCurrentRun ? "Run the current generated bundle before publishing" : "Publishes the current Target directly."}
           >
-            {busy === "publish" ? <Loader2 size={14} className="animate-spin" /> : <Rocket size={14} />}
-            {busy === "publish" ? "Publishing…" : "Publish"}
+            <Rocket size={14} /> Publish
           </Button>
+          {busy && (
+            <Button variant="destructive" onClick={handleStop} title="Cancel the in-progress request">
+              <Square size={13} /> Stop
+            </Button>
+          )}
         </div>
       </header>
 
@@ -300,6 +318,29 @@ export function Workspace() {
           <button onClick={() => setError(null)} className="text-rose-600/70 hover:text-rose-700">
             Dismiss
           </button>
+        </div>
+      )}
+
+      {staleArtifacts.length > 0 && (
+        <div className="flex items-start gap-2 border-b border-amber-300 bg-amber-50 px-4 py-2 text-xs text-amber-800">
+          <AlertTriangle size={13} className="mt-0.5 shrink-0" />
+          <div className="flex-1 space-y-0.5">
+            {staleArtifacts.map(({ artifact, manuallyEdited, briefChangedSince }) => (
+              <p key={artifact}>
+                <button
+                  onClick={() => selectTab(ARTIFACT_TAB[artifact])}
+                  className="font-medium underline hover:no-underline"
+                >
+                  {ARTIFACT_LABEL[artifact]}
+                </button>{" "}
+                {manuallyEdited && briefChangedSince
+                  ? "was edited by hand and the Spec brief also changed since — they may no longer match. Regenerate to re-sync."
+                  : manuallyEdited
+                    ? "was edited by hand since it was generated — the Spec brief may not reflect this change. Regenerate to re-sync."
+                    : "may be out of date — the Spec brief changed since it was generated. Regenerate to re-sync."}
+              </p>
+            ))}
+          </div>
         </div>
       )}
 
@@ -320,13 +361,29 @@ export function Workspace() {
           >
             <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-3 py-2">
               <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Spec details</span>
-              <button
-                onClick={() => setSpecCollapsed(true)}
-                title="Collapse Spec details to widen the workspace"
-                className="rounded-md p-1 text-slate-400 hover:bg-slate-200 hover:text-slate-700"
-              >
-                <PanelLeftClose size={15} />
-              </button>
+              <div className="flex items-center gap-0.5">
+                <button
+                  onClick={() => setSpecJsonOpen(true)}
+                  title="View/edit as raw JSON"
+                  className="rounded-md p-1 text-slate-400 hover:bg-slate-200 hover:text-slate-700"
+                >
+                  <Braces size={15} />
+                </button>
+                <button
+                  onClick={() => setSpecFullScreen(true)}
+                  title="Expand to full screen"
+                  className="rounded-md p-1 text-slate-400 hover:bg-slate-200 hover:text-slate-700"
+                >
+                  <Maximize2 size={15} />
+                </button>
+                <button
+                  onClick={() => setSpecCollapsed(true)}
+                  title="Collapse Spec details to widen the workspace"
+                  className="rounded-md p-1 text-slate-400 hover:bg-slate-200 hover:text-slate-700"
+                >
+                  <PanelLeftClose size={15} />
+                </button>
+              </div>
             </div>
             <div className="flex-1 overflow-y-auto p-4">
               <SpecPane spec={spec} />
@@ -381,7 +438,7 @@ export function Workspace() {
               onPointerCancel={(event) => finishSpecResize(event.currentTarget, event.pointerId)}
               className="group absolute inset-y-0 right-0 z-10 w-2 touch-none cursor-col-resize outline-none"
             >
-              <span className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-transparent transition-colors group-hover:bg-sky-400 group-focus:bg-sky-500" />
+              <span className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-transparent transition-colors group-hover:bg-ring/60 group-focus:bg-ring" />
             </div>
           </aside>
         )}
@@ -392,14 +449,21 @@ export function Workspace() {
               <button
                 key={t.id}
                 onClick={() => selectTab(t.id)}
+                title={t.planned ? "Not built yet — shows what's planned here" : undefined}
                 className={clsx(
-                  "border-b-2 px-3 py-2.5 text-sm font-medium transition-colors",
+                  "flex items-center gap-1.5 border-b-2 px-3 py-2.5 text-sm font-medium transition-colors",
                   tab === t.id
-                    ? "border-sky-500 text-slate-900"
+                    ? "border-primary text-slate-900"
                     : "border-transparent text-slate-500 hover:text-slate-700",
+                  t.planned && "text-slate-400",
                 )}
               >
                 {t.label}
+                {t.planned && (
+                  <span className="rounded-full border border-slate-300 bg-white px-1.5 py-0 text-[9px] font-semibold uppercase tracking-wide text-slate-400">
+                    Soon
+                  </span>
+                )}
               </button>
             ))}
           </div>
@@ -411,23 +475,40 @@ export function Workspace() {
                 spec={spec}
                 selectedIds={selectedDatasetIds}
                 onToggleSelect={toggleDatasetSelect}
-                onSelectRandom={selectRandomDatasetRows}
                 onClearSelection={() => setSelectedDatasetIds(new Set())}
                 onRunSample={handleRunSample}
+                onRunRandomN={handleRunRandomN}
                 sampleRunBusy={busy === "sample"}
               />
             )}
-            {tab === "results" && <ResultsPane spec={spec} />}
+            {tab === "results" && (
+              <ResultsPane spec={spec} onRunSample={handleRunSample} sampleRunBusy={busy === "sample"} />
+            )}
             {tab === "review" && <ReviewPane spec={spec} />}
+            {tab === "observability" && <ObservabilityPane spec={spec} />}
           </div>
         </main>
       </div>
-      {showGenerateOptions && (
-        <GenerateOptionsModal
-          isRegenerate={!!spec.target}
-          onGenerate={handleGenerate}
-          onClose={() => setShowGenerateOptions(false)}
+
+      {specJsonOpen && (
+        <SpecJsonModal
+          spec={spec}
+          onApply={(next) => updateSpec(specId, () => next)}
+          onClose={() => setSpecJsonOpen(false)}
         />
+      )}
+
+      {specFullScreen && (
+        <Dialog open onOpenChange={(open) => !open && setSpecFullScreen(false)}>
+          <DialogContent width="xl">
+            <DialogHeader>
+              <DialogTitle>Spec details — {spec.name}</DialogTitle>
+            </DialogHeader>
+            <DialogBody>
+              <SpecPane spec={spec} />
+            </DialogBody>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );

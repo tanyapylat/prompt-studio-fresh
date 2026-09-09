@@ -1,0 +1,434 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Studio — roadmap</title>
+<style>
+  :root{
+    --bg:#181818; --fg:#E4E4E4EB; --fg2:#E4E4E48D; --fg3:#E4E4E45E; --fg4:#E4E4E442;
+    --fill:#E4E4E411; --fill2:#E4E4E41E; --stroke:#E4E4E41F;
+    --accent:#599CE7; --purple:#9386F2; --green:#3FA266; --yellow:#F1B467;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif;
+    display:flex; flex-direction:column; overflow:hidden;
+  }
+  header{
+    display:flex; align-items:center; gap:12px;
+    padding:13px 28px; border-bottom:1px solid var(--stroke);
+    font-size:12px; color:var(--fg3); flex:0 0 auto;
+  }
+  header .spacer{flex:1}
+  header button{
+    background:transparent; border:1px solid var(--stroke); color:var(--fg2);
+    border-radius:5px; padding:5px 12px; font-size:12px; cursor:pointer; font-family:inherit;
+  }
+  header button:hover{background:var(--fill); color:var(--fg)}
+  header button:disabled{opacity:.35; cursor:default}
+  header button.primary{background:var(--accent); border-color:var(--accent); color:#191c22}
+
+  main{flex:1 1 auto; display:flex; align-items:center; justify-content:center; padding:34px 28px; overflow:auto}
+  .slide{width:100%; max-width:920px; display:none}
+  .slide.on{display:block}
+
+  .kicker{font-size:11px; letter-spacing:.09em; text-transform:uppercase; color:var(--fg4); margin-bottom:16px}
+  h1{font-size:46px; line-height:1.14; font-weight:600; letter-spacing:-.02em}
+  .sub{font-size:19px; line-height:1.55; color:var(--fg2); margin-top:18px; max-width:800px}
+  .big{font-size:28px; line-height:1.32; font-weight:600; letter-spacing:-.01em}
+  .note{font-size:13px; line-height:1.65; color:var(--fg3); margin-top:20px; max-width:840px}
+  .src{font-size:11px; color:var(--fg4); margin-top:18px}
+
+  ul{list-style:none; margin-top:16px}
+  li{display:flex; gap:11px; align-items:baseline; font-size:15.5px; line-height:1.68}
+  li::before{content:""; width:5px; height:5px; border-radius:50%; background:var(--fg4); flex:0 0 auto; transform:translateY(-3px)}
+  li.g::before{background:var(--green)}
+  li.a::before{background:var(--accent)}
+  li.p::before{background:var(--purple)}
+  li.y::before{background:var(--yellow)}
+  li.dim{color:var(--fg3)}
+
+  ol{list-style:none; margin-top:16px; counter-reset:s}
+  ol li{counter-increment:s; font-size:15.5px; line-height:1.72}
+  ol li::before{content:counter(s); width:auto; height:auto; background:none; color:var(--accent); font-weight:600; font-size:13px; min-width:16px; transform:none}
+
+  .cols{display:grid; grid-template-columns:1fr 1fr; gap:36px; margin-top:16px}
+  .cols3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:26px; margin-top:16px}
+  h3.sm{font-size:11.5px; color:var(--fg3); text-transform:uppercase; letter-spacing:.08em; font-weight:500}
+
+  /* lifecycle steps */
+  .steps{display:grid; grid-template-columns:1fr 1fr; gap:8px 30px; margin-top:20px}
+  .step{display:flex; gap:12px; align-items:baseline; padding:6px 0}
+  .step .n{font-size:12px; font-weight:600; color:var(--accent); min-width:15px}
+  .step .t{font-size:15.5px; line-height:1.5}
+  .step .t em{font-style:normal; color:var(--fg3); font-size:13.5px}
+
+  /* two-mode table */
+  .modes{margin-top:18px; display:grid; grid-template-columns:150px 1fr 1fr; gap:0}
+  .modes .h{font-size:11.5px; text-transform:uppercase; letter-spacing:.08em; color:var(--fg4); padding:0 14px 8px 0; border-bottom:2px solid var(--stroke)}
+  .modes .h.ai{color:var(--purple); border-bottom-color:#9386F255}
+  .modes .c{padding:9px 14px 9px 0; border-bottom:1px solid var(--stroke); font-size:13.5px; line-height:1.5; color:var(--fg2)}
+  .modes .c.lane{color:var(--fg); font-size:14px}
+  .modes .c.ai{color:var(--fg2); background:#9386F20A}
+
+  /* usage bars */
+  .bars{margin-top:16px; display:grid; gap:6px}
+  .bar{display:grid; grid-template-columns:170px 1fr 42px; align-items:center; gap:12px}
+  .bar .k{font-size:13.5px; color:var(--fg2); text-align:right}
+  .bar .t{height:14px; border-radius:3px; background:var(--accent); display:block}
+  .bar .t.d{background:var(--fill2)}
+  .bar .v{font-size:12px; color:var(--fg3)}
+
+  /* blocks */
+  .blocks{display:grid; grid-template-columns:repeat(3,1fr); gap:11px; margin-top:18px}
+  .bk{border:1px solid var(--stroke); border-radius:6px; padding:14px 15px; background:var(--fill)}
+  .bk .t{font-size:15px; font-weight:600}
+  .bk .d{font-size:12.5px; color:var(--fg3); line-height:1.55; margin-top:5px}
+  .bk.wide{grid-column:1 / -1; border-color:#9386F255; background:#9386F210}
+  .bk.wide .t{color:var(--purple)}
+
+  /* horizons */
+  .hz{display:grid; grid-template-columns:1fr 1fr 1fr; gap:26px; margin-top:18px}
+  .hz .hd{font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--fg3); padding-bottom:8px; border-bottom:2px solid var(--stroke)}
+  .hz .hd.first{color:var(--fg); border-bottom-color:var(--accent)}
+  .hz ul{margin-top:9px}
+  .hz li{font-size:13.5px; line-height:1.55}
+  .hz .lbl{font-size:10.5px; text-transform:uppercase; letter-spacing:.07em; color:var(--fg4); margin-top:15px}
+  .hz .lbl:first-of-type{margin-top:12px}
+  .tag{font-size:10.5px; color:var(--yellow); border:1px solid #F1B46745; border-radius:3px; padding:1px 5px; margin-left:5px; white-space:nowrap}
+
+  .bar-l{border-left:3px solid var(--accent); padding-left:16px; margin-top:20px}
+  .bar-l .p{font-size:15px; line-height:1.6; color:var(--fg2)}
+
+  footer{display:flex; gap:6px; align-items:center; padding:14px 28px; border-top:1px solid var(--stroke); flex:0 0 auto}
+  .dot{height:4px; width:9px; border-radius:9999px; background:#E4E4E430; cursor:pointer; transition:width .15s}
+  .dot.on{width:26px; background:var(--accent)}
+</style>
+</head>
+<body>
+
+<header>
+  <span id="count"></span>
+  <span id="label" style="color:var(--fg2)"></span>
+  <span class="spacer"></span>
+  <button id="prev">Back</button>
+  <button id="next" class="primary">Next</button>
+</header>
+
+<main>
+
+<!-- 1 ───────────────────────────────────────── -->
+<section class="slide on">
+  <div class="kicker">Product roadmap · September 2026 · living document</div>
+  <h1>AI Studio</h1>
+  <div class="sub">The full prompt lifecycle in one product — specify, build, prove, release, monitor, improve — with AI automation available at every step and manual control always within reach.</div>
+</section>
+
+<!-- 2 ───────────────────────────────────────── -->
+<section class="slide">
+  <div class="kicker">Why we're building it</div>
+  <div class="big">Prompt Studio manages prompt versions. AI Studio runs the lifecycle.</div>
+  <div class="cols">
+    <div>
+      <h3 class="sm">What's holding us back today</h3>
+      <ul>
+        <li>Checks and datasets are locked inside each prompt version and rewritten from scratch every time</li>
+        <li>There is no shared, explicit definition of what "good" means for a prompt</li>
+        <li>Production behaviour is only reachable through a report, not something you can read and act on</li>
+        <li>A real production failure has no path back into the test set</li>
+        <li>Approval checks a set of flags rather than the quality evidence itself</li>
+        <li>AI assistance stops at drafting a prompt</li>
+      </ul>
+    </div>
+    <div>
+      <h3 class="sm">What AI Studio unlocks</h3>
+      <ul>
+        <li class="g">One spec drives the prompt, its checks and its datasets together</li>
+        <li class="g">Datasets and checks are reusable and improve over time instead of being recreated per version</li>
+        <li class="g">AI assistance at every lifecycle step, not just authoring</li>
+        <li class="g">Production traces readable in the Studio and convertible into test cases</li>
+        <li class="g">The same checks run before release and keep running against live traffic afterwards</li>
+        <li class="g">A visible link between prompt quality and business outcomes</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- 3 ───────────────────────────────────────── -->
+<section class="slide">
+  <div class="kicker">Current Prompt Studio · usage context</div>
+  <div class="big">Authoring and evaluation are the core workflows we're building on.</div>
+  <div class="bars">
+    <div class="bar"><span class="k">Prompt editor</span><span class="t" style="width:100%"></span><span class="v">257</span></div>
+    <div class="bar"><span class="k">Home &amp; chat</span><span class="t" style="width:43%"></span><span class="v">110</span></div>
+    <div class="bar"><span class="k">Evaluations</span><span class="t" style="width:26%"></span><span class="v">68</span></div>
+    <div class="bar"><span class="k">Prompt library</span><span class="t" style="width:19%"></span><span class="v">48</span></div>
+    <div class="bar"><span class="k">Chat playground</span><span class="t" style="width:15%"></span><span class="v">38</span></div>
+    <div class="bar"><span class="k">Model catalog</span><span class="t" style="width:12%"></span><span class="v">30</span></div>
+    <div class="bar"><span class="k">Batch processing</span><span class="t" style="width:10%"></span><span class="v">25</span></div>
+    <div class="bar"><span class="k">Compare</span><span class="t d" style="width:1.2%"></span><span class="v">3</span></div>
+    <div class="bar"><span class="k">Legacy library</span><span class="t d" style="width:0.8%"></span><span class="v">2</span></div>
+  </div>
+  <div class="note">Around 110–140 weekly active users. Authoring, evaluation and the library are the workflows in real use, and they carry into AI Studio. The standalone <b>Compare</b> page and the <b>legacy library</b> are effectively unused — comparison belongs inside the evaluation flow, and the legacy library can retire.</div>
+  <div class="src">PostHog, 14-day pageviews and 30-day actives ending 8 Sep 2026. Supporting context only.</div>
+</section>
+
+<!-- 4 ───────────────────────────────────────── -->
+<section class="slide">
+  <div class="kicker">The target lifecycle</div>
+  <div class="big">One loop, end to end — every step supportable by automation.</div>
+  <div class="steps">
+    <div class="step"><span class="n">1</span><span class="t">Define the specification <em>— the intent and the bar</em></span></div>
+    <div class="step"><span class="n">6</span><span class="t">Commit, approve and publish</span></div>
+    <div class="step"><span class="n">2</span><span class="t">Create the prompt <em>— generated or authored</em></span></div>
+    <div class="step"><span class="n">7</span><span class="t">Monitor behaviour in production</span></div>
+    <div class="step"><span class="n">3</span><span class="t">Set model, variables, tools and outputs <em>— proposed or hand-set</em></span></div>
+    <div class="step"><span class="n">8</span><span class="t">Turn production findings into test cases</span></div>
+    <div class="step"><span class="n">4</span><span class="t">Test with datasets and checks <em>— generated or curated</em></span></div>
+    <div class="step"><span class="n">9</span><span class="t">Iterate on evaluation results and business outcomes</span></div>
+    <div class="step"><span class="n">5</span><span class="t">Review quality <em>— AI review, human judgement</em></span></div>
+    <div class="step"><span class="n">↺</span><span class="t"><em>Findings return to the specification</em></span></div>
+  </div>
+  <div class="note">Nothing is on this roadmap that isn't on this loop. The return path from production back into the specification is the part no product we own supports today.</div>
+</section>
+
+<!-- 5 ───────────────────────────────────────── -->
+<section class="slide">
+  <div class="kicker">Automation and manual control</div>
+  <div class="big">Automated or manual at every step — chosen per step, not per path.</div>
+  <div class="modes">
+    <div class="h"></div><div class="h ai">AI-assisted / automated</div><div class="h">Manual</div>
+
+    <div class="c lane">Specify</div>
+    <div class="c ai">Draft the spec from intent, ask clarifying questions</div>
+    <div class="c">Write criteria and contracts directly</div>
+
+    <div class="c lane">Author</div>
+    <div class="c ai">Generate the prompt from the spec, propose revisions</div>
+    <div class="c">Write or paste the prompt</div>
+
+    <div class="c lane">Configure</div>
+    <div class="c ai">Suggest model, variables, tools and output schema</div>
+    <div class="c">Set them by hand</div>
+
+    <div class="c lane">Test</div>
+    <div class="c ai">Generate datasets and checks, pick the cheapest check that works</div>
+    <div class="c">Curate datasets, write checks</div>
+
+    <div class="c lane">Review</div>
+    <div class="c ai">AI quality review: relevancy, coverage, regressions, cost</div>
+    <div class="c">Human reads the evidence and decides</div>
+
+    <div class="c lane">Monitor</div>
+    <div class="c ai">Cluster production failures, surface what's new</div>
+    <div class="c">Read and search traces</div>
+
+    <div class="c lane">Iterate</div>
+    <div class="c ai">Draft the test case, check or spec edit</div>
+    <div class="c">Promote and edit by hand</div>
+  </div>
+  <div class="bar-l">
+    <div class="p"><b>North Star:</b> the automated path becomes the first choice, not the fallback. <b>Non-negotiable:</b> however a prompt is built, it must carry the required evaluation evidence before it is published.</div>
+  </div>
+</section>
+
+<!-- 6 ───────────────────────────────────────── -->
+<section class="slide">
+  <div class="kicker">The assistant</div>
+  <div class="big">Not a feature in the product — the layer the product runs on.</div>
+  <div class="cols">
+    <div>
+      <h3 class="sm">What it actually does</h3>
+      <ul>
+        <li class="p">Turns a rough intent into a structured spec, and asks the questions you'd have forgotten to answer</li>
+        <li class="p">Writes the first draft, and explains what a revision changes and what it might break</li>
+        <li class="p">Reads a failing run and says which cases failed and what they have in common</li>
+        <li class="p">Proposes the check that would have caught a failure — and the cheapest one that does the job</li>
+        <li class="p">Turns a production trace into a test case with the expected output filled in</li>
+        <li class="p">Reviews the artefacts at commit and says what evidence is missing</li>
+      </ul>
+    </div>
+    <div>
+      <h3 class="sm">Where it stops</h3>
+      <ul>
+        <li class="dim">It never approves, publishes, or changes anything in production</li>
+        <li class="dim">Everything it produces is an editable draft — no hidden state, no silent edits</li>
+        <li class="dim">It shows what it used to make a suggestion</li>
+        <li class="dim">Any step can be done by hand, and it stays out of the way</li>
+      </ul>
+    </div>
+  </div>
+  <div class="bar-l">
+    <div class="p">What makes it a layer rather than seven separate features: it carries context across the loop. The spec informs the checks; the production failure informs the spec edit. Its scope shapes every surface, so we need to define it early.</div>
+  </div>
+</section>
+
+<!-- 7 ───────────────────────────────────────── -->
+<section class="slide">
+  <div class="kicker">Main building blocks</div>
+  <div class="big">Six capabilities, one assistant layer across all of them.</div>
+  <div class="blocks">
+    <div class="bk"><div class="t">Specify</div><div class="d">Intent, contracts, guardrails, success criteria, coverage</div></div>
+    <div class="bk"><div class="t">Author &amp; configure</div><div class="d">Prompt, model, variables, tools, structured output</div></div>
+    <div class="bk"><div class="t">Evaluate &amp; test</div><div class="d">Datasets, checks, judges, runs, comparison, regression</div></div>
+    <div class="bk"><div class="t">Review &amp; release</div><div class="d">AI quality review, commit, approve, publish</div></div>
+    <div class="bk"><div class="t">Observe production</div><div class="d">Traces, online evaluation, quality and cost visibility</div></div>
+    <div class="bk"><div class="t">Learn &amp; iterate</div><div class="d">Findings into test cases, quality into business outcomes</div></div>
+    <div class="bk wide"><div class="t">The agentic assistant</div><div class="d">Present in all six. Drafts, proposes, explains and reviews. A human always decides.</div></div>
+  </div>
+  <div class="note">All six exist as design intent from the start. The roadmap is about how deep each one goes, and when.</div>
+</section>
+
+<!-- 8 ───────────────────────────────────────── -->
+<section class="slide">
+  <div class="kicker">Loose roadmap</div>
+  <div class="big">Each horizon unlocks something new — and takes over only the Prompt Studio work that new thing needs.</div>
+  <div class="hz">
+    <div>
+      <div class="hd first">Earlier</div>
+      <div class="lbl">Unlocks</div>
+      <ul>
+        <li class="a">Spec-driven creation — the assistant builds the specification and generates the prompt from it <span class="tag">in motion</span></li>
+        <li class="a">Evaluation running against production traffic <span class="tag">in motion</span></li>
+      </ul>
+      <div class="lbl">Takes over from PS</div>
+      <ul>
+        <li class="dim">Authoring and configuring a prompt</li>
+        <li class="dim">Attaching datasets and checks, running, reading every output</li>
+      </ul>
+    </div>
+    <div>
+      <div class="hd">Next</div>
+      <div class="lbl">Unlocks</div>
+      <ul>
+        <li class="g">Production traces turned into test cases, redacted and ready to run</li>
+        <li class="g">Datasets and checks as shared, reusable assets</li>
+        <li class="g">A view of quality and cost in production over time</li>
+      </ul>
+      <div class="lbl">Takes over from PS</div>
+      <ul>
+        <li class="dim">Comparing versions — folded into evaluation, plus automatic regression on every change</li>
+        <li class="dim">The prompt library</li>
+      </ul>
+    </div>
+    <div>
+      <div class="hd">Later</div>
+      <div class="lbl">Unlocks</div>
+      <ul>
+        <li class="g">Quality connected to business outcomes</li>
+        <li class="g">The assistant working across the whole loop</li>
+      </ul>
+      <div class="lbl">Takes over from PS</div>
+      <ul>
+        <li class="dim">Quality review at commit, redesigned</li>
+        <li class="dim">Approval and publishing</li>
+      </ul>
+    </div>
+  </div>
+  <div class="note"><b>How we're balancing it:</b> the new capability leads and the replacement follows only as far as that capability needs it. We never rebuild a Prompt Studio surface for parity alone, and we never ship a new capability that dead-ends because the surrounding workflow isn't there. Prompt Studio keeps running throughout, so partial replacement is fine.</div>
+</section>
+
+<!-- 9 ───────────────────────────────────────── -->
+<section class="slide">
+  <div class="kicker">Transition from Prompt Studio</div>
+  <div class="big">Prompt Studio keeps working. People move one workflow at a time.</div>
+  <div class="cols">
+    <div>
+      <h3 class="sm">How the transition works</h3>
+      <ul>
+        <li>Both products work on the same prompts, so nobody has to move their work or start over</li>
+        <li>We're not rebuilding what already works — evaluation running, batch processing and the model catalog stay as they are</li>
+        <li>Nothing changes for the teams whose applications use our prompts</li>
+        <li>Each workflow stays in Prompt Studio until AI Studio genuinely does it better</li>
+      </ul>
+    </div>
+    <div>
+      <h3 class="sm">Sequence</h3>
+      <ul>
+        <li class="g">Retire early — the legacy library and the standalone Compare page; neither is in real use</li>
+        <li class="y">Redesign, don't remove — the approval review, including relevancy plus coverage, regression and cost</li>
+        <li class="dim">Move carefully — the prompt editor is the busiest surface and needs parity first</li>
+        <li class="dim">Leave in place — batch processing and model catalog are infrastructure</li>
+      </ul>
+    </div>
+  </div>
+  <div class="note">Outcomes we're aiming for rather than activity targets: prompt quality, automation coverage across the lifecycle, production visibility, and gradual adoption of AI Studio.</div>
+</section>
+
+<!-- 10 ──────────────────────────────────────── -->
+<section class="slide">
+  <div class="kicker">What we propose to build first</div>
+  <div class="big">Spec-driven prompt creation, end to end in AI Studio.</div>
+  <div class="sub" style="font-size:16.5px; margin-top:14px">You describe what the prompt needs to do. The assistant builds the specification with you, generates the prompt from it, and generates the first checks and test data. You run it and read every output — in one place.</div>
+  <div class="cols" style="margin-top:26px">
+    <div>
+      <h3 class="sm">Why this first</h3>
+      <ul>
+        <li class="g">It's already in motion — the specification and generation agent is being built</li>
+        <li class="g">It's the part of the vision Prompt Studio has no answer for</li>
+        <li class="g">It pulls in exactly the authoring and testing surface we need and no more — no editor parity required</li>
+        <li class="g">It produces the first reusable checks and datasets, which everything later builds on</li>
+      </ul>
+    </div>
+    <div>
+      <h3 class="sm">In the first slice</h3>
+      <ul>
+        <li class="a">A specification built with the assistant from a plain description</li>
+        <li class="a">A prompt generated from it, editable by hand at any point</li>
+        <li class="a">Model, variables and output shape proposed</li>
+        <li class="a">First checks and test data generated</li>
+        <li class="a">Run it, and read every output</li>
+      </ul>
+      <h3 class="sm" style="margin-top:20px">Not yet</h3>
+      <ul>
+        <li class="dim">Approval and publishing — those stay in Prompt Studio</li>
+        <li class="dim">Comparison, regression, production evaluation</li>
+      </ul>
+    </div>
+  </div>
+  <div class="bar-l">
+    <div class="p"><b>To start we need to agree:</b> that this is the first slice, which team and which prompt we build it around, and whether a specification is optional. <i>Our proposal: optional — a prompt can exist without one, but publishing needs evaluation evidence either way.</i></div>
+  </div>
+</section>
+
+</main>
+
+<footer id="dots"></footer>
+
+<script>
+  const slides = [...document.querySelectorAll('.slide')];
+  const labels = ["Vision","Why","Current usage","Target lifecycle","Automation & manual",
+                  "The assistant","Building blocks","Loose roadmap","Transition","What we build first"];
+  const dots = document.getElementById('dots');
+  slides.forEach((_, i) => {
+    const d = document.createElement('div');
+    d.className = 'dot' + (i === 0 ? ' on' : '');
+    d.title = labels[i];
+    d.onclick = () => go(i);
+    dots.appendChild(d);
+  });
+  let cur = 0;
+  function go(n){
+    cur = Math.max(0, Math.min(n, slides.length - 1));
+    slides.forEach((s, i) => s.classList.toggle('on', i === cur));
+    [...dots.children].forEach((d, i) => d.classList.toggle('on', i === cur));
+    document.getElementById('count').textContent = (cur + 1) + ' / ' + slides.length;
+    document.getElementById('label').textContent = labels[cur];
+    document.getElementById('prev').disabled = cur === 0;
+    document.getElementById('next').disabled = cur === slides.length - 1;
+  }
+  document.getElementById('prev').onclick = () => go(cur - 1);
+  document.getElementById('next').onclick = () => go(cur + 1);
+  document.addEventListener('keydown', e => {
+    if (['ArrowRight','PageDown',' '].includes(e.key)) { e.preventDefault(); go(cur + 1); }
+    if (['ArrowLeft','PageUp'].includes(e.key)) { e.preventDefault(); go(cur - 1); }
+    if (e.key === 'Home') go(0);
+    if (e.key === 'End') go(slides.length - 1);
+  });
+  go(0);
+</script>
+</body>
+</html>

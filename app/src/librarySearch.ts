@@ -2,11 +2,10 @@ import type {
   AssertionTier,
   LibraryAssertion,
   LibraryDataset,
-  LibraryJudgePolicy,
   LibraryKind,
 } from "./types";
 
-export type AnyLibraryEntry = LibraryAssertion | LibraryDataset | LibraryJudgePolicy;
+export type AnyLibraryEntry = LibraryAssertion | LibraryDataset;
 export type AssertionTierFilter = AssertionTier | "all";
 export type SearchMode = "keyword" | "semantic";
 
@@ -31,9 +30,6 @@ function searchableText(kind: LibraryKind, entry: AnyLibraryEntry): string {
   } else if (kind === "datasets") {
     const e = entry as LibraryDataset;
     parts.push(...e.items.map((it) => it.input));
-  } else if (kind === "judgePolicies") {
-    const e = entry as LibraryJudgePolicy;
-    parts.push(e.model);
   }
   return parts.join(" ");
 }

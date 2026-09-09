@@ -1,207 +1,244 @@
-﻿import { useState } from "react";
-import { Beaker, CheckCircle2, ChevronDown, ChevronRight, XCircle, Zap, ZapOff } from "lucide-react";
+﻿import { useMemo, useState } from "react";
+import { Beaker, Loader2, Rows3, Search, WrapText } from "lucide-react";
 import { useStore } from "../../store";
-import type { Assertion, SpecProject } from "../../types";
-import { datasetItemLabel, datasetVariableNames } from "../../dataset";
-import { Badge } from "../ui";
+import { useAssistantActions } from "../../assistantContext";
+import type { SpecProject } from "../../types";
+import { datasetVariableNames } from "../../dataset";
+import {
+  buildResultRows,
+  collectAllLabels,
+  matchesFilters,
+  matchesSearch,
+  matchesStatusFilter,
+  resultRowsToCsv,
+  resultRowsToJson,
+  DEFAULT_RESULTS_FILTERS,
+  type ResultStatusFilter,
+} from "../../results";
+import { downloadTextFile, timestampForFilename } from "../../download";
+import { suggestRunInsightsHeuristic } from "../../engine";
+import { useResultsViewPrefs } from "../../resultsViewPrefs";
+import { Button } from "@/components/ui/button";
+import { RunSummary } from "../results/RunSummary";
+import { ResultsTable } from "../results/ResultsTable";
+import { ResultsColumnsMenu } from "../results/ResultsColumnsMenu";
+import { ResultsFiltersMenu } from "../results/ResultsFiltersMenu";
+import { ResultsExportMenu } from "../results/ResultsExportMenu";
+import { ResultItemPanel } from "../results/ResultItemPanel";
 
-const UNGROUPED = "Ungrouped";
+const STATUS_FILTERS: { id: ResultStatusFilter; label: string }[] = [
+  { id: "all", label: "All" },
+  { id: "passed", label: "Passed" },
+  { id: "failed", label: "Failed" },
+];
 
-interface AssertionStat {
-  assertion: Assertion;
-  passCount: number;
-  total: number;
-  passRate: number;
-  threshold: number;
-  meetsThreshold: boolean;
-}
-
-function computeAssertionStats(spec: SpecProject, run: SpecProject["runs"][number]): AssertionStat[] {
-  return spec.assertions.map((assertion) => {
-    const scores = run.results.flatMap((r) => r.scores.filter((s) => s.assertionId === assertion.id));
-    const passCount = scores.filter((s) => s.passed).length;
-    const total = scores.length;
-    const passRate = total ? passCount / total : 1;
-    const threshold = assertion.passThreshold ?? spec.defaultPassThreshold;
-    return { assertion, passCount, total, passRate, threshold, meetsThreshold: passRate >= threshold };
-  });
-}
-
-function AssertionRollup({ spec, run }: { spec: SpecProject; run: SpecProject["runs"][number] }) {
-  const stats = computeAssertionStats(spec, run);
-  if (stats.length === 0) return null;
-
-  const order: string[] = [];
-  const byGroup = new Map<string, AssertionStat[]>();
-  for (const stat of stats) {
-    const key = stat.assertion.group?.trim() || UNGROUPED;
-    if (!byGroup.has(key)) {
-      byGroup.set(key, []);
-      order.push(key);
-    }
-    byGroup.get(key)!.push(stat);
-  }
-
+function slugify(name: string): string {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-3">
-      <p className="mb-2 text-xs font-semibold text-slate-800">Pass rate by assertion</p>
-      <div className="space-y-3">
-        {order.map((key) => (
-          <div key={key}>
-            <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-slate-400">{key}</p>
-            <div className="space-y-1">
-              {byGroup.get(key)!.map((stat) => (
-                <div key={stat.assertion.id} className="flex items-center gap-2 text-xs">
-                  {stat.meetsThreshold ? (
-                    <CheckCircle2 size={13} className="shrink-0 text-emerald-600" />
-                  ) : (
-                    <XCircle size={13} className="shrink-0 text-rose-600" />
-                  )}
-                  <span className="flex-1 truncate text-slate-700">{stat.assertion.description}</span>
-                  <span className={stat.meetsThreshold ? "text-slate-500" : "text-rose-700"}>
-                    {Math.round(stat.passRate * 100)}% ({stat.passCount}/{stat.total}) — threshold{" "}
-                    {Math.round(stat.threshold * 100)}%
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
+    name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "") || "results"
   );
 }
 
-export function ResultsPane({ spec }: { spec: SpecProject }) {
+/**
+ * The Results tab: a summary of the latest Run (pass rate, latency/cost, pass-rate-by-assertion,
+ * "what to review first"), then a search/filter/columns/export toolbar over the paginated
+ * `ResultsTable`, and the `ResultItemPanel` detail drawer for one row (prompt/output, per-assertion
+ * evaluation, metadata/note) at a time.
+ */
+export function ResultsPane({
+  spec,
+  onRunSample,
+  sampleRunBusy,
+}: {
+  spec: SpecProject;
+  onRunSample: (itemIds: string[]) => void;
+  sampleRunBusy: boolean;
+}) {
   const { updateSpec } = useStore();
-  const lastRun = spec.runs[spec.runs.length - 1];
-  const [expanded, setExpanded] = useState<string | null>(null);
+  const { openWithPrompt } = useAssistantActions();
 
-  if (!lastRun) {
-    return <p className="text-sm text-slate-500">No run yet — click Generate (or Run) in the top bar to see results.</p>;
-  }
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<ResultStatusFilter>("all");
+  const [filters, setFilters] = useState(DEFAULT_RESULTS_FILTERS);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [detailItemId, setDetailItemId] = useState<string | null>(null);
+
+  const { prefs, update: updatePrefs, toggleColumn } = useResultsViewPrefs(spec.id);
 
   const variableNames = datasetVariableNames(spec.target?.messages);
-  const rows = lastRun.results
-    .map((r) => ({
-      ...r,
-      item: spec.dataset.find((d) => d.id === r.datasetItemId),
-      failCount: r.scores.filter((s) => !s.passed).length,
-    }))
-    .sort((a, b) => b.failCount - a.failCount);
+  const isMultiVariable = variableNames.length > 1;
+  const lastRun = spec.runs[spec.runs.length - 1] ?? null;
+  const allLabels = useMemo(() => collectAllLabels(spec), [spec]);
+  const allRows = useMemo(() => (lastRun ? buildResultRows(spec, lastRun) : []), [spec, lastRun]);
+  const heuristicInsights = useMemo(
+    () => (lastRun ? suggestRunInsightsHeuristic(spec, lastRun) : { reviewFirst: [], improvements: [] }),
+    [spec, lastRun],
+  );
 
-  function setNote(itemId: string, note: string) {
+  const filteredRows = useMemo(
+    () =>
+      allRows.filter(
+        (row) => matchesStatusFilter(row, statusFilter) && matchesSearch(row, search, variableNames) && matchesFilters(row, filters),
+      ),
+    [allRows, statusFilter, search, variableNames, filters],
+  );
+
+  const sortedRows = useMemo(() => {
+    const sorted = [...filteredRows];
+    sorted.sort((a, b) => {
+      const av = prefs.sortField === "failCount" ? a.failCount : (a.result[prefs.sortField] ?? 0);
+      const bv = prefs.sortField === "failCount" ? b.failCount : (b.result[prefs.sortField] ?? 0);
+      return prefs.sortDir === "asc" ? av - bv : bv - av;
+    });
+    return sorted;
+  }, [filteredRows, prefs.sortField, prefs.sortDir]);
+
+  function handleSort(field: typeof prefs.sortField) {
+    updatePrefs({ sortField: field, sortDir: prefs.sortField === field && prefs.sortDir === "asc" ? "desc" : "asc" });
+  }
+
+  function patchResult(itemId: string, patch: Partial<{ note: string; labels: string[] }>) {
+    if (!lastRun) return;
     updateSpec(spec.id, (s) => ({
       ...s,
       runs: s.runs.map((run) =>
         run.id === lastRun.id
-          ? { ...run, results: run.results.map((r) => (r.datasetItemId === itemId ? { ...r, note } : r)) }
+          ? { ...run, results: run.results.map((r) => (r.datasetItemId === itemId ? { ...r, ...patch } : r)) }
           : run,
       ),
     }));
   }
 
+  function handleExport(scope: "all" | "filtered" | "selected", format: "json" | "csv") {
+    const source = scope === "all" ? allRows : scope === "selected" ? allRows.filter((r) => selectedIds.has(r.result.datasetItemId)) : filteredRows;
+    const base = `${slugify(spec.name)}-results-${timestampForFilename()}`;
+    if (format === "json") {
+      downloadTextFile(`${base}.json`, resultRowsToJson(source, spec, variableNames), "application/json");
+    } else {
+      downloadTextFile(`${base}.csv`, resultRowsToCsv(source, variableNames), "text/csv");
+    }
+  }
+
+  if (!lastRun) {
+    return (
+      <div className="space-y-3">
+        <h3 className="text-sm font-semibold text-slate-800">Results</h3>
+        <p className="text-sm text-slate-500">
+          No run yet — try a sample from the Dataset tab, or ask North Star to run the eval suite.
+        </p>
+      </div>
+    );
+  }
+
   return (
-    <div className="max-w-6xl space-y-4">
-      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-        <div className="text-2xl font-semibold text-slate-900">{Math.round(lastRun.passRate * 100)}%</div>
-        <div className="text-xs text-slate-500">
-          pass rate across {lastRun.results.length} rows × {spec.assertions.length} checks
+    <div className="space-y-4">
+      <h3 className="text-sm font-semibold text-slate-800">Results</h3>
+
+      <RunSummary
+        spec={spec}
+        run={lastRun}
+        rows={allRows}
+        insights={heuristicInsights}
+        onAskNorthStar={() => openWithPrompt("Refresh review insights for this run.")}
+        onReviewItem={setDetailItemId}
+      />
+
+      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+        <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white p-0.5">
+          <button
+            title="Compact view"
+            onClick={() => updatePrefs({ wrap: false })}
+            className={`rounded-md px-1.5 py-1 ${!prefs.wrap ? "bg-primary text-primary-foreground" : "text-slate-500 hover:text-slate-800"}`}
+          >
+            <Rows3 size={13} />
+          </button>
+          <button
+            title="Full view (wrap text)"
+            onClick={() => updatePrefs({ wrap: true })}
+            className={`rounded-md px-1.5 py-1 ${prefs.wrap ? "bg-primary text-primary-foreground" : "text-slate-500 hover:text-slate-800"}`}
+          >
+            <WrapText size={13} />
+          </button>
         </div>
-        {lastRun.scope === "sample" ? (
-          <Badge tone="warning">
-            <Beaker size={11} /> Sample run — {lastRun.results.length} of {spec.dataset.length} rows
-          </Badge>
-        ) : lastRun.citable ? (
-          <Badge tone="accent">Citable</Badge>
-        ) : (
-          <Badge>Dry run (non-citable)</Badge>
-        )}
-        <span
-          className="inline-flex items-center gap-1 text-xs text-slate-500"
-          title={
-            lastRun.mode === "live"
-              ? "Real model calls: prompt output and any LLM-judge scores came from OpenAI."
-              : "Offline simulation: no OPENAI_API_KEY configured when this ran."
-          }
-        >
-          {lastRun.mode === "live" ? (
-            <Zap size={12} className="text-emerald-600" />
-          ) : (
-            <ZapOff size={12} className="text-amber-600" />
-          )}
-          {lastRun.mode === "live" ? "Live" : "Simulated"}
-        </span>
-        {lastRun.passRate === 1 && (
-          <span className="ml-auto text-xs text-amber-700/80">
-            100% pass — worth checking the dataset is actually stress-testing anything.
-          </span>
-        )}
+        <ResultsColumnsMenu prefs={prefs} onToggleColumn={toggleColumn} onUpdate={updatePrefs} isMultiVariable={isMultiVariable} />
+        <span className="mx-1 h-5 w-px bg-slate-200" />
+        <div className="relative">
+          <Search size={12} className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search rows…"
+            className="w-40 rounded-md border border-slate-200 bg-white py-1 pl-6 pr-2 text-xs text-slate-800 outline-none focus:border-ring"
+          />
+        </div>
+        <div className="flex items-center gap-0.5 rounded-lg border border-slate-200 bg-white p-0.5">
+          {STATUS_FILTERS.map((f) => (
+            <button
+              key={f.id}
+              onClick={() => setStatusFilter(f.id)}
+              className={`rounded-md px-2 py-1 text-[11px] font-medium ${
+                statusFilter === f.id ? "bg-primary text-primary-foreground" : "text-slate-500 hover:text-slate-800"
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+        <ResultsFiltersMenu filters={filters} onChange={(patch) => setFilters((prev) => ({ ...prev, ...patch }))} assertions={spec.assertions} allLabels={allLabels} />
+        <ResultsExportMenu filteredCount={filteredRows.length} selectedCount={selectedIds.size} totalCount={allRows.length} onExport={handleExport} />
+        <span className="flex-1" />
+        <Button size="sm" variant="default" disabled={sampleRunBusy} onClick={() => onRunSample(sortedRows.slice(0, 5).map((r) => r.result.datasetItemId))}>
+          {sampleRunBusy ? <Loader2 size={12} className="animate-spin" /> : <Beaker size={12} />}
+          {sampleRunBusy ? "Running…" : "Re-run a sample"}
+        </Button>
       </div>
 
-      <AssertionRollup spec={spec} run={lastRun} />
+      <ResultsTable
+        rows={sortedRows}
+        variableNames={variableNames}
+        prefs={prefs}
+        selectedIds={selectedIds}
+        onToggleSelect={(id) =>
+          setSelectedIds((prev) => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+          })
+        }
+        onBulkSelect={(ids, selected) =>
+          setSelectedIds((prev) => {
+            const next = new Set(prev);
+            for (const id of ids) {
+              if (selected) next.add(id);
+              else next.delete(id);
+            }
+            return next;
+          })
+        }
+        onSort={handleSort}
+        onOpenItem={setDetailItemId}
+        onSetLabels={(id, labels) => patchResult(id, { labels })}
+        allLabels={allLabels}
+        onPageSizeChange={(size) => updatePrefs({ pageSize: size })}
+      />
 
-      <div className="space-y-2">
-        {rows.map((r) => {
-          const isOpen = expanded === r.datasetItemId;
-          const allPass = r.failCount === 0;
-          return (
-            <div key={r.datasetItemId} className="rounded-xl border border-slate-200 bg-slate-50">
-              <button
-                onClick={() => setExpanded(isOpen ? null : r.datasetItemId)}
-                className="flex w-full items-center gap-2 px-3 py-2.5 text-left"
-              >
-                {isOpen ? (
-                  <ChevronDown size={14} className="shrink-0 text-slate-500" />
-                ) : (
-                  <ChevronRight size={14} className="shrink-0 text-slate-500" />
-                )}
-                {allPass ? (
-                  <CheckCircle2 size={14} className="shrink-0 text-emerald-600" />
-                ) : (
-                  <XCircle size={14} className="shrink-0 text-rose-600" />
-                )}
-                <span className="flex-1 truncate text-xs text-slate-700">
-                  {r.item ? datasetItemLabel(r.item, variableNames) : ""}
-                </span>
-                <span className="shrink-0 text-xs text-slate-500">
-                  {r.scores.filter((s) => s.passed).length}/{r.scores.length} checks passed
-                </span>
-              </button>
-              {isOpen && (
-                <div className="space-y-3 border-t border-slate-200 px-3 py-3">
-                  <div>
-                    <p className="text-xs font-medium text-slate-500">Output</p>
-                    <p className="mt-1 rounded-lg bg-slate-100 p-2.5 text-xs text-slate-700">{r.output}</p>
-                  </div>
-                  <div className="space-y-1">
-                    {r.scores.map((sc) => (
-                      <div key={sc.assertionId} className="flex items-start gap-2 text-xs">
-                        {sc.passed ? (
-                          <CheckCircle2 size={12} className="mt-0.5 shrink-0 text-emerald-600" />
-                        ) : (
-                          <XCircle size={12} className="mt-0.5 shrink-0 text-rose-600" />
-                        )}
-                        <span className={sc.passed ? "text-slate-600" : "text-rose-700"}>{sc.reason}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <div>
-                    <p className="text-xs font-medium text-slate-500">Open-coding note</p>
-                    <textarea
-                      rows={2}
-                      placeholder="What's actually going on here, in your own words…"
-                      value={r.note ?? ""}
-                      onChange={(e) => setNote(r.datasetItemId, e.target.value)}
-                      className="mt-1 w-full resize-none rounded-lg border border-slate-200 bg-slate-100 px-2.5 py-1.5 text-xs text-slate-800 outline-none focus:border-sky-500"
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
+      {detailItemId && (
+        <ResultItemPanel
+          rows={sortedRows}
+          datasetItemId={detailItemId}
+          variableNames={variableNames}
+          assertions={spec.assertions}
+          run={lastRun}
+          allLabels={allLabels}
+          onClose={() => setDetailItemId(null)}
+          onNavigate={setDetailItemId}
+          onSetNote={(id, note) => patchResult(id, { note })}
+          onSetLabels={(id, labels) => patchResult(id, { labels })}
+        />
+      )}
     </div>
   );
 }

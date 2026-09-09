@@ -1,27 +1,33 @@
 ﻿import { useState } from "react";
-import { Bot, CheckCircle2, MessageSquare, Rocket, XCircle } from "lucide-react";
+import clsx from "clsx";
+import { Bot, CheckCircle2, Gauge, MessageSquare, Rocket, XCircle } from "lucide-react";
 import { useStore } from "../../store";
 import type { SpecProject, Verdict } from "../../types";
 import { computeCoverage } from "../../coverage";
+import { computeReviewMetrics } from "../../metrics";
 import { newId } from "../../utils/id";
-import { Badge, Button, TextArea } from "../ui";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 
 export function ReviewPane({ spec }: { spec: SpecProject }) {
   const { updateSpec } = useStore();
   const [draft, setDraft] = useState("");
   const lastRun = spec.runs[spec.runs.length - 1];
   const coverage = computeCoverage(spec);
+  const hasCurrentRun = !!lastRun && lastRun.createdAt >= spec.updatedAt;
 
-  if (!lastRun?.citable) {
+  if (!hasCurrentRun) {
     return (
       <p className="text-sm text-slate-500">
-        Review needs a citable run first — hit Publish in the top bar (this freezes the bundle and auto-triggers
-        the citable run).
+        Review needs a current run first — click Run (or Generate) in the top bar. If the Spec changed since the
+        last run, run it again.
       </p>
     );
   }
 
   const findings = buildAiFindings(spec, coverage, lastRun);
+  const metrics = computeReviewMetrics(spec, lastRun);
 
   function addComment() {
     if (!draft.trim()) return;
@@ -50,10 +56,10 @@ export function ReviewPane({ spec }: { spec: SpecProject }) {
   const verdictTone = spec.verdict === "approved" ? "success" : spec.verdict === "changes_requested" ? "danger" : "neutral";
 
   return (
-    <div className="max-w-5xl space-y-5">
+    <div className="space-y-5">
       <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
         <div className="mb-2 flex items-center gap-2 text-sm text-slate-800">
-          <Bot size={15} className="text-sky-600" /> AI review agent — first pass
+          <Bot size={15} className="text-primary" /> AI review agent — first pass
         </div>
         <ul className="space-y-1.5">
           {findings.map((f, i) => (
@@ -70,6 +76,37 @@ export function ReviewPane({ spec }: { spec: SpecProject }) {
         <p className="mt-2 text-[11px] text-slate-400">Comments only — never approves. The verdict below is yours.</p>
       </div>
 
+      <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+        <div className="mb-2 flex items-center gap-2 text-sm text-slate-800">
+          <Gauge size={15} className="text-primary" /> Metrics
+        </div>
+        <div className="space-y-1.5">
+          {metrics.map((m) => (
+            <div
+              key={m.key}
+              className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2"
+            >
+              <div className="min-w-0">
+                <p className="text-xs font-medium text-slate-700">{m.label}</p>
+                <p className="mt-0.5 text-[11px] text-slate-400">{m.description}</p>
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                <div className="h-1.5 w-20 overflow-hidden rounded-full bg-slate-200">
+                  <div
+                    className={clsx("h-full rounded-full", m.passed ? "bg-emerald-500" : "bg-rose-500")}
+                    style={{ width: `${Math.round(m.score * 100)}%` }}
+                  />
+                </div>
+                <span className="w-9 text-right text-xs font-semibold text-slate-700">{Math.round(m.score * 100)}%</span>
+              </div>
+            </div>
+          ))}
+        </div>
+        <p className="mt-2 text-[11px] text-slate-400">
+          More metrics (groundedness, toxicity, and others) will land here over time.
+        </p>
+      </div>
+
       <div>
         <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-800">
           <MessageSquare size={14} /> Comments
@@ -84,7 +121,7 @@ export function ReviewPane({ spec }: { spec: SpecProject }) {
           ))}
         </div>
         <div className="mt-2 flex gap-2">
-          <TextArea rows={2} placeholder="Leave a comment…" value={draft} onChange={(e) => setDraft(e.target.value)} />
+          <Textarea rows={2} placeholder="Leave a comment…" value={draft} onChange={(e) => setDraft(e.target.value)} />
           <Button onClick={addComment}>Post</Button>
         </div>
       </div>
@@ -94,10 +131,10 @@ export function ReviewPane({ spec }: { spec: SpecProject }) {
           Verdict: <Badge tone={verdictTone}>{spec.verdict.replace("_", " ")}</Badge>
         </div>
         <div className="flex gap-2">
-          <Button variant="danger" onClick={() => setVerdict("changes_requested")}>
+          <Button variant="destructive" onClick={() => setVerdict("changes_requested")}>
             Request changes
           </Button>
-          <Button variant="primary" onClick={() => setVerdict("approved")}>
+          <Button variant="default" onClick={() => setVerdict("approved")}>
             <Rocket size={13} /> Approve & release
           </Button>
         </div>
@@ -128,7 +165,7 @@ function buildAiFindings(
     belowThreshold(spec, lastRun),
     lastRun.passRate === 1
       ? { ok: false, text: "100% pass rate — consider whether the dataset is stress-testing anything." }
-      : { ok: true, text: `Citable run pass rate: ${Math.round(lastRun.passRate * 100)}%.` },
+      : { ok: true, text: `Latest run pass rate: ${Math.round(lastRun.passRate * 100)}%.` },
   ];
   return findings;
 }

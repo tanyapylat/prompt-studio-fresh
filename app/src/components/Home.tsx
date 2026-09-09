@@ -1,5 +1,6 @@
 ﻿import { useMemo, useState } from "react";
 import {
+  ArrowUpRight,
   ChevronDown,
   ChevronRight,
   Compass,
@@ -12,35 +13,32 @@ import {
   Trash2,
 } from "lucide-react";
 import { useStore } from "../store";
-import { createBlankSpec, forkSpec } from "../specFactory";
-import { computeCoverage } from "../coverage";
+import { useAssistantActions } from "../assistantContext";
+import { createBlankSpec, forkSpec, isSpecPublished } from "../specFactory";
 import { canView, getRole, ROLE_LABEL } from "../permissions";
 import { mirrorPromptIdForSpec, versionIdForTarget } from "../promptFactory";
-import type { SpecProject } from "../types";
-import { Avatar, Badge, Button, Card, PageShell, TextInput } from "./ui";
+import { saveTab } from "./Workspace";
+import type { LibraryVisibility, SpecProject } from "../types";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { PageShell } from "@/components/ui/page-shell";
+import { ColumnHeader, UPDATED_AT_PRESET_LABEL, matchesUpdatedAtPreset, type UpdatedAtPreset } from "@/components/ui/column-header";
+import { PrivacyFilter, type PrivacyFilterValue } from "@/components/ui/privacy-filter";
 import { AccessManager } from "./AccessManager";
+import { NewItemFlow } from "./NewItemFlow";
 
-type MineFilter = "all" | "mine" | "org";
-type StatusFilter = "all" | "draft" | "published";
-type SortKey = "updated" | "name" | "runs" | "coverage" | "passRate";
+type SortKey = "id" | "name" | "updatedBy" | "access" | "updatedAt" | "apiFetches" | "executions";
+type SortDir = "asc" | "desc";
 
-const SORT_LABEL: Record<SortKey, string> = {
-  updated: "Sort: Recently updated",
-  name: "Sort: Name (A–Z)",
-  runs: "Sort: Most runs",
-  coverage: "Sort: Coverage",
-  passRate: "Sort: Pass rate",
-};
-
-const STATUS_FILTER_LABEL: Record<StatusFilter, string> = {
-  all: "Any status",
-  draft: "Draft",
-  published: "Published",
-};
-
-function lastPassRate(s: SpecProject): number | null {
-  const last = s.runs[s.runs.length - 1];
-  return last ? last.passRate : null;
+interface ColumnFilters {
+  id: string;
+  name: string;
+  updatedBy: Set<string>;
+  access: Set<LibraryVisibility>;
+  updatedAt: UpdatedAtPreset;
 }
 
 function relativeTime(ts: number): string {
@@ -52,33 +50,74 @@ function relativeTime(ts: number): string {
   return months === 1 ? "1 month ago" : `${months} months ago`;
 }
 
+/** "MM/DD/YYYY, h:mm AM/PM" — the USA date:time convention the table now shows instead of a relative time. */
+function formatUsDateTime(ts: number): string {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "2-digit",
+    day: "2-digit",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  }).format(ts);
+}
+
 /**
- * Owner/Access hold fixed-size content (avatar + first name, a badge), so they get a floor and only
- * a small share of the slack — extra width goes to Name and Powers, which is where the text lives.
+ * ID / Name get the flexible space; Last updated by, Access, and the two usage-metric columns
+ * hold fixed-size content (avatar + name, a badge, a number) so they get a floor and only a
+ * small share of the slack.
  */
-const ROW_COLUMNS =
-  "grid-cols-[22px_minmax(0,2.6fr)_minmax(168px,0.9fr)_minmax(124px,0.7fr)_minmax(0,1.3fr)_84px_56px_56px_76px]";
+const ROW_COLUMNS = "grid-cols-[22px_108px_minmax(0,2.1fr)_minmax(132px,0.9fr)_92px_164px_108px_108px]";
 
 export function Home() {
   const { specs, users, currentUserId, select, addSpec, removeSpec, selectPrompt } = useStore();
-  const [filter, setFilter] = useState<MineFilter>("all");
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const { openWithPrompt } = useAssistantActions();
+  const [filter, setFilter] = useState<PrivacyFilterValue>("org");
   const [query, setQuery] = useState("");
-  const [sort, setSort] = useState<SortKey>("updated");
-  const [powerFilter, setPowerFilter] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [forkMenuOpen, setForkMenuOpen] = useState(false);
-
-  function handleCreate() {
-    const name = window.prompt("Name this Spec", "New Spec")?.trim();
-    addSpec(createBlankSpec(name || "Untitled Spec", currentUserId));
-  }
+  const [newFlowOpen, setNewFlowOpen] = useState(false);
+  const [sortKey, setSortKey] = useState<SortKey>("updatedAt");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [openFilterKey, setOpenFilterKey] = useState<SortKey | null>(null);
+  const [columnFilters, setColumnFilters] = useState<ColumnFilters>({
+    id: "",
+    name: "",
+    updatedBy: new Set(),
+    access: new Set(),
+    updatedAt: "any",
+  });
 
   function handleFork(source: SpecProject) {
-    setForkMenuOpen(false);
-    const name = window.prompt("Name the new version", `${source.name} (new version)`)?.trim();
-    if (name === null) return;
-    addSpec(forkSpec(source, currentUserId, name || undefined));
+    // Create the fork immediately — the workspace header's inline input lets the user
+    // rename without a browser-native dialog interrupting the demo flow.
+    const forked = forkSpec(source, currentUserId);
+    addSpec(forked);
+    select(forked.id);
+  }
+
+  /** "Type it myself" branch of the New Spec flow — from scratch, or forking a chosen source. */
+  function handleNewItemManual(sourceId?: string) {
+    const source = sourceId ? specs.find((s) => s.id === sourceId) : null;
+    if (source) {
+      handleFork(source);
+      return;
+    }
+    // Create immediately with a placeholder name — the workspace header's inline input
+    // lets the user rename without a browser-native dialog interrupting the flow.
+    const spec = createBlankSpec("Untitled Spec", currentUserId);
+    addSpec(spec);
+    select(spec.id);
+  }
+
+  /** "Ask North Star" branch of the New Spec flow — from scratch, or regenerating a forked source. */
+  function handleNewItemNorthStar(sourceId?: string) {
+    const source = sourceId ? specs.find((s) => s.id === sourceId) : null;
+    if (source) {
+      addSpec(forkSpec(source, currentUserId));
+      openWithPrompt("Regenerate the Prompt, Assertions, and Dataset for this Spec.");
+      return;
+    }
+    openWithPrompt("Build a new prompt from scratch");
   }
 
   function handleDelete(spec: SpecProject) {
@@ -101,57 +140,87 @@ export function Home() {
     selectPrompt(mirrorPromptIdForSpec(spec.id), versionIdForTarget(targetId));
   }
 
-  const allPowerTags = useMemo(() => {
-    const set = new Set<string>();
-    specs.forEach((s) => s.powers.forEach((p) => p.confirmed && set.add(p.text)));
-    return [...set].sort();
-  }, [specs]);
+  /** Jumps straight into the Spec's Results tab, showing its last eval run. */
+  function openLastRunResults(spec: SpecProject) {
+    saveTab(spec.id, "results");
+    select(spec.id);
+  }
+
+  function handleSort(key: SortKey) {
+    if (sortKey === key) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir(key === "updatedAt" || key === "apiFetches" || key === "executions" ? "desc" : "asc");
+    }
+  }
+
+  function toggleUpdatedByFilter(userId: string) {
+    setColumnFilters((f) => {
+      const next = new Set(f.updatedBy);
+      if (next.has(userId)) next.delete(userId);
+      else next.add(userId);
+      return { ...f, updatedBy: next };
+    });
+  }
+
+  function toggleAccessFilter(v: LibraryVisibility) {
+    setColumnFilters((f) => {
+      const next = new Set(f.access);
+      if (next.has(v)) next.delete(v);
+      else next.add(v);
+      return { ...f, access: next };
+    });
+  }
+
+  const updatedByOptions = useMemo(() => {
+    const ids = new Set(specs.map((s) => s.updatedByUserId));
+    return users.filter((u) => ids.has(u.id));
+  }, [specs, users]);
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
     return specs
       .filter((s) => canView(s, currentUserId))
       .filter((s) => (filter === "mine" ? s.ownerId === currentUserId : filter === "org" ? s.visibility === "org" : true))
-      .filter((s) => {
-        if (statusFilter === "all") return true;
-        return s.status === statusFilter;
-      })
-      .filter((s) => !powerFilter || s.powers.some((p) => p.confirmed && p.text === powerFilter))
+      .filter((s) => !columnFilters.id || s.id.toLowerCase().includes(columnFilters.id.toLowerCase()))
+      .filter((s) => !columnFilters.name || s.name.toLowerCase().includes(columnFilters.name.toLowerCase()))
+      .filter((s) => columnFilters.updatedBy.size === 0 || columnFilters.updatedBy.has(s.updatedByUserId))
+      .filter((s) => columnFilters.access.size === 0 || columnFilters.access.has(s.visibility))
+      .filter((s) => matchesUpdatedAtPreset(s.updatedAt, columnFilters.updatedAt))
       .filter((s) => {
         if (!q) return true;
-        return (
-          s.name.toLowerCase().includes(q) ||
-          s.id.toLowerCase().includes(q) ||
-          s.goal.toLowerCase().includes(q) ||
-          s.powers.some((p) => p.text.toLowerCase().includes(q))
-        );
+        return s.name.toLowerCase().includes(q) || s.id.toLowerCase().includes(q) || s.goal.toLowerCase().includes(q);
       })
       .sort((a, b) => {
-        if (sort === "name") return a.name.localeCompare(b.name);
-        if (sort === "runs") return b.runs.length - a.runs.length;
-        if (sort === "coverage") {
-          const ca = computeCoverage(a);
-          const cb = computeCoverage(b);
-          const ra = ca.total ? ca.covered / ca.total : 0;
-          const rb = cb.total ? cb.covered / cb.total : 0;
-          return rb - ra;
+        const dir = sortDir === "asc" ? 1 : -1;
+        switch (sortKey) {
+          case "id":
+            return a.id.localeCompare(b.id) * dir;
+          case "name":
+            return a.name.localeCompare(b.name) * dir;
+          case "updatedBy":
+            return ownerOf(a.updatedByUserId).name.localeCompare(ownerOf(b.updatedByUserId).name) * dir;
+          case "access":
+            return a.visibility.localeCompare(b.visibility) * dir;
+          case "apiFetches":
+            return ((a.usageStats?.promptFetches ?? -1) - (b.usageStats?.promptFetches ?? -1)) * dir;
+          case "executions":
+            return ((a.usageStats?.productionExecutions ?? -1) - (b.usageStats?.productionExecutions ?? -1)) * dir;
+          default:
+            return (a.updatedAt - b.updatedAt) * dir;
         }
-        if (sort === "passRate") {
-          const pa = lastPassRate(a) ?? -1;
-          const pb = lastPassRate(b) ?? -1;
-          return pb - pa;
-        }
-        return b.updatedAt - a.updatedAt;
       });
-  }, [specs, currentUserId, filter, statusFilter, query, sort, powerFilter]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [specs, currentUserId, filter, query, sortKey, sortDir, columnFilters]);
 
   return (
     <PageShell>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2 text-sky-600">
+          <div className="flex items-center gap-2 text-primary">
             <Compass size={16} />
-            <span className="text-xs font-semibold uppercase tracking-wider">Compass</span>
+            <span className="text-xs font-semibold uppercase tracking-wider">AI Studio</span>
           </div>
           <h1 className="mt-1 text-2xl font-semibold text-slate-900">Specs</h1>
           <p className="mt-1 max-w-xl text-sm text-slate-500">
@@ -160,103 +229,35 @@ export function Home() {
           </p>
         </div>
         <div className="relative flex flex-wrap gap-2">
-          <Button variant="secondary" onClick={() => setForkMenuOpen((v) => !v)}>
-            <Copy size={16} /> New version from…
-          </Button>
-          <Button variant="primary" onClick={handleCreate}>
+          <Button variant="default" onClick={() => setNewFlowOpen(true)}>
             <Plus size={16} /> New Spec
           </Button>
-          {forkMenuOpen && (
-            <div className="absolute right-0 top-full z-20 mt-1 w-80 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
-              <p className="border-b border-slate-200 px-3 py-2 text-[11px] text-slate-500">
-                Fork a Spec into a fresh draft — content copied, runs and review cleared.
-              </p>
-              <div className="max-h-64 overflow-y-auto p-1">
-                {specs.filter((s) => canView(s, currentUserId)).length === 0 && (
-                  <p className="px-3 py-2 text-xs text-slate-400">No Specs to fork yet.</p>
-                )}
-                {specs
-                  .filter((s) => canView(s, currentUserId))
-                  .map((s) => (
-                    <button
-                      key={s.id}
-                      onClick={() => handleFork(s)}
-                      className="flex w-full items-start gap-2 rounded-lg px-3 py-2 text-left hover:bg-slate-100"
-                    >
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-xs font-medium text-slate-800">{s.name}</span>
-                        <span className="block truncate text-[11px] text-slate-400">{s.goal || "No goal yet"}</span>
-                      </span>
-                      <Badge tone={s.status === "published" ? "success" : "neutral"}>
-                        {s.status === "published" ? "Published" : "Draft"}
-                      </Badge>
-                    </button>
-                  ))}
-              </div>
-            </div>
-          )}
         </div>
       </div>
+
+      <NewItemFlow
+        open={newFlowOpen}
+        onClose={() => setNewFlowOpen(false)}
+        itemLabel="Spec"
+        showOriginStep
+        forkSources={specs
+          .filter((s) => canView(s, currentUserId))
+          .map((s) => ({ id: s.id, name: s.name, goal: s.goal, published: isSpecPublished(s) }))}
+        onManual={handleNewItemManual}
+        onNorthStar={handleNewItemNorthStar}
+      />
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
         <div className="relative w-64">
           <Search size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
-          <TextInput
+          <Input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search by name, id, goal, powers…"
+            placeholder="Search by name, id, goal…"
             className="pl-8"
           />
         </div>
-        <div className="flex gap-1 rounded-lg border border-slate-200 bg-slate-50 p-0.5">
-          {(["all", "mine", "org"] as const).map((f) => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-                filter === f ? "bg-sky-600 text-white" : "text-slate-600 hover:text-slate-800"
-              }`}
-            >
-              {f === "all" ? "All" : f === "mine" ? "Mine" : "Org-wide"}
-            </button>
-          ))}
-        </div>
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-          className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5 text-xs text-slate-700 outline-none"
-        >
-          {(Object.keys(STATUS_FILTER_LABEL) as StatusFilter[]).map((k) => (
-            <option key={k} value={k}>
-              {STATUS_FILTER_LABEL[k]}
-            </option>
-          ))}
-        </select>
-        {allPowerTags.length > 0 && (
-          <select
-            value={powerFilter}
-            onChange={(e) => setPowerFilter(e.target.value)}
-            className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5 text-xs text-slate-700 outline-none"
-          >
-            <option value="">All products / features</option>
-            {allPowerTags.map((t) => (
-              <option key={t} value={t}>
-                {t}
-              </option>
-            ))}
-          </select>
-        )}
-        <select
-          value={sort}
-          onChange={(e) => setSort(e.target.value as SortKey)}
-          className="ml-auto rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5 text-xs text-slate-700 outline-none"
-        >
-          {(Object.keys(SORT_LABEL) as SortKey[]).map((k) => (
-            <option key={k} value={k}>
-              {SORT_LABEL[k]}
-            </option>
-          ))}
-        </select>
+        <PrivacyFilter value={filter} onChange={setFilter} />
       </div>
 
       {visible.length === 0 ? (
@@ -265,30 +266,166 @@ export function Home() {
           <p className="text-sm text-slate-600">
             {specs.length === 0 ? "No Specs yet — create one to get started." : "Nothing matches these filters."}
           </p>
+          {specs.length === 0 && (
+            <Button variant="default" onClick={() => setNewFlowOpen(true)}>
+              <Plus size={16} /> New Spec
+            </Button>
+          )}
         </Card>
       ) : (
-        <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200">
+        <div className="mt-5">
+          {openFilterKey && <div className="fixed inset-0 z-20" onClick={() => setOpenFilterKey(null)} />}
+
           <div
-            className={`grid ${ROW_COLUMNS} gap-3 border-b border-slate-200 bg-slate-50 px-4 py-2 text-[11px] font-medium uppercase tracking-wide text-slate-500`}
+            className={`relative z-10 grid ${ROW_COLUMNS} gap-3 rounded-t-2xl border border-b-0 border-slate-200 bg-slate-50 px-4 py-2 text-[11px] font-medium uppercase tracking-wide text-slate-500`}
           >
             <span />
-            <span>Name</span>
-            <span>Owner</span>
-            <span>Access</span>
-            <span>Powers</span>
-            <span>Updated</span>
-            <span>Runs</span>
-            <span>Pass</span>
-            <span>Coverage</span>
+            <ColumnHeader
+              label="ID"
+              columnKey="id"
+              activeSort={sortKey}
+              sortDir={sortDir}
+              onSort={handleSort}
+              filterActive={!!columnFilters.id}
+              isFilterOpen={openFilterKey === "id"}
+              onToggleFilter={setOpenFilterKey}
+              filterContent={
+                <Input
+                  autoFocus
+                  value={columnFilters.id}
+                  onChange={(e) => setColumnFilters((f) => ({ ...f, id: e.target.value }))}
+                  placeholder="Filter by ID…"
+                />
+              }
+            />
+            <ColumnHeader
+              label="Name"
+              columnKey="name"
+              activeSort={sortKey}
+              sortDir={sortDir}
+              onSort={handleSort}
+              filterActive={!!columnFilters.name}
+              isFilterOpen={openFilterKey === "name"}
+              onToggleFilter={setOpenFilterKey}
+              filterContent={
+                <Input
+                  autoFocus
+                  value={columnFilters.name}
+                  onChange={(e) => setColumnFilters((f) => ({ ...f, name: e.target.value }))}
+                  placeholder="Filter by name…"
+                />
+              }
+            />
+            <ColumnHeader
+              label="Last updated by"
+              columnKey="updatedBy"
+              activeSort={sortKey}
+              sortDir={sortDir}
+              onSort={handleSort}
+              filterActive={columnFilters.updatedBy.size > 0}
+              isFilterOpen={openFilterKey === "updatedBy"}
+              onToggleFilter={setOpenFilterKey}
+              filterContent={
+                <div className="space-y-1">
+                  {updatedByOptions.length === 0 && <p className="text-xs text-slate-400">No one yet.</p>}
+                  {updatedByOptions.map((u) => (
+                    <label key={u.id} className="flex cursor-pointer items-center gap-2 rounded-md px-1 py-1 text-xs hover:bg-slate-50">
+                      <input
+                        type="checkbox"
+                        checked={columnFilters.updatedBy.has(u.id)}
+                        onChange={() => toggleUpdatedByFilter(u.id)}
+                        className="accent-primary"
+                      />
+                      <Avatar title={u.name}>
+                        <AvatarFallback>{u.initials}</AvatarFallback>
+                      </Avatar>
+                      <span className="truncate">{u.name}</span>
+                    </label>
+                  ))}
+                </div>
+              }
+            />
+            <ColumnHeader
+              label="Access"
+              columnKey="access"
+              activeSort={sortKey}
+              sortDir={sortDir}
+              onSort={handleSort}
+              filterActive={columnFilters.access.size > 0}
+              isFilterOpen={openFilterKey === "access"}
+              onToggleFilter={setOpenFilterKey}
+              filterContent={
+                <div className="space-y-1">
+                  {(["org", "private"] as const).map((v) => (
+                    <label key={v} className="flex cursor-pointer items-center gap-2 rounded-md px-1 py-1 text-xs hover:bg-slate-50">
+                      <input
+                        type="checkbox"
+                        checked={columnFilters.access.has(v)}
+                        onChange={() => toggleAccessFilter(v)}
+                        className="accent-primary"
+                      />
+                      {v === "org" ? <Globe2 size={12} /> : <Lock size={12} />}
+                      <span>{v === "org" ? "Public" : "Private"}</span>
+                    </label>
+                  ))}
+                </div>
+              }
+            />
+            <ColumnHeader
+              label="Updated"
+              columnKey="updatedAt"
+              activeSort={sortKey}
+              sortDir={sortDir}
+              onSort={handleSort}
+              filterActive={columnFilters.updatedAt !== "any"}
+              isFilterOpen={openFilterKey === "updatedAt"}
+              onToggleFilter={setOpenFilterKey}
+              filterContent={
+                <div className="space-y-0.5">
+                  {(Object.keys(UPDATED_AT_PRESET_LABEL) as UpdatedAtPreset[]).map((k) => (
+                    <button
+                      key={k}
+                      onClick={() => setColumnFilters((f) => ({ ...f, updatedAt: k }))}
+                      className={`block w-full rounded-md px-2 py-1 text-left text-xs ${
+                        columnFilters.updatedAt === k ? "bg-accent text-accent-foreground" : "hover:bg-slate-50"
+                      }`}
+                    >
+                      {UPDATED_AT_PRESET_LABEL[k]}
+                    </button>
+                  ))}
+                </div>
+              }
+            />
+            <ColumnHeader
+              label="API fetches (24h)"
+              title="Prompt versions generated from this Spec, fetched from AI Studio in the last 24h. Mocked for now — will come from real usage telemetry."
+              columnKey="apiFetches"
+              activeSort={sortKey}
+              sortDir={sortDir}
+              onSort={handleSort}
+              filterActive={false}
+              isFilterOpen={false}
+              onToggleFilter={setOpenFilterKey}
+            />
+            <ColumnHeader
+              label="Executions (24h)"
+              title="Linked prompt executions on Production via LiteLLM in the last 24h. Mocked for now — will come from real Dynatrace telemetry."
+              columnKey="executions"
+              activeSort={sortKey}
+              sortDir={sortDir}
+              onSort={handleSort}
+              filterActive={false}
+              isFilterOpen={false}
+              onToggleFilter={setOpenFilterKey}
+            />
           </div>
 
+          <div className="overflow-hidden rounded-b-2xl border border-slate-200">
           {visible.map((s) => {
             const expanded = expandedId === s.id;
-            const owner = ownerOf(s.ownerId);
-            const coverage = computeCoverage(s);
+            const updatedBy = ownerOf(s.updatedByUserId);
             const role = getRole(s, currentUserId);
-            const confirmedPowers = s.powers.filter((p) => p.confirmed);
-            const pass = lastPassRate(s);
+            const lastRun = s.runs[s.runs.length - 1] ?? null;
 
             return (
               <div key={s.id} className="border-b border-slate-100 last:border-b-0">
@@ -302,25 +439,33 @@ export function Home() {
                   </button>
 
                   <button onClick={() => select(s.id)} className="min-w-0 text-left">
+                    <span className="truncate font-mono text-[11px] text-slate-500" title={s.id}>
+                      {s.id}
+                    </span>
+                  </button>
+
+                  <button onClick={() => select(s.id)} className="min-w-0 text-left">
                     <span className="flex flex-wrap items-center gap-1.5">
-                      <span className="truncate text-sm font-medium text-slate-900 hover:text-sky-700">{s.name}</span>
-                      <Badge tone={s.status === "published" ? "success" : "neutral"}>
-                        {s.status === "published" ? "Published" : "Draft"}
+                      <span className="truncate text-sm font-medium text-slate-900 hover:text-primary">{s.name}</span>
+                      <Badge tone={isSpecPublished(s) ? "success" : "neutral"}>
+                        {isSpecPublished(s) ? "Published" : "Draft"}
                       </Badge>
                     </span>
                     <span className="mt-0.5 block truncate text-xs text-slate-400">{s.goal || "No goal written yet."}</span>
                   </button>
 
                   <span className="flex min-w-0 items-center gap-1.5 text-xs text-slate-600">
-                    <Avatar name={owner.name} initials={owner.initials} />
-                    <span className="truncate" title={owner.name}>{owner.name}</span>
+                    <Avatar title={updatedBy.name}>
+                      <AvatarFallback>{updatedBy.initials}</AvatarFallback>
+                    </Avatar>
+                    <span className="truncate" title={updatedBy.name}>{updatedBy.name}</span>
                   </span>
 
                   <span className="flex flex-wrap items-center gap-1">
                     <Badge tone={s.visibility === "org" ? "success" : "neutral"}>
                       {s.visibility === "org" ? (
                         <>
-                          <Globe2 size={11} /> Org
+                          <Globe2 size={11} /> Public
                         </>
                       ) : (
                         <>
@@ -331,39 +476,13 @@ export function Home() {
                     {role && role !== "owner" && <span className="text-[10px] text-slate-400">{ROLE_LABEL[role]}</span>}
                   </span>
 
-                  <span className="flex flex-wrap gap-1">
-                    {confirmedPowers.length === 0 && <span className="text-xs text-slate-400">—</span>}
-                    {confirmedPowers.slice(0, 2).map((p) => (
-                      <Badge key={p.id} tone="accent">
-                        {p.text}
-                      </Badge>
-                    ))}
-                    {confirmedPowers.length > 2 && (
-                      <span className="text-[10px] text-slate-400">+{confirmedPowers.length - 2}</span>
-                    )}
-                  </span>
+                  <span className="text-xs text-slate-500">{formatUsDateTime(s.updatedAt)}</span>
 
-                  <span className="text-xs text-slate-500">{relativeTime(s.updatedAt)}</span>
-                  <span className="text-xs text-slate-500">{s.runs.length}</span>
-                  <span
-                    className={`text-xs ${
-                      pass === null
-                        ? "text-slate-400"
-                        : pass >= 1
-                          ? "text-emerald-600"
-                          : pass >= 0.8
-                            ? "text-amber-600"
-                            : "text-rose-600"
-                    }`}
-                  >
-                    {pass === null ? "—" : `${Math.round(pass * 100)}%`}
+                  <span className="text-xs tabular-nums text-slate-600">
+                    {s.usageStats ? s.usageStats.promptFetches.toLocaleString() : "—"}
                   </span>
-                  <span
-                    className={`text-xs ${
-                      coverage.total > 0 && coverage.covered < coverage.total ? "text-amber-600" : "text-slate-500"
-                    }`}
-                  >
-                    {coverage.covered}/{coverage.total}
+                  <span className="text-xs tabular-nums text-slate-600">
+                    {s.usageStats ? s.usageStats.productionExecutions.toLocaleString() : "—"}
                   </span>
                 </div>
 
@@ -379,68 +498,24 @@ export function Home() {
                           </p>
                         )}
                       </div>
+
                       <div>
                         <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-slate-500">
-                          Prompt version history
+                          Usage &amp; footprint
                         </p>
-                        {!s.target ? (
-                          <p className="text-xs text-slate-400">No Prompt generated yet.</p>
-                        ) : (
-                          <>
-                            <p className="mb-2 text-[11px] text-slate-400">
-                              Click any version to open it in the Playground.
-                            </p>
-                            <div className="space-y-1.5">
-                              <button
-                                onClick={() => openPromptVersion(s, s.target!.id)}
-                                className="block w-full rounded-lg border border-slate-300 bg-slate-100 px-2.5 py-1.5 text-left hover:border-slate-400"
-                              >
-                                <span className="flex items-center justify-between">
-                                  <span className="text-xs text-slate-700">
-                                    {s.target.model} · temp {s.target.temperature}
-                                  </span>
-                                  <Badge tone="accent">Current</Badge>
-                                </span>
-                                <span className="mt-0.5 block text-[11px] text-slate-400">
-                                  {s.target.createdAt ? relativeTime(s.target.createdAt) : "—"}
-                                </span>
-                              </button>
-                              {s.promptHistory.map((t) => (
-                                <button
-                                  key={t.id}
-                                  onClick={() => openPromptVersion(s, t.id)}
-                                  className="block w-full rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-left hover:border-slate-300"
-                                >
-                                  <span className="text-xs text-slate-600">
-                                    {t.model} · temp {t.temperature}
-                                  </span>
-                                  <span className="mt-0.5 block text-[11px] text-slate-400">
-                                    {t.createdAt ? relativeTime(t.createdAt) : "—"}
-                                  </span>
-                                </button>
-                              ))}
-                              {s.promptHistory.length === 0 && (
-                                <p className="text-[11px] text-slate-400">No earlier versions — this is the first generation.</p>
-                              )}
-                            </div>
-                          </>
-                        )}
-                      </div>
-                      {s.powers.length > 0 && (
-                        <div>
-                          <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-slate-500">
-                            Powers (product / feature)
+                        <div className="space-y-1 text-xs text-slate-600">
+                          <p>
+                            Applied to:{" "}
+                            <span className="font-medium text-slate-800">{s.appliedFeature || "Not mapped yet"}</span>
                           </p>
-                          <div className="flex flex-wrap gap-1.5">
-                            {s.powers.map((p) => (
-                              <Badge key={p.id} tone={p.confirmed ? "accent" : "warning"}>
-                                {p.text}
-                                {!p.confirmed && " (suggested)"}
-                              </Badge>
-                            ))}
-                          </div>
+                          <p className="text-[11px] text-slate-400">
+                            {s.usageStats
+                              ? `See the API fetches / Executions columns for the trailing ${s.usageStats.windowHours}h — illustrative for now, will come from Dynatrace-traced LiteLLM calls.`
+                              : "No usage data yet."}
+                          </p>
                         </div>
-                      )}
+                      </div>
+
                       <div className="flex flex-wrap items-center gap-2">
                         <Button size="sm" variant="secondary" onClick={() => handleFork(s)}>
                           <Copy size={13} /> Fork as new version
@@ -456,50 +531,68 @@ export function Home() {
                       </div>
                     </div>
 
-                    <div>
-                      <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-slate-500">
-                        Recent runs
-                      </p>
-                      <p className="mb-2 text-[11px] text-slate-400">
-                        Suite launches against this Spec&apos;s current pin. Full Suite versioning lands later —
-                        for now, runs are the history.
-                      </p>
-                      {s.runs.length === 0 ? (
-                        <p className="text-xs text-slate-400">No runs yet.</p>
-                      ) : (
-                        <div className="space-y-1.5">
-                          {[...s.runs]
-                            .map((r, idx) => ({ r, n: idx + 1 }))
-                            .reverse()
-                            .slice(0, 5)
-                            .map(({ r, n }) => (
-                              <div
-                                key={r.id}
-                                className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5"
+                    <div className="space-y-4">
+                      <div>
+                        <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-slate-500">
+                          Linked prompt
+                        </p>
+                        {!s.target ? (
+                          <p className="text-xs text-slate-400">No Prompt generated yet.</p>
+                        ) : (
+                          <button
+                            onClick={() => openPromptVersion(s, s.target!.id)}
+                            className="block w-full rounded-lg border border-slate-300 bg-slate-100 px-2.5 py-1.5 text-left hover:border-slate-400"
+                          >
+                            <span className="flex items-center justify-between gap-2">
+                              <span className="text-xs text-slate-700">
+                                {s.target.model} · temp {s.target.temperature}
+                              </span>
+                              <span className="flex shrink-0 items-center gap-1 text-[11px] text-primary">
+                                Open <ArrowUpRight size={11} />
+                              </span>
+                            </span>
+                            <span className="mt-0.5 block text-[11px] text-slate-400">
+                              {s.target.createdAt ? relativeTime(s.target.createdAt) : "—"}
+                              {s.target.status === "published" ? " · Published" : " · Draft"}
+                            </span>
+                          </button>
+                        )}
+                      </div>
+
+                      <div>
+                        <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-slate-500">
+                          Last eval run
+                        </p>
+                        {!lastRun ? (
+                          <p className="text-xs text-slate-400">No runs yet.</p>
+                        ) : (
+                          <button
+                            onClick={() => openLastRunResults(s)}
+                            className="block w-full rounded-lg border border-slate-200 bg-slate-100 px-2.5 py-1.5 text-left hover:border-slate-400"
+                          >
+                            <span className="flex items-center justify-between gap-2">
+                              <span
+                                className={`text-xs font-medium ${
+                                  lastRun.passRate >= 1
+                                    ? "text-emerald-600"
+                                    : lastRun.passRate >= 0.8
+                                      ? "text-amber-600"
+                                      : "text-rose-600"
+                                }`}
                               >
-                                <span className="min-w-0">
-                                  <span className="flex items-center gap-1.5 text-xs text-slate-700">
-                                    Run {n}
-                                  </span>
-                                  <p className="mt-0.5 text-[11px] text-slate-400">
-                                    {relativeTime(r.createdAt)} · {r.mode}
-                                  </p>
-                                </span>
-                                <span
-                                  className={`shrink-0 text-xs font-medium ${
-                                    r.passRate >= 1
-                                      ? "text-emerald-600"
-                                      : r.passRate >= 0.8
-                                        ? "text-amber-600"
-                                        : "text-rose-600"
-                                  }`}
-                                >
-                                  {Math.round(r.passRate * 100)}%
-                                </span>
-                              </div>
-                            ))}
-                        </div>
-                      )}
+                                {Math.round(lastRun.passRate * 100)}% pass
+                              </span>
+                              <span className="flex shrink-0 items-center gap-1 text-[11px] text-primary">
+                                View results <ArrowUpRight size={11} />
+                              </span>
+                            </span>
+                            <span className="mt-0.5 block text-[11px] text-slate-400">
+                              {relativeTime(lastRun.createdAt)}
+                              {lastRun.scope === "sample" ? " · sample" : ""}
+                            </span>
+                          </button>
+                        )}
+                      </div>
                     </div>
 
                     <div>
@@ -511,6 +604,7 @@ export function Home() {
               </div>
             );
           })}
+          </div>
         </div>
       )}
     </PageShell>

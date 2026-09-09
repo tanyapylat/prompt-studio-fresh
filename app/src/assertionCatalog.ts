@@ -4,7 +4,7 @@ import type { CodeCheckMode } from "./types";
 export interface AssertionModeSpec {
   mode: CodeCheckMode;
   label: string;
-  group: "Text match" | "Structured data" | "Similarity" | "Cost & latency";
+  group: "Text match" | "Structured data" | "Similarity" | "Cost & latency" | "Length";
   /** Short helper shown under the mode picker. */
   hint: string;
   needsValue: boolean;
@@ -16,6 +16,8 @@ export interface AssertionModeSpec {
   needsThreshold: boolean;
   thresholdLabel?: string;
   thresholdDefault?: number;
+  /** word_count only: render Min/Max number inputs (CodeCheck.min/max) instead of a value field. */
+  needsMinMax?: boolean;
 }
 
 /**
@@ -102,6 +104,28 @@ export const ASSERTION_MODE_CATALOG: AssertionModeSpec[] = [
     label: "Contains any of (case-insensitive)",
     group: "Text match",
     hint: "Output must contain at least one of these phrases, ignoring case.",
+    needsValue: true,
+    valuePlaceholder: "phrase one, phrase two, …",
+    valueIsList: true,
+    needsReference: false,
+    needsThreshold: false,
+  },
+  {
+    mode: "not_contains_any",
+    label: "Contains none of",
+    group: "Text match",
+    hint: "Output must NOT contain any of these phrases (case-sensitive) — promptfoo's not-contains-any.",
+    needsValue: true,
+    valuePlaceholder: "phrase one, phrase two, …",
+    valueIsList: true,
+    needsReference: false,
+    needsThreshold: false,
+  },
+  {
+    mode: "not_icontains_any",
+    label: "Contains none of (case-insensitive)",
+    group: "Text match",
+    hint: "Output must NOT contain any of these phrases, ignoring case — promptfoo's not-icontains-any.",
     needsValue: true,
     valuePlaceholder: "phrase one, phrase two, …",
     valueIsList: true,
@@ -239,6 +263,16 @@ export const ASSERTION_MODE_CATALOG: AssertionModeSpec[] = [
     needsThreshold: true,
     thresholdLabel: "Max cost (USD)",
     thresholdDefault: 0.01,
+  },
+  {
+    mode: "word_count",
+    label: "Word count",
+    group: "Length",
+    hint: "Output's word count must equal, or fall within, this range — promptfoo's word-count.",
+    needsValue: false,
+    needsReference: false,
+    needsThreshold: false,
+    needsMinMax: true,
   },
 ];
 

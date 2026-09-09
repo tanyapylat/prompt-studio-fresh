@@ -1,4 +1,4 @@
-# Compass — prototype
+# AI Studio — prototype
 
 A click-through prototype of the spec-driven workflow described in
 [`../spec-driven-redesign/`](../spec-driven-redesign/README.md), backed by **real OpenAI calls**
@@ -28,8 +28,8 @@ Restart `npm run dev` after adding the key. With it set:
 
 The key is read **only on the Vite dev server's Node process** (via a small dev-middleware
 plugin in `server/`) and is never sent to the browser bundle — `app/.env` is git-ignored.
-The Workspace top bar and the Results pane both show a **Live** / **Simulated** badge so it's
-always visible which mode produced what you're looking at.
+Simulated mode is called out wherever it's active (Workspace top bar, Playground "Try it" panel,
+Results pane); a configured, working key is the normal state and isn't specially flagged.
 
 ## Architecture
 
@@ -54,13 +54,15 @@ app/
 
 ## What's implemented
 
-- **Spec editor** — goal, input/output contract, guardrails, success criteria, examples, all inline-editable.
+- **Spec editor** — goal, context, typed input/output contracts, flat requirements, examples with rationale, open questions, all inline-editable.
 - **Coverage checklist** — every guardrail/criterion shows live whether an Assertion currently covers it.
 - **Generate** — drafts a Prompt, Assertions, a Judge Policy (only if needed), and a Dataset from
-  the Spec, then runs a non-citable dry run automatically. Real LLM calls when `OPENAI_API_KEY`
-  is set; deterministic simulation otherwise — either way it always completes.
-- **Iterate** — edit the Prompt, Assertions, or Dataset directly; editing something that was
-  published forks it back to draft, matching the doc's versioning rule.
+  the Spec. Real LLM calls when `OPENAI_API_KEY` is set; deterministic simulation otherwise — either
+  way it always completes.
+- **Iterate** — edit the Prompt, Assertions, or Dataset directly; editing the Prompt content mints
+  a fresh draft version (forking a Spec back to draft, since a Spec's published state is just
+  whether its current Prompt version is published — see below). Editing Assertions/Dataset has no
+  publish-state effect, since "published" doesn't exist at that level.
 - **Configurable Judge Policy** — model, temperature, and the grading system prompt are all
   editable per Spec (and round-trip through the Judge Policy Library), instead of a fixed
   `gpt-4o-mini` stamp.
@@ -68,11 +70,16 @@ app/
   groups (e.g. "Guardrails"), and each assertion can set its own required pass rate or fall back
   to the Spec's default; the Results pane rolls up actual vs. required pass rate per assertion,
   grouped the same way.
-- **Publish** — one action that freezes the bundle and auto-triggers the first **citable** run.
+- **Published, at exactly two levels** — a **Prompt version** (in the Playground) and the **Spec**
+  itself, which counts as published exactly when its current Prompt/Target version is published.
+  Nothing else (Assertions, Dataset, Eval) carries its own publish state.
+- **Publish** — in a Spec's Workspace, one action that publishes the current Target and
+  auto-triggers a run. Standalone Prompts (not linked to a Spec) publish independently from the
+  Prompt Playground.
 - **Review** — an AI-agent first-pass (coverage gaps, threshold misses, 100%-pass-rate warning)
   plus a simple comment thread and Approve / Request changes verdicts.
-- **Results / error analysis** — dry-run and citable results, a pass-rate-by-assertion rollup,
-  failing rows sorted first, per-assertion reasons, a Live/Simulated badge per run, and an
+- **Results / error analysis** — a pass-rate-by-assertion rollup, failing rows sorted first,
+  per-assertion reasons, a Live/Simulated badge per run, a Sample-run badge when applicable, and an
   open-coding note field per row.
 
 See [`../requirements/`](../requirements/README.md) for the full, granular requirement blocks
@@ -80,8 +87,9 @@ this app implements (and the ones it deliberately doesn't yet).
 
 ## Known simplifications (this is deliberately not the full data model)
 
-- No separate version-history tables — each artifact is a single mutable record with a
-  `draft`/`published` status flag, not the logical/version split from the Eval Service data model.
+- No separate version-history tables — Assertions/Dataset/Eval are single mutable records with no
+  publish state of their own; only a Prompt version (and, derived from it, the Spec) carries a
+  `draft`/`published` status.
 - "Regenerate" fully overwrites the current draft bundle — there's no diff-driven delta
   regeneration (Case B in the docs) yet.
 - No multi-target comparison (Case A/B side-by-side runs) — only one Target per Spec.
@@ -89,8 +97,8 @@ this app implements (and the ones it deliberately doesn't yet).
   grading-prompt choice, but validating it against human-labeled agreement is out of scope until
   there's a real labeling UI (a separate, larger piece of work).
 - Passing thresholds are informational only — they don't gate Publish or change a run's overall
-  pass rate/citable status, and the offline/simulated run path ignores a Judge Policy's
-  `temperature`/`systemPrompt` overrides (only the live `/api/run` path actually uses them).
+  pass rate, and the offline/simulated run path ignores a Judge Policy's `temperature`/
+  `systemPrompt` overrides (only the live `/api/run` path actually uses them).
 - No persistence — state lives in memory and resets on page refresh; the three seed Specs in
   `src/seed.ts` are hand-authored fixtures (not generated at load time) so the app looks populated
   immediately without an API key or network call.

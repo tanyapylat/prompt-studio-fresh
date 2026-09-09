@@ -1,8 +1,10 @@
-import { ChevronLeft, ExternalLink, Link2, Trash2 } from "lucide-react";
+import { ChevronLeft, ExternalLink, Link2, Rocket, Trash2 } from "lucide-react";
 import { useStore } from "../../store";
-import { activePromptVersion } from "../../promptFactory";
-import { Badge, Button } from "../ui";
+import { activePromptVersion, draftDiffersFromBase } from "../../promptFactory";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { PromptPlaygroundBody } from "./PromptPlaygroundBody";
+import { PlaygroundDatasetSection } from "../playground/PlaygroundDatasetSection";
 
 /**
  * Full-page shell for the Prompts catalog: same editing/testing body as the embedded Spec Prompt
@@ -18,12 +20,15 @@ export function PromptPlayground() {
     select,
     updatePromptMeta,
     deletePrompt,
+    publishPrompt,
   } = useStore();
 
   if (!prompt) return null;
 
   const version = activePromptVersion(prompt);
   const linkedSpec = prompt.specId ? specs.find((s) => s.id === prompt.specId) : null;
+  const hasUnsavedDraft = draftDiffersFromBase(prompt);
+  const canPublish = !prompt.specId && version.status !== "published" && !hasUnsavedDraft;
 
   function handleOpenSpec() {
     if (!prompt!.specId) return;
@@ -71,7 +76,7 @@ export function PromptPlayground() {
           {linkedSpec ? (
             <button
               onClick={handleOpenSpec}
-              className="flex items-center gap-1.5 text-xs text-sky-700 hover:text-sky-700"
+              className="flex items-center gap-1.5 text-xs text-primary hover:text-primary"
               title="Open the linked Spec"
             >
               <Link2 size={12} /> {linkedSpec.name} <ExternalLink size={11} />
@@ -82,10 +87,19 @@ export function PromptPlayground() {
         </div>
         {!prompt.specId && (
           <div className="flex items-center gap-2">
-            <Button size="sm" variant="secondary" onClick={handleToggleVisibility}>
-              Make {prompt.visibility === "org" ? "Private" : "Org-wide"}
+            <Button
+              size="sm"
+              variant="default"
+              disabled={!canPublish}
+              onClick={() => publishPrompt(prompt.id)}
+              title={hasUnsavedDraft ? "Save your draft as a version before publishing" : undefined}
+            >
+              <Rocket size={13} /> Publish
             </Button>
-            <Button size="sm" variant="danger" onClick={handleDelete}>
+            <Button size="sm" variant="secondary" onClick={handleToggleVisibility}>
+              Make {prompt.visibility === "org" ? "Private" : "Public"}
+            </Button>
+            <Button size="sm" variant="destructive" onClick={handleDelete}>
               <Trash2 size={13} /> Delete
             </Button>
           </div>
@@ -94,6 +108,7 @@ export function PromptPlayground() {
 
       <div className="flex-1 overflow-y-auto p-5">
         <PromptPlaygroundBody prompt={prompt} initialVersionId={selectedPromptVersionId} />
+        {linkedSpec && <PlaygroundDatasetSection spec={linkedSpec} />}
       </div>
     </div>
   );

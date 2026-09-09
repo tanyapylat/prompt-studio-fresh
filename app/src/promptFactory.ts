@@ -3,6 +3,7 @@ import type {
   Prompt,
   PromptDraft,
   PromptOutputSchema,
+  PromptSettings,
   PromptTool,
   PromptMessage,
   PromptVersion,
@@ -12,7 +13,7 @@ import type {
 } from "./types";
 import { newId } from "./utils/id";
 import { DEFAULT_TARGET_MODEL, DEFAULT_TEMPERATURE } from "./engine";
-import { defaultMessages, defaultOutputSchema } from "./promptTemplate";
+import { defaultMessages, defaultOutputSchema, defaultPromptSettings } from "./promptTemplate";
 
 /** Deterministic id so a Spec's Target always maps to the same PromptVersion row. */
 export function versionIdForTarget(targetId: string): string {
@@ -49,6 +50,7 @@ export function mirrorPromptFromSpec(spec: SpecProject, existing?: Prompt | null
     messages: t.messages ?? defaultMessages(t.promptContent),
     tools: t.tools ?? [],
     outputSchema: t.outputSchema ?? defaultOutputSchema(),
+    settings: t.settings ?? defaultPromptSettings(),
   }));
 
   return {
@@ -95,6 +97,7 @@ export function createStandalonePrompt(
     messages: defaultMessages(""),
     tools: [],
     outputSchema: defaultOutputSchema(),
+    settings: defaultPromptSettings(),
   };
   return {
     id: newId("prompt"),
@@ -120,6 +123,7 @@ export interface PromptVersionPatch {
   messages?: PromptMessage[];
   tools?: PromptTool[];
   outputSchema?: PromptOutputSchema;
+  settings?: PromptSettings;
 }
 
 /**
@@ -141,6 +145,7 @@ export function addStandalonePromptVersion(prompt: Prompt, patch: PromptVersionP
     messages: patch.messages ?? defaultMessages(patch.promptContent),
     tools: patch.tools ?? [],
     outputSchema: patch.outputSchema ?? defaultOutputSchema(),
+    settings: patch.settings ?? defaultPromptSettings(),
   };
   return {
     ...prompt,
@@ -174,6 +179,7 @@ export function duplicateAsStandalonePrompt(source: Prompt, meta: DuplicatePromp
     messages: sourceVersion.messages ?? defaultMessages(sourceVersion.promptContent),
     tools: sourceVersion.tools ?? [],
     outputSchema: sourceVersion.outputSchema ?? defaultOutputSchema(),
+    settings: sourceVersion.settings ?? defaultPromptSettings(),
   };
   return {
     id: newId("prompt"),
@@ -193,6 +199,22 @@ export function duplicateAsStandalonePrompt(source: Prompt, meta: DuplicatePromp
 
 export function activePromptVersion(prompt: Prompt): PromptVersion {
   return prompt.versions.find((v) => v.id === prompt.activeVersionId) ?? prompt.versions[prompt.versions.length - 1];
+}
+
+/**
+ * Publishes a standalone Prompt's active version in place — "published" for a Prompt means its
+ * active version is published. Spec-linked Prompts publish through the Spec's Target instead (see
+ * `lifecycle.publishSpec`), since publishing there also runs the Eval suite.
+ */
+export function publishActiveVersion(prompt: Prompt): Prompt {
+  const now = Date.now();
+  return {
+    ...prompt,
+    versions: prompt.versions.map((v) =>
+      v.id === prompt.activeVersionId ? { ...v, status: "published" as const } : v,
+    ),
+    updatedAt: now,
+  };
 }
 
 /** True when a draft actually diverges from the version it branched off — an empty diff isn't a draft. */

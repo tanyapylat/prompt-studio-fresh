@@ -1,4 +1,4 @@
-import type { Plugin, Connect } from "vite";
+import type { Plugin } from "vite";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type {
   Assertion,
@@ -18,23 +18,25 @@ import {
   runSuiteOffline,
   scoreCodeAssertion,
   scoreCustomCode,
-  suggestPowerTagsHeuristic,
+  suggestRunInsightsHeuristic,
 } from "../src/engine";
 import { fabricatePlaygroundOffline, substituteVariables } from "../src/promptTemplate";
 import { datasetItemSubstitutionValues, datasetItemLabel, datasetVariableNames } from "../src/dataset";
+import { estimateCostUsd, estimateTokens } from "../src/pricing";
 import { newId } from "../src/utils/id";
-import { offlineAssistantReply } from "../src/assistantKnowledge";
+import { offlineAgentTurn } from "../src/assistantKnowledge";
+import type { AssistantMessage, AssistantViewContext } from "../src/assistantTools";
 import {
-  assistantChat,
+  assistantAgentTurn,
   draftPromptWithLLM,
   generateDatasetWithLLM,
   hasApiKey,
   judgeWithLLM,
   runPlaygroundWithLLM,
   runTargetWithLLM,
-  suggestPowerTagsWithLLM,
-  type AssistantChatMessage,
-  type ChatMessage,
+  specBrief,
+  suggestReviewInsightsWithLLM,
+  type CompletionSettings,
 } from "./openai";
 
 const ROLE_TO_API: Record<PromptRole, "system" | "user" | "assistant"> = {
@@ -44,6 +46,20 @@ const ROLE_TO_API: Record<PromptRole, "system" | "user" | "assistant"> = {
 };
 
 const DESIRED_DATASET_SIZE = 8;
+
+/** `TargetVersion.settings.logitBias` is authored as raw JSON text — parsed defensively here. */
+function parseLogitBias(raw: string | undefined): Record<string, number> | undefined {
+  if (!raw || !raw.trim()) return undefined;
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      return parsed as Record<string, number>;
+    }
+  } catch {
+    // Invalid JSON — the Playground already blocks Run in this state, so just drop it.
+  }
+  return undefined;
+}
 
 function readJsonBody<T>(req: IncomingMessage): Promise<T> {
   return new Promise((resolve, reject) => {
@@ -144,31 +160,56 @@ async function handleRun(spec: SpecProject, itemIds?: string[]) {
     // Targets with a structured template (edited via the Playground) run their exact multi-message,
     // multi-variable template; legacy Targets (system prompt + single `{input}`) keep the original
     // simple shape so nothing changes for Specs that never touched the Playground.
+    const settings: CompletionSettings | undefined = target.settings
+      ? {
+          maxTokens: target.settings.maxTokens,
+          topP: target.settings.topP,
+          frequencyPenalty: target.settings.frequencyPenalty,
+          presencePenalty: target.settings.presencePenalty,
+          seed: target.settings.seed,
+          stopSequences: target.settings.stopSequences,
+          logitBias: parseLogitBias(target.settings.logitBias),
+          timeoutMs: target.settings.timeoutMs,
+        }
+      : undefined;
+
+    // Timed and priced around just the generation call — not the judge grading call below — since
+    // that's the cost/latency a production caller of this Target would actually incur.
+    const startedAt = Date.now();
+    let usage: { promptTokens: number; completionTokens: number };
+
     if (target.messages && target.messages.length > 0) {
       const values = datasetItemSubstitutionValues(item);
-      const messages: ChatMessage[] = target.messages
+      const messages: { role: "system" | "user" | "assistant"; content: string }[] = target.messages
         .filter((m) => m.content.trim().length > 0)
         .map((m) => ({ role: ROLE_TO_API[m.role], content: substituteVariables(m.content, values) }));
-      const result = await runPlaygroundWithLLM({ messages, model: target.model, temperature: target.temperature });
+      const result = await runPlaygroundWithLLM({ messages, model: target.model, temperature: target.temperature, settings });
       output = (result.content ?? "").trim();
+      usage = result.usage;
     } else {
-      output = await runTargetWithLLM({
+      const result = await runTargetWithLLM({
         promptContent: target.promptContent,
         model: target.model,
         temperature: target.temperature,
         input: item.input,
+        settings,
       });
+      output = result.content;
+      usage = result.usage;
     }
+
+    const latencyMs = Date.now() - startedAt;
+    const costUsd = estimateCostUsd(target.model, usage.promptTokens, usage.completionTokens);
 
     const inputLabel = datasetItemLabel(item, variableNames);
     const scores = [];
     for (const assertion of spec.assertions) {
       if (assertion.tier === "deterministic" && assertion.check) {
         const { passed, reason } = scoreCodeAssertion(assertion.check, output);
-        scores.push({ assertionId: assertion.id, passed, reason });
+        scores.push({ assertionId: assertion.id, passed, reason, score: passed ? 1 : 0 });
       } else if (assertion.tier === "custom_code" && assertion.code) {
         const { passed, reason } = scoreCustomCode(assertion.code, assertion.codeLanguage ?? "javascript", output, inputLabel);
-        scores.push({ assertionId: assertion.id, passed, reason });
+        scores.push({ assertionId: assertion.id, passed, reason, score: passed ? 1 : 0 });
       } else if (assertion.tier === "rubric_grading" && assertion.rubric) {
         const graded = await judgeWithLLM({
           rubric: assertion.rubric,
@@ -178,80 +219,148 @@ async function handleRun(spec: SpecProject, itemIds?: string[]) {
           systemPrompt: spec.judge?.systemPrompt,
           temperature: spec.judge?.temperature,
         });
-        scores.push({ assertionId: assertion.id, passed: graded.passed, reason: graded.reason });
+        scores.push({
+          assertionId: assertion.id,
+          passed: graded.passed,
+          reason: graded.reason,
+          score: graded.score ?? (graded.passed ? 1 : 0),
+        });
       }
     }
 
-    results.push({ datasetItemId: item.id, output, scores });
+    results.push({ datasetItemId: item.id, output, scores, latencyMs, costUsd });
   }
 
   return { results, mode: "live" as GenerationMode };
 }
 
 interface PlaygroundRunRequest {
-  messages: ChatMessage[];
+  messages: { role: "system" | "user" | "assistant"; content: string }[];
   model: string;
   temperature: number;
   tools?: { name: string; description: string; parameters: unknown }[];
   responseFormat?: { name: string; schema: unknown } | null;
+  settings?: CompletionSettings;
 }
 
-/** Ad-hoc Playground tester — a real completion (with tools/schema) when a key is configured, otherwise a deterministic offline fabrication. */
+/**
+ * Ad-hoc Playground tester — a real completion (with tools/schema) when a key is configured,
+ * otherwise a deterministic offline fabrication. Either way, every run reports usage/cost/latency
+ * so "Try it" always shows what a real call would have cost — estimated (by character count) in
+ * simulated mode, exact (from the API's own `usage` block) in live mode.
+ */
 async function handlePlaygroundRun(body: PlaygroundRunRequest) {
   const mode: GenerationMode = hasApiKey() ? "live" : "simulated";
+  const startedAt = Date.now();
+
   if (mode === "live") {
     const result = await runPlaygroundWithLLM(body);
-    return { ...result, mode };
+    const latencyMs = Date.now() - startedAt;
+    const costUsd = estimateCostUsd(body.model, result.usage.promptTokens, result.usage.completionTokens);
+    return { content: result.content, toolCalls: result.toolCalls, mode, usage: result.usage, latencyMs, costUsd };
   }
+
   const result = fabricatePlaygroundOffline(body);
-  return { ...result, mode };
+  const latencyMs = Date.now() - startedAt;
+  const promptTokens = body.messages.reduce((sum, m) => sum + estimateTokens(m.content), 0);
+  const completionTokens = estimateTokens(result.content ?? JSON.stringify(result.toolCalls ?? ""));
+  const usage = { promptTokens, completionTokens, totalTokens: promptTokens + completionTokens };
+  const costUsd = estimateCostUsd(body.model, promptTokens, completionTokens);
+  return { ...result, mode, usage, latencyMs, costUsd };
 }
 
 interface AssistantChatRequest {
-  messages: AssistantChatMessage[];
+  messages: AssistantMessage[];
   spec?: SpecProject | null;
-  tab?: string | null;
+  view?: AssistantViewContext | null;
 }
 
-/** North Star's chat turn — falls back to a canned, context-aware tip when no key is configured, same convention as every other endpoint here. */
+/**
+ * North Star's agentic turn — one OpenAI call (or one scripted planner call in simulated mode) per
+ * request; the client owns the conversation and executes any returned `toolCalls` itself, then
+ * calls this again with the tool results appended to continue the same turn. Falls back to the
+ * deterministic `offlineAgentTurn` "dummy flow" when no key is configured, same live/simulated
+ * convention as every other endpoint here.
+ */
 async function handleAssistantChat(body: AssistantChatRequest) {
   const mode: GenerationMode = hasApiKey() ? "live" : "simulated";
   if (mode === "simulated") {
-    return { content: offlineAssistantReply(body.tab ?? undefined), mode };
+    const { content, toolCalls } = offlineAgentTurn({
+      messages: body.messages ?? [],
+      spec: body.spec ?? null,
+      tab: body.view?.tab ?? null,
+    });
+    return { content, toolCalls, mode };
   }
-  const content = await assistantChat({ messages: body.messages ?? [], spec: body.spec ?? null, tab: body.tab ?? null });
-  return { content, mode };
+  const { content, toolCalls } = await assistantAgentTurn({
+    messages: body.messages ?? [],
+    spec: body.spec ?? null,
+    view: body.view ?? null,
+  });
+  return { content, toolCalls, mode };
 }
 
-async function handleSuggestPowers(spec: SpecProject) {
+/**
+ * Deeper, opt-in "what to review first / how to improve" for a finished Run. Simulated mode (no
+ * key) always uses the free heuristic; live mode tries the LLM pass and falls back to the same
+ * heuristic if the model returned nothing usable.
+ */
+async function handleSuggestReviewInsights(spec: SpecProject, runId: string) {
+  const run = spec.runs.find((r) => r.id === runId);
+  if (!run) throw new Error(`Run "${runId}" not found on this spec`);
+
   const mode: GenerationMode = hasApiKey() ? "live" : "simulated";
-  let tags: string[] = [];
-  if (mode === "live") {
-    tags = await suggestPowerTagsWithLLM(spec);
+  if (mode === "simulated") {
+    return { insights: suggestRunInsightsHeuristic(spec, run), mode };
   }
-  if (tags.length === 0) {
-    tags = suggestPowerTagsHeuristic(spec);
+
+  const variableNames = datasetVariableNames(spec.target?.messages);
+  const byItem = new Map(spec.dataset.map((d) => [d.id, d]));
+  const assertionById = new Map(spec.assertions.map((a) => [a.id, a]));
+
+  const failing = run.results
+    .map((r) => ({ result: r, failed: r.scores.filter((s) => !s.passed) }))
+    .filter((r) => r.failed.length > 0)
+    .sort((a, b) => b.failed.length - a.failed.length)
+    .slice(0, 20);
+
+  const rowLines = failing.map(({ result, failed }) => {
+    const item = byItem.get(result.datasetItemId);
+    const label = item ? datasetItemLabel(item, variableNames) : result.datasetItemId;
+    const failDesc = failed
+      .map((s) => `${assertionById.get(s.assertionId)?.description ?? "check"} (${s.reason})`)
+      .join("; ");
+    return `- id="${result.datasetItemId}" input="${label.slice(0, 100)}" failed ${failed.length}/${result.scores.length}: ${failDesc.slice(0, 300)}`;
+  });
+
+  const assertionLines = spec.assertions.map((a) => {
+    const scores = run.results.flatMap((r) => r.scores.filter((s) => s.assertionId === a.id));
+    const failCount = scores.filter((s) => !s.passed).length;
+    return `- "${a.description}" [${a.tier}]: ${failCount}/${scores.length} failed`;
+  });
+
+  const resultsBrief = [
+    `Run: ${run.results.length} rows, ${Math.round(run.passRate * 100)}% overall pass rate.`,
+    `Assertion fail rates:\n${assertionLines.join("\n")}`,
+    rowLines.length > 0 ? `Failing rows (worst first):\n${rowLines.join("\n")}` : "No failing rows.",
+  ].join("\n\n");
+
+  const insights = await suggestReviewInsightsWithLLM({
+    specBrief: specBrief(spec),
+    resultsBrief,
+    validItemIds: run.results.map((r) => r.datasetItemId),
+  });
+
+  if (insights.reviewFirst.length === 0 && insights.improvements.length === 0) {
+    return { insights: suggestRunInsightsHeuristic(spec, run), mode };
   }
-  return { tags, mode };
+  return { insights, mode };
 }
 
 export function apiPlugin(): Plugin {
   return {
     name: "spec-studio-api",
     configureServer(server) {
-      const wrap =
-        (fn: (spec: SpecProject) => Promise<unknown>): Connect.NextHandleFunction =>
-        (req, res) => {
-          readJsonBody<{ spec: SpecProject }>(req)
-            .then(({ spec }) => fn(spec))
-            .then((body) => sendJson(res, 200, body))
-            .catch((err: unknown) => {
-              const message = err instanceof Error ? err.message : String(err);
-              console.error("[spec-studio-api]", message);
-              sendJson(res, 502, { error: message });
-            });
-        };
-
       server.middlewares.use("/api/health", (_req, res) => {
         sendJson(res, 200, { hasApiKey: hasApiKey() });
       });
@@ -277,7 +386,16 @@ export function apiPlugin(): Plugin {
             sendJson(res, 502, { error: message });
           });
       });
-      server.middlewares.use("/api/suggest-powers", wrap(handleSuggestPowers));
+      server.middlewares.use("/api/suggest-review-insights", (req, res) => {
+        readJsonBody<{ spec: SpecProject; runId: string }>(req)
+          .then(({ spec, runId }) => handleSuggestReviewInsights(spec, runId))
+          .then((body) => sendJson(res, 200, body))
+          .catch((err: unknown) => {
+            const message = err instanceof Error ? err.message : String(err);
+            console.error("[spec-studio-api]", message);
+            sendJson(res, 502, { error: message });
+          });
+      });
       server.middlewares.use("/api/assistant-chat", (req, res) => {
         readJsonBody<AssistantChatRequest>(req)
           .then(handleAssistantChat)

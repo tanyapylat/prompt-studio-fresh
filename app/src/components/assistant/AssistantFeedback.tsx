@@ -1,45 +1,29 @@
 import { useEffect, useState } from "react";
 import { Send } from "lucide-react";
 import { useStore } from "../../store";
-import { useAssistantView } from "../../assistantContext";
+import { useAssistantPanel, useAssistantView } from "../../assistantContext";
 import { newId } from "../../utils/id";
-import { AutoGrowTextArea, Button } from "../ui";
+import { readFeedback, writeFeedback, type FeedbackEntry } from "../../feedbackStore";
+import { AutoGrowTextarea } from "@/components/ui/auto-grow-textarea";
+import { Button } from "@/components/ui/button";
 
-const FEEDBACK_STORAGE_KEY = "compass:feedback:v1";
-
-interface FeedbackEntry {
-  id: string;
-  text: string;
-  context: string;
-  submittedBy: string;
-  createdAt: number;
-}
-
-function readFeedback(): FeedbackEntry[] {
-  try {
-    const raw = localStorage.getItem(FEEDBACK_STORAGE_KEY);
-    const parsed: unknown = raw ? JSON.parse(raw) : [];
-    return Array.isArray(parsed) ? (parsed as FeedbackEntry[]) : [];
-  } catch {
-    return [];
-  }
-}
-
-function writeFeedback(entries: FeedbackEntry[]) {
-  try {
-    localStorage.setItem(FEEDBACK_STORAGE_KEY, JSON.stringify(entries));
-  } catch {
-    // Feedback is a nice-to-have — losing it silently beats breaking the app when storage is unavailable.
-  }
-}
-
-/** Product feedback about Compass itself — deliberately local-only (no backend), per how this prototype persists everything else. */
+/**
+ * Browses/submits AI Studio product feedback by hand — see `feedbackStore.ts` for the shared
+ * storage North Star's `log_feedback` tool also writes to when someone leaves feedback in chat.
+ */
 export function AssistantFeedback() {
   const { currentUser } = useStore();
   const view = useAssistantView();
+  const { panelTab } = useAssistantPanel();
   const [text, setText] = useState("");
   const [entries, setEntries] = useState<FeedbackEntry[]>(() => readFeedback());
   const [justSubmitted, setJustSubmitted] = useState(false);
+
+  // Picks up anything North Star's `log_feedback` tool wrote while this tab was hidden (both tabs
+  // stay mounted at all times — see AssistantWidget.tsx).
+  useEffect(() => {
+    if (panelTab === "feedback") setEntries(readFeedback());
+  }, [panelTab]);
 
   useEffect(() => {
     if (!justSubmitted) return;
@@ -76,9 +60,9 @@ export function AssistantFeedback() {
     <div className="flex h-full flex-col">
       <div className="border-b border-slate-200 p-3">
         <p className="text-xs text-slate-500">
-          Tell the Compass team what's working, what's confusing, or what's broken.
+          Tell the AI Studio team what's working, what's confusing, or what's broken.
         </p>
-        <AutoGrowTextArea
+        <AutoGrowTextarea
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder="What's on your mind?"
