@@ -91,7 +91,9 @@ Deploy from the repo root with `.\deploy.ps1`. The script reads `deployment-conf
 
 Wildcard CORS (`Access-Control-Allow-Origin: *`) is applied on the Node/Vite server in `app/server/cors.ts` and `app/server/apiPlugin.ts` (dev, preview, and Azure). Do not enable credentialed cross-origin requests (`Access-Control-Allow-Credentials`).
 
-Public base URL is `VITE_PUBLIC_BASE_URL` (`app/vite.config.ts` `base`, and `app/src/publicUrl.ts` for API/asset URLs). Local: unset, so the app uses relative paths at `http://localhost:5173`. Production: `https://veronica-ai-studio.azurewebsites.net` from `deployment-config.json` `azureUrl`, injected at build time by `deploy.ps1`.
+Public base URL is `VITE_PUBLIC_BASE_URL` (`app/vite.config.ts` `base`, and `app/src/publicUrl.ts` for API/asset URLs). Local: unset, so the app uses relative paths at `http://localhost:5173`. Production: `https://veronica-studio.azurewebsites.net` from `deployment-config.json` `azureUrl`, injected at build time by `deploy.ps1`. (The Azure App Service was renamed from `veronica-ai-studio` to `veronica-studio` — "AI Studio" is being retired as the product name and a new one is still TBD; the old app service has been deleted, so that old hostname no longer resolves.)
+
+`deployment-config.json` holds a live Kudu zip-deploy password (`userPWD`) in plaintext and is intentionally **not** committed — it's gitignored (see the entry in `.gitignore` and `AGENTS.md`), unlike this sandbox tool's own default suggestion. Recreate it locally from `create-app-service`'s publishing profile if it's ever missing (see `deploy.ps1`'s expected shape).
 
 The Geist/Inter webfonts need `app/server/fontsourceAssets.ts`: `@fontsource` emits `url(./files/*.woff2)` into the bundled CSS but the build leaves those URLs unresolved, so the plugin copies every referenced `.woff2` into `dist/assets/files/`. Without it the deployed app renders in a system font while local dev looks correct. Relatedly, `app/server/prodServer.ts` only falls back to `index.html` for extensionless client-side routes — a missing asset returns 404 instead of HTML, so this class of failure stays visible.
 
