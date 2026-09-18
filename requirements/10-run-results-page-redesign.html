@@ -1,0 +1,562 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Run Results Page — Redesign Requirements</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  body {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 24px 40px 80px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.65;
+    color: #1f2328;
+    background: #ffffff;
+  }
+  h1, h2, h3, h4 { font-weight: 600; margin-top: 1.7em; margin-bottom: 0.6em; }
+  h1 { font-size: 2em; border-bottom: 1px solid #d0d7de; padding-bottom: 0.3em; }
+  h2 { font-size: 1.5em; border-bottom: 1px solid #d0d7de; padding-bottom: 0.3em; }
+  h3 { font-size: 1.2em; }
+  h4 { font-size: 1.05em; color: #24292f; }
+  p, li { color: #1f2328; }
+  a { color: #0969da; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code {
+    background: rgba(175,184,193,0.2);
+    padding: 0.2em 0.4em;
+    border-radius: 6px;
+    font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 85%;
+  }
+  blockquote {
+    border-left: 4px solid #d0d7de;
+    margin: 0;
+    padding: 0.2em 1em;
+    color: #59636e;
+  }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 1em 0;
+    display: block;
+    overflow-x: auto;
+  }
+  th, td {
+    border: 1px solid #d0d7de;
+    padding: 8px 13px;
+    text-align: left;
+    vertical-align: top;
+  }
+  tr:nth-child(2n) { background: #f6f8fa; }
+  hr { border: none; border-top: 1px solid #d0d7de; margin: 2.2em 0; }
+  .banner {
+    background: #ddf4ff;
+    border: 1px solid #54aeff3d;
+    border-radius: 6px;
+    padding: 10px 16px;
+    margin-bottom: 24px;
+    font-size: 14px;
+  }
+</style>
+</head>
+<body>
+<div class="banner">Rendered from <code>requirements/10-run-results-page-redesign.md</code> for easy reading — the <code>.md</code> file (also viewable rendered on GitHub) is the source of truth; if it changes, this export needs regenerating.</div>
+<h1>Run Results Page — Redesign Requirements</h1>
+<p><strong>Author:</strong> Veronica Kravets · <strong>Audience:</strong> engineering (to be broken down into stories)</p>
+<p><strong>Deployed prototype:</strong> <em>{{ add link here }}</em></p>
+<h2>0. Purpose &amp; how to use this document</h2>
+<p>The individual Run Results page — what you land on after an eval run finishes, whether that&#39;s one
+prompt or a side-by-side comparison of several, scored against a dataset — is the single
+highest-leverage, most-used screen in the product. This document describes, in business/product
+terms, <strong>what the redesigned page needs to do and why</strong> — not how a prototype happens to have
+built it. A click-through prototype exists (link above) purely so every requirement below can be
+seen in action with real example data instead of staying abstract; treat it as an illustration of
+the intended behavior, not a spec of its own.</p>
+<p><strong>This document has three jobs:</strong></p>
+<ol>
+<li><strong>§4 Requirements</strong> — what has to be true of the finished page, as discrete, story-sized
+requirement blocks (<code>RES-1</code>, <code>RES-2</code>, …), each with the reasoning behind it and how to tell
+it&#39;s working.</li>
+<li><strong>§3 Demo scenarios</strong> — the specific business situations the prototype was checked against,
+and how to find each one in the deployed link above.</li>
+<li><strong>§2 Background</strong> — the real-world data this was scoped against, and what to trust vs. not
+trust when reading the prototype&#39;s example numbers.</li>
+</ol>
+<p><strong>How to use this to plan stories:</strong> each <code>RES-</code> block is written to be independently story-sized.
+The lettered section groupings (A–L) are a reasonable epic/milestone split. §6 and §7 exist so
+nothing gets accidentally scoped in that was deliberately left as a future decision or explicitly
+descoped for this round — read those before estimating.</p>
+<hr>
+<h2>1. Goals &amp; guiding principles</h2>
+<p>Why this page is being redesigned, and the priorities that should settle any ambiguity below:</p>
+<ol>
+<li><strong>Never make the reviewer hold context in their head.</strong> The single biggest complaint about the
+current page is that reading a piece of AI-generated output, then judging why a check on it
+passed or failed, then checking metadata, meant flipping between separate tabs/screens — by
+the time you reached the reasoning, you&#39;d already lost sight of the output it was judging.
+Every layout decision below optimizes for &quot;everything I&#39;m comparing stays in front of me at
+once.&quot;</li>
+<li><strong>Density is a choice, not a default you fight.</strong> A compact view and a fully detailed view
+both need to exist, one click apart — not a setting buried three menus deep. Every column has
+a sensible default (shown, hidden, or shown-only-when-relevant), but any user override sticks.</li>
+<li><strong>Match the industry-standard eval-tool experience where it&#39;s already proven, improve on it
+where it&#39;s obviously worth it.</strong> Per-check result chips, reasoning for both a pass and a fail,
+filtering, and comparison charts should feel familiar to anyone who&#39;s used a mainstream
+open-source eval tool. The two-panel review layout, adaptive column visibility, and
+weighted/composite checks are meant to go further than that baseline.</li>
+<li><strong>A check&#39;s pass/fail must never be ambiguous.</strong> Every other visual signal (what kind of check
+it is, where a test case came from, how results are grouped) has to be layered on without
+competing with the one signal that matters most: did it pass or fail. See RES‑29 for a concrete
+case where this shaped the design.</li>
+<li><strong>Never present an estimate as a measured fact.</strong> Cost/latency/token figures are estimates
+until real usage metering is wired up; the page has to read that way wherever they appear.</li>
+</ol>
+<hr>
+<h2>2. Background — what this was scoped against</h2>
+<ul>
+<li>This redesign was scoped against <strong>real historical eval exports</strong>: 7 exported result sets
+covering single-prompt runs, a 3-way prompt comparison, and runs both with and without a
+reference/expected answer to compare against — plus a much larger <strong>export of eval
+configurations</strong> (not results — the actual setup of many real eval suites) that was reviewed
+afterward specifically to check for gaps: check types or structures the redesign hadn&#39;t
+accounted for yet. That second pass is where the &quot;not-equals&quot; / &quot;contains HTML&quot; check types and
+the weighted/composite check requirement (§4.E) came from.</li>
+<li>Two rounds of hands-on feedback against the running prototype are already folded into the
+requirements below — this isn&#39;t a first draft.</li>
+</ul>
+<h3>What&#39;s real vs. invented in the prototype&#39;s example data</h3>
+<p>Four of the five demo scenarios (§3) are built from the real exports above: every example
+input, every example model output, and every example pass/fail/score is real, taken straight from
+that export. A handful of supporting details the exports never captured were <strong>invented on top of
+that real data</strong>, purely to make the demo readable — most notably: what the underlying prompt
+actually says (exports only ever recorded which prompt/version ran, never its content), a
+human-readable name for that prompt, and — for AI-judged checks — the actual grading instructions
+a judge would have been given (exports only ever recorded a check&#39;s name and its pass/fail, never
+its instructions). One scenario (Scenario 5, §3) is entirely invented, to demonstrate a check
+shape that hadn&#39;t come up yet in the real exports.</p>
+<p><strong>The takeaway:</strong> don&#39;t treat any specific number, output, or wording in the prototype as
+something to match exactly — the <em>behavior and rules</em> being demonstrated are the requirement, not
+the illustrative content sitting inside them.</p>
+<hr>
+<h2>3. Demo scenarios — what to look at, and where to find it</h2>
+<p>Five example runs are available at the link above, so every requirement in §4 can be checked
+against something concrete instead of a hypothetical. Each one is named so it&#39;s unambiguous which
+business case it represents — open the runs list at the link above and look for a name starting
+with <strong>&quot;Scenario N — …&quot;</strong>.</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Look for a run named…</th>
+<th>Represents</th>
+<th>Illustrates</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td><em>Scenario 1 — Compliance chat, 14 assertions</em> (and two sibling variants: <em>Intake bot, 7 inputs &amp; n/a checks</em> / <em>Pet-service greeter, 4 inputs</em>)</td>
+<td>A single prompt evaluated with no expected/reference answer to compare against</td>
+<td>The base single-run view; a case with many checks at once; a case with several input fields per test case; checks that don&#39;t apply to every test case; one test case that hard-errored instead of scoring</td>
+</tr>
+<tr>
+<td>2</td>
+<td><em>Scenario 2 — Intake bot, 3-prompt comparison</em></td>
+<td>Three candidate prompt versions evaluated side by side, on the same test cases and same checks</td>
+<td>The whole comparison view — shared table, charts, filters, and detail view across variants</td>
+</tr>
+<tr>
+<td>3</td>
+<td><em>Scenario 3 — Pricing-help detector</em> and <em>Contact-preference classifier</em></td>
+<td>A single prompt evaluated <strong>with</strong> a known correct/expected answer to compare each output against</td>
+<td>How the page behaves once a reference answer exists — one example with a yes/no-style reference, one with a multiple-choice-style reference</td>
+</tr>
+<tr>
+<td>4</td>
+<td><em>Scenario 4 — Category/lead classifier, 100 rows</em></td>
+<td>A single prompt evaluated against a large test set (100+ cases) with several input fields each, and a reference answer</td>
+<td>How the page holds up at scale — density, column choices, one hard-errored test case mixed into a large run</td>
+</tr>
+<tr>
+<td>5</td>
+<td><em>Scenario 5 — Funnel headlines, grouped &amp; new check types</em></td>
+<td>A single prompt, entirely invented for this purpose</td>
+<td>A weighted, multi-part check (§4.E) and two additional standard check types not seen in the real exports</td>
+</tr>
+</tbody></table>
+<h3>Scenario 5, in detail — the one to study for weighted/composite checks</h3>
+<p>An invented &quot;funnel-page headline generator&quot;: given a service category (e.g. &quot;Divorce Lawyer&quot;),
+the prompt writes a page headline and a one-line description. Its checks:</p>
+<ol>
+<li>Output must contain proper markup for a headline (a new standard check type).</li>
+<li>Output must <strong>not</strong> be the generic fallback headline for that category (a new standard check
+type, using per-row data).</li>
+<li><strong>&quot;Headline quality score&quot;</strong> — a single named check that is really an equally-weighted average
+of three smaller checks (headline length, category-relevant keyword present, and a
+benefit-led-not-clickbait tone check graded by an AI judge), passing once that average clears a
+set bar.</li>
+<li>A separate AI-judged check on whether the description is compelling and specific.</li>
+</ol>
+<p>The example test cases deliberately isolate different situations, each worth opening once you&#39;re
+in the prototype: two clean passes; one failing <em>only</em> check 1 with everything else passing; one
+failing <em>only</em> check 2 similarly in isolation; two where the weighted check (#3) fails outright;
+and — the single most important example in the whole prototype — <strong>one case where one of the
+three smaller checks inside the weighted check fails, but the weighted check still passes overall</strong>
+because the average of all three still clears the bar. That last case is the one to point to when
+explaining why &quot;weighted average&quot; is more useful than &quot;every sub-check must pass.&quot;</p>
+<hr>
+<h2>4. Requirements</h2>
+<p>Every block: an ID, what must be true, why, and how to tell it&#39;s working. Section groupings A–L
+are a reasonable story/epic split.</p>
+<h3>A. Getting to a run&#39;s results</h3>
+<h4>RES-1 — A run&#39;s results open in their own place, not on top of what you were doing</h4>
+<p>Opening any run&#39;s results must not replace or hide the list you opened it from. It should behave
+like a distinct destination with its own address — something you could bookmark, share with a
+colleague, or open again later, and reloading it should show the same thing.</p>
+<ul>
+<li>Why: reviewing results is naturally a &quot;keep several open at once, compare them&quot; task; losing the
+list you were browsing every time you open one result defeats that.</li>
+</ul>
+<h4>RES-2 — The results page always states which prompt/version it evaluated, and lets you move sideways to related runs</h4>
+<p>The top of the page must make it obvious <em>what</em> was actually run (RES‑5), let you jump to other
+runs of that exact same prompt version (e.g. to spot flakiness across reruns), and offer a clear
+way back to wherever you came from.</p>
+<h4>RES-3 — One place to browse every run, across every project</h4>
+<p>A single list surfaces every run system-wide — sortable, filterable, with pagination — so
+&quot;browse everything that&#39;s ever been run&quot; doesn&#39;t require opening each project one at a time.</p>
+<h3>B. The summary header (top of every results page, single run or comparison)</h3>
+<h4>RES-4 — Aggregate status at a glance</h4>
+<p>Shows, without any interaction: how many test cases ran, how many checks were evaluated, the
+overall pass rate, and a clear flag when this run only scored a chosen subset of the test cases
+rather than the whole set.</p>
+<h4>RES-5 — The page names the real prompt and version it evaluated, not an internal label</h4>
+<p>The main heading must show the actual, human-recognizable name of what was evaluated, together
+with its real, externally-meaningful project and version identifiers — the same identifiers
+someone would use to find that exact prompt version anywhere else in the organization — rather
+than only this tool&#39;s own internal label. Any internal/eval-specific label (e.g. a description of
+which business scenario this run represents) should still be shown, but only as secondary
+information, and only when it actually adds something beyond the real name.</p>
+<ul>
+<li>Why: reviewers, engineers, and auditors need to know <em>exactly</em> which real, versioned prompt
+produced these results without cross-referencing anything else.</li>
+<li>Acceptance: if the real version was never registered/synced anywhere yet, say so plainly instead
+of showing a blank or a guess.</li>
+</ul>
+<h4>RES-6 — A pass-rate breakdown per check, grouped, and clickable to filter</h4>
+<p>Directly below the header, show every check&#39;s own pass rate for this run, visually grouped the
+same way checks are grouped when they&#39;re authored (so, e.g., every &quot;Guardrails&quot;-tagged check rolls
+up together), color-coded against whether it&#39;s meeting its own required pass bar. Clicking a
+check&#39;s entry should narrow the results table below to exactly the rows where that check had a
+given outcome; clicking it again should clear that narrowing.</p>
+<h4>RES-7 — Run-level cost, latency, and token summary</h4>
+<p>A compact strip of run-level totals/averages (cost, latency, tokens) — separate from the same
+figures shown per individual test case (RES‑19).</p>
+<h4>RES-8 — Automatic, free &quot;review this first&quot; guidance</h4>
+<p>Without any user action or cost, the page should point out which test cases have the most
+failing checks (worth reviewing first) and which checks fail most often, with a short plain-
+language hint at likely cause. A path to hand this off for a deeper, opt-in AI-assisted analysis
+should exist as an escalation, but building that deeper analysis itself is <strong>out of scope</strong> for
+this round (§6).</p>
+<h3>C. The results table — structure &amp; density</h3>
+<h4>RES-9 — A compact view and a fully detailed view, one click apart, detailed by default</h4>
+<p>Every row must be viewable either as a single truncated line per field (compact) or fully
+expanded/wrapped (detailed), switchable with one click. Detailed is the default the first time
+anyone opens a given run&#39;s results.</p>
+<h4>RES-10 — Row numbering</h4>
+<p>Every visible row is numbered in its current sorted/filtered order, so a reviewer can say &quot;case
+#14&quot; and mean something concrete and locatable.</p>
+<h4>RES-11 — Three distinct outcomes per row: passed, failed, or errored</h4>
+<p>A test case that broke before any check could even run (e.g. the underlying system never
+responded) must look and read differently from a test case that ran fully and simply failed a
+check — different visual treatment, and its checks column should say plainly that nothing could be
+scored, rather than showing empty or zeroed-out results. Errored rows must be excluded from every
+pass-rate calculation, the same way not-applicable checks are (RES‑26).</p>
+<h4>RES-12 — Where each test case came from is visible per row</h4>
+<p>Every row shows, via a small distinct indicator, whether that test case was written by a person or
+generated — independent of, and never confused with, whether it passed or failed.</p>
+<h4>RES-13 — Column widths are adjustable</h4>
+<p>Every column&#39;s width can be dragged wider or narrower, and that choice is remembered.</p>
+<h4>RES-14 — A clearly-labeled full-screen mode, in every layout</h4>
+<p>A prominent, clearly worded control (not just an icon that&#39;s easy to miss) expands the results
+table to fill the whole screen, with an equally clear way to exit — available identically whether
+you&#39;re looking at a single run or a multi-prompt comparison.</p>
+<ul>
+<li>Note: an icon-only version of this control was tried first and was missed by real users during
+review — it needs to read as an obvious, labeled action, not something to discover by accident.</li>
+</ul>
+<h4>RES-15 — Every row&#39;s cells line up at the top, regardless of row height</h4>
+<p>When one field in a row wraps onto several lines and its neighbors don&#39;t, every cell in that row
+must still start at the same vertical position — nothing should look &quot;sunken&quot; or misaligned just
+because a neighboring cell is short.</p>
+<h4>RES-16 — The table always fills the available width</h4>
+<p>As columns are hidden, shown, or resized, the table should stretch to use all the horizontal space
+available rather than leaving a dead, unused strip once the visible columns no longer add up to
+the full width.</p>
+<h4>RES-17 — Sortable, with the worst results surfaced first by default, and paginated</h4>
+<p>Results can be sorted by how many checks failed (the default — worst test cases first, no filter
+required to see them), or by latency/cost/tokens; large runs are paginated with a choice of page
+size.</p>
+<h3>D. Which columns show, and when</h3>
+<h4>RES-18 — A sensible, minimal default column set</h4>
+<p>Always shown, and never something a user can accidentally hide: a way to select rows, the row
+number, pass/fail/error status, where the test case came from, its inputs, the model&#39;s output, and
+its check results. Everything else is optional and controlled the way RES‑22 describes.</p>
+<h4>RES-19 — Latency, cost, and token columns are hidden by default, always — not just when the table is crowded</h4>
+<p>These three don&#39;t show automatically even on a run with very few test cases and plenty of room —
+they&#39;re performance/cost bookkeeping, not the primary review signal, so they stay one click away
+regardless of how much space is available. When hidden, they aren&#39;t fully lost: a short inline
+summary of whichever of the three are currently hidden still appears folded into the check-results
+column, so the numbers stay glanceable without needing three permanently-open columns.</p>
+<h4>RES-20 — A reference/expected-answer column shows only when at least one test case actually has one</h4>
+<p>If no test case in this run has a known correct answer to compare against, that column shouldn&#39;t
+exist at all for this run — never a column full of blanks. The moment at least one test case does
+have one, it should show automatically.</p>
+<h4>RES-21 — When a prompt takes several inputs, they&#39;re combined into one readable column by default, with an option to split them out</h4>
+<p>By default, every input field for a test case is shown together in one column, each one clearly
+labeled by name (not run together as an unlabeled string of values) — with an option to instead
+give each input field its own column when that&#39;s more useful (only offered when the prompt
+actually has more than one input field).</p>
+<h4>RES-22 — One place to control every optional column, plus a couple of directly related display choices</h4>
+<p>A single menu exposes every column that can be hidden/shown (RES‑18–21), plus: turning the
+per-check result indicators on/off (kept independent from the check-results column&#39;s own
+visibility — turning that column off must never also remove the only control that turns those
+indicators back on) and switching between combined vs. per-field input columns. The check-results
+column&#39;s own &quot;only show failures&quot; density option lives on that column itself instead (RES‑25), not
+in this general menu.</p>
+<h3>E. Check results &amp; check types</h3>
+<h4>RES-23 — &quot;Checks&quot; is called &quot;Metrics&quot; everywhere</h4>
+<p>Every label a user sees for this concept — the column, the detail-view section, anything
+exported — should consistently say &quot;Metrics,&quot; not &quot;Checks.&quot;</p>
+<h4>RES-24 — One compact result indicator per check, per row</h4>
+<p>Each row shows a small pass/fail indicator per check, with its short name and its score (when that
+check produces one). Clicking one narrows the whole table to exactly that check&#39;s outcome — the
+same behavior as clicking a check in the header rollup (RES‑6).</p>
+<h4>RES-25 — The Metrics column can be switched to &quot;only show failures/errors&quot;</h4>
+<p>A density control that lives specifically on the Metrics column&#39;s own header — separate from the
+general column menu (RES‑22) — lets a reviewer collapse every passing check out of view and see
+only what&#39;s failing or errored, for a much faster read on a mostly-passing run.</p>
+<h4>RES-26 — A check can be explicitly &quot;not applicable&quot; to a given test case, and that must never count as a pass or a fail</h4>
+<p>Some checks legitimately don&#39;t apply to every test case (e.g. a pet-related check on a
+vehicle-related test case). That state needs its own neutral, clearly distinct treatment — and
+must be excluded from both sides of every pass-rate calculation, at the level of a single test
+case, a single check summed across the run, or a whole run. If a check never applied to a single
+test case in the run, say so plainly instead of showing a misleading 0% or 100%.</p>
+<h4>RES-27 — The full grading instructions behind an AI-judged check are always reachable, without crowding the compact view</h4>
+<p>The compact per-row indicator surfaces the actual instructions an AI judge was given (e.g. on
+hover), rather than forcing them into the table itself; the full text is always available in the
+detailed per-row view (RES‑40).</p>
+<h4>RES-28 — Every check shows its reasoning, whether it passed or failed</h4>
+<p>In the detailed table view, every check&#39;s result includes a short explanation of <em>why</em> — not only
+for failures. A check that passed with no explanation at all reads as unfinished next to a
+fully-explained failure; this must be avoided for every AI-judged check. Simple built-in checks
+(e.g. an exact-match check) can stay terse, since there&#39;s nothing meaningful to explain either way.</p>
+<h4>RES-29 — Every check shows what kind it is, but only one kind gets an actual color</h4>
+<p>Every check should be labeled by kind — a simple built-in check, custom logic, an AI-judged check,
+or a weighted/composite check (RES‑30) — and it must be possible to filter by kind. Deliberately,
+only the AI-judged kind gets an actual distinct color treatment (a muted, non-alarming tone,
+reused as a subtle accent on that check&#39;s whole result card); weighted/composite checks get their
+own distinct-but-equally-muted treatment; the rest stay visually neutral.</p>
+<ul>
+<li>Why: the detail view already has an unambiguous pass/fail signal (an icon, a score, and
+color already used for that). Giving every kind of check its own saturated color on top of that
+would compete with it — e.g. a bright &quot;green&quot; kind-label sitting next to a red fail icon reads as
+contradictory. AI-judged checks are the one kind that&#39;s genuinely easy to overlook otherwise, so
+that&#39;s the one exception.</li>
+</ul>
+<h4>RES-30 — Support a weighted, multi-part check (&quot;composite check&quot;)</h4>
+<p>A single named check can really be several smaller checks rolled together with individual
+weights, passing once their weighted average clears a set bar — e.g. an overall &quot;headline
+quality&quot; check that&#39;s really an average of a length check, a keyword check, and a tone check.</p>
+<ul>
+<li>The smaller checks inside it can themselves be of any kind (built-in, custom, or AI-judged), and
+can be mixed.</li>
+<li>Everywhere a normal check would appear — the header rollup, the per-row indicator, filters — the
+composite check must appear as exactly <strong>one</strong> entry with its own aggregate result; its smaller
+checks are never separately counted or double-counted in any pass-rate calculation.</li>
+<li>The full breakdown of every smaller check&#39;s own result must always be reachable underneath the
+main entry, never hidden away.</li>
+<li>It must be visibly possible for some of the smaller checks to fail while the composite check as
+a whole still passes, if the weighted average still clears the bar — see Scenario 5 (§3) for a
+concrete example a reviewer can point to.</li>
+<li>Note for whoever designs the underlying data model: this document intentionally doesn&#39;t
+prescribe <em>how</em> a composite check should be represented internally — that&#39;s an engineering
+decision — only the behavior it must produce.</li>
+</ul>
+<h4>RES-31 — Two additional standard, built-in check types</h4>
+<p>Alongside whatever standard checks already exist, add: a check that the output must <strong>not</strong> match
+a specific value (as opposed to must match), and a check that the output must contain valid markup
+for a given element (found to be a real, recurring need when reviewing real eval configurations,
+not something either of the existing checks covered).</p>
+<h3>F. Filtering &amp; search</h3>
+<h4>RES-32 — One search box, matching every text field on a row</h4>
+<p>A single free-text search matches against every input field, the output, the reference answer (if
+any), and any reviewer note on that row — matching the full underlying text, not just whatever&#39;s
+currently visible/truncated.</p>
+<h4>RES-33 — One-click status filters</h4>
+<p>All / Passed / Failed / Errored — always visible, no menu required, independent of the fuller
+filter panel (RES‑34).</p>
+<h4>RES-34 — A full filter panel covering every meaningful dimension</h4>
+<p>Beyond the quick status filters: filter by a specific check and its outcome, by check kind, by
+label (including explicitly &quot;has no label&quot;), by where a test case came from, by latency/cost/token
+ranges, by whether a reference answer exists, and by whether a reviewer note exists. Show how many
+filters are currently active, and offer a one-click way to clear all of them at once.</p>
+<h4>RES-35 — You can only filter on what&#39;s currently visible</h4>
+<p>Every section of the filter panel only appears if its related column is currently shown (RES‑22)
+— hiding, say, the cost column also removes the ability to filter by a cost range, so nobody can
+end up filtering on a number they can no longer see or verify.</p>
+<h4>RES-36 — Clicking a result to filter is one consistent behavior everywhere, and never silently contradicts another filter</h4>
+<p>Clicking a check&#39;s result — from a row or from the header rollup (RES‑6/24) — always drives the
+same underlying filter, clicking it again always clears it, and applying it always resets the
+quick status filter (RES‑33) back to &quot;all,&quot; so the two can never combine into a filter that&#39;s
+guaranteed to show zero results (e.g. &quot;passed&quot; plus &quot;this check failed&quot;).</p>
+<h3>G. The detail view for a single test case</h3>
+<h4>RES-37 — One two-part view, not separate tabs, replaces the current design</h4>
+<p>Opening a test case&#39;s full detail must show, at once, on one screen: every input, the output, and
+the reference answer (if any) pinned on one side, always visible — and every check&#39;s full result
+and reasoning on the other side, scrollable independently. This directly replaces the previous
+tabbed design&#39;s core problem: reading a check&#39;s reasoning used to mean losing sight of the output
+it was judging, because they lived on different tabs.</p>
+<h4>RES-38 — Metadata is a small section, not a whole tab</h4>
+<p>Identifiers, timestamps, and performance figures collapse into a compact section rather than
+consuming as much visual weight as the output and the check results.</p>
+<h4>RES-39 — Step to the next/previous test case without closing the detail view</h4>
+<p>Simple forward/back controls move to the next or previous test case (in whatever order the table
+is currently sorted/filtered to) without closing and reopening the view.</p>
+<h4>RES-40 — What each check&#39;s detail shows depends on its kind</h4>
+<p>A simple built-in check shows what value or pattern it checked against — nothing more is needed.
+Custom-logic checks show their name only; the underlying logic itself is not shown — reviewing it
+was judged to add noise, not useful context, for this audience. AI-judged checks show their actual
+full grading instructions, collapsible if long, rather than either cutting them off or letting them
+take over the screen. A weighted/composite check (RES‑30) shows its pass bar and the full result
+of every smaller check inside it.</p>
+<h3>H. Letting a reviewer annotate what they see</h3>
+<h4>RES-41 — A free-text note per test case, that survives future runs</h4>
+<p>A reviewer can attach a free-text note to a test case; it must persist on that test case itself
+(not just on this one run), so it&#39;s still there after a prompt change and a rerun. It must be
+searchable (RES‑32) and filterable (RES‑34).</p>
+<h4>RES-42 — Short labels per result, visible by default</h4>
+<p>A reviewer can attach short, free-form labels to a specific result — meant to flag or group
+something about <em>this run&#39;s specific outcome</em> that the built-in checks don&#39;t capture (unlike the
+note above, a label isn&#39;t expected to still be meaningful after the prompt changes and reruns).
+Labels must be filterable, including &quot;has no label,&quot; and — unlike performance figures (RES‑19) —
+must be visible by default, since this is reviewer-facing signal, not bookkeeping.</p>
+<h3>I. Comparing several prompt variants at once</h3>
+<h4>RES-43 — The comparison layout appears automatically whenever a run actually compares variants</h4>
+<p>When a run evaluated two or more prompt variants against the exact same test cases and the exact
+same checks in one go, the results page must automatically show the comparison layout instead of
+the single-run layout — no separate action required to switch into it.</p>
+<ul>
+<li>Note: comparing variants that were checked against genuinely different check sets is <strong>not</strong>
+supported (§6) — only same-test-cases, same-checks comparisons.</li>
+</ul>
+<h4>RES-44 — Comparison charts</h4>
+<p>Three chart types: a pass-rate comparison across variants; a per-check breakdown comparing every
+variant side by side for each check; and, specifically when comparing exactly two variants, an
+agreement view showing, per test case, whether the two variants agreed or disagreed.</p>
+<h4>RES-45 — One shared table, every variant side by side, not a separate table per variant</h4>
+<p>Each test case appears exactly once, with every variant&#39;s status/output/check-results shown
+side by side within that one row — using the same column rules as the single-run table (RES‑18–21).</p>
+<h4>RES-46 — Comparison-specific filtering and column choices</h4>
+<p>The same status and check filters as the single-run view, plus the ability to show/hide
+source/latency/cost/tokens independently per variant.</p>
+<h4>RES-47 — The comparison detail view shows every variant side by side for one test case</h4>
+<p>Opening a test case in the comparison view shows every variant&#39;s output and every check&#39;s outcome
+for that one test case together — inputs/note/reference (shared across variants) shown once — so a
+difference between two variants is visible without flipping between separate single-variant views.</p>
+<h4>RES-48 — Full-screen mode in the comparison view too</h4>
+<p>The same clearly-labeled full-screen control as RES‑14, available in the comparison layout as well.</p>
+<h3>J. Getting data out</h3>
+<h4>RES-49 — Export the current view as JSON or CSV</h4>
+<p>Export whatever&#39;s currently filtered, whatever&#39;s currently selected, or everything — in either
+format.</p>
+<h3>K. Being honest about estimated figures</h3>
+<h4>RES-50 — Cost, latency, and token figures must always read as estimates, not measured fact</h4>
+<p>Everywhere these appear — the summary header, the inline column-replacement summary (RES‑19), a
+comparison view — they should be understood as an estimate, not billed/measured usage, until real
+usage metering exists. This is a flag for whoever builds the real version: the estimate-vs-actual
+distinction needs to be preserved and stay visible, not quietly presented as fact once real numbers
+are available for some but not all of these figures.</p>
+<h3>L. Preferences</h3>
+<h4>RES-51 — Every view choice is remembered per project, sane defaults win only until a user overrides them</h4>
+<p>Compact/detailed view, which columns are hidden, sort order, page size, and check-result density
+all persist per project, across visits. The very first time a project&#39;s results are viewed, hidden
+columns should start from the sensible computed defaults described above (RES‑19/20); the instant
+a user makes any explicit choice of their own — even re-hiding something that was already
+shown — that choice must win from then on and never silently revert back to the computed default.</p>
+<hr>
+<h2>5. Underlying rules the data itself must support</h2>
+<p>A short summary of the capabilities the system needs, independent of any particular UI —
+useful for whoever designs how results are actually stored and computed:</p>
+<ul>
+<li>A single check&#39;s result on a single test case must be able to be marked <strong>not applicable</strong>,
+distinct from pass or fail, and excluded from every pass-rate calculation everywhere (RES‑26).</li>
+<li>A test case&#39;s run must be able to record a <strong>hard error</strong> (nothing could be scored) as a third,
+distinct outcome from pass/fail (RES‑11).</li>
+<li>A named check must be able to be a <strong>weighted combination of several smaller checks</strong>, each
+possibly of a different kind, with its own pass bar, and the ability to report both its own
+single aggregate result and the full breakdown of its parts (RES‑30).</li>
+<li>Two additional standard, built-in check types are needed: &quot;must not equal a given value&quot; and
+&quot;must contain valid markup for a given element&quot; (RES‑31).</li>
+<li>The system must be able to carry the <strong>real, externally-meaningful identity</strong> of the prompt and
+version a run evaluated — not only an internal label — so the results page can always show
+genuine identity (RES‑5).</li>
+<li>A single run must be able to represent <strong>several prompt variants evaluated together</strong> against
+the identical test cases and identical checks, so a comparison is one run, not several
+separately-run results stitched together after the fact (RES‑43).</li>
+</ul>
+<hr>
+<h2>6. Explicitly out of scope for this round</h2>
+<p>Called out so nothing here gets accidentally scoped into a story:</p>
+<ul>
+<li><strong>Building/editing a weighted or composite check from scratch through a UI.</strong> This document
+requires the results page to fully <em>display</em> one correctly (RES‑30); it does not require the
+check-authoring experience to gain the ability to construct one.</li>
+<li><strong>A deeper, AI-generated review pass.</strong> The free, instant &quot;review this first&quot; guidance (RES‑8)
+is required; a richer, opt-in AI-assisted analysis beyond that was discussed and is explicitly
+deferred, not required for this round.</li>
+<li><strong>Real-time model or AI-judge grading on this page.</strong> The scoring <em>rules</em> in §4/§5 are the
+requirement; live grading against a real model, in real time, is not part of this page&#39;s scope.</li>
+<li><strong>Test cases checked against genuinely different checks per test case within one run.</strong> A run&#39;s
+set of checks is fixed for the whole run. The closest supported case is a fixed check set where
+some checks legitimately don&#39;t apply to some test cases (RES‑26) — a different, and more common,
+situation than truly varying which checks run per test case.</li>
+<li><strong>Comparing variants that were graded with different checks.</strong> RES‑43 requires the same test
+cases <em>and</em> the same checks across every variant being compared.</li>
+<li><strong>Real, metered cost/latency/token usage.</strong> RES‑50 requires these to read as estimates; wiring
+up real measured usage is separate future work.</li>
+</ul>
+<hr>
+<h2>7. Open questions for whoever scopes this next</h2>
+<ul>
+<li><strong>Unequal weighting inside a composite check.</strong> The requirement (RES‑30) allows it, and it&#39;s a
+documented real-world need, but the prototype&#39;s own example only demonstrates equal weighting.
+Worth confirming how much of a priority actual unequal-weight configuration deserves.</li>
+<li><strong>Checks that vary per test case within a single run</strong> (§6) — a real pattern seen in about one
+in ten real eval configurations reviewed, but out of scope here. Worth its own requirements pass
+if it turns out to matter more than that.</li>
+<li><strong>Composite checks nested inside other composite checks.</strong> Not required here — no real example
+needed it — but worth flagging if it turns out to be a real need later.</li>
+</ul>
+<hr>
+<h2>8. Glossary</h2>
+<ul>
+<li><strong>Run</strong> — one execution of a prompt&#39;s full set of checks against its test cases. A <strong>comparison
+run</strong> is a single run where several prompt variants were evaluated together against the same
+test cases and the same checks (RES‑43).</li>
+<li><strong>Check / Metric</strong> — used interchangeably (the page itself always says &quot;Metric,&quot; RES‑23); one
+named pass/fail (or scored) test applied to every test case.</li>
+<li><strong>Check kind</strong> — a simple built-in check (no AI involved), custom logic, an AI-judged check, or a
+weighted/composite check (RES‑30) — ordered roughly cheapest/simplest to most expensive, matching
+how checks are already classified when they&#39;re authored.</li>
+<li><strong>Composite / weighted check</strong> — a single named check that&#39;s really several smaller checks
+averaged together with individual weights, passing once that average clears a set bar (RES‑30).</li>
+<li><strong>Not applicable (n/a)</strong> — a check result explicitly excluded from pass/fail accounting because
+the check didn&#39;t make sense for that particular test case (RES‑26) — distinct from a hard
+<strong>error</strong> on that test case (RES‑11).</li>
+<li><strong>Sample run</strong> — a run that only scored a chosen subset of the test cases rather than all of
+them, flagged distinctly in the summary header (RES‑4).</li>
+</ul>
+
+</body>
+</html>
