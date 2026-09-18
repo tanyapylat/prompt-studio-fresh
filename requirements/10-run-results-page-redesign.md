@@ -2,7 +2,7 @@
 
 **Author:** Veronica Kravets · **Audience:** engineering (to be broken down into stories)
 
-**Deployed prototype:** _{{ add link here }}_
+**Deployed prototype:** [https://veronica-studio.azurewebsites.net](https://veronica-studio.azurewebsites.net)
 
 ## 0. Purpose & how to use this document
 
