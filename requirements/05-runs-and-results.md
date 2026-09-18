@@ -4,6 +4,13 @@ Covers running the Suite and the Results/error-analysis pane. See
 [`spec-driven-redesign/05`](../spec-driven-redesign/05-eval-methodology-best-practices.md) for
 why this pane is called out as the single highest-leverage surface in the whole product.
 
+> **The Results pane itself (RUN‑6, ‑7, ‑8, ‑10, ‑11 below) has since had a full ground-up
+> redesign** — see [`10-run-results-page-redesign.md`](10-run-results-page-redesign.md) for the
+> current, much more detailed requirements (table/panel/comparison UX, composite assertions,
+> filters, the 5 demo scenarios). That document supersedes those blocks. Note that its RES‑4 found
+> `RunGroup` no longer carries the `citable` field RUN‑4 below describes — worth a quick re-check
+> of RUN‑1 through ‑5 for drift before relying on them.
+
 Status legend: **Implemented** · **Partial** · **Planned**.
 
 ---
