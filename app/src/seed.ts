@@ -5,26 +5,50 @@ import type {
   LibraryAssertion,
   MockUser,
   Prompt,
+  RunGroup,
   RunItemResult,
   SpecProject,
 } from "./types";
 import { createBlankSpec, newExample, newIOField, newOpenQuestion, newRequirement } from "./specFactory";
 import { finalizeRun } from "./engine";
 import { newId } from "./utils/id";
+import { simulatedPerf } from "./pricing";
 import { buildDatasetItem } from "./dataset";
 import { assertionToLibraryEntry, datasetToLibraryEntry } from "./libraryFactory";
 import { mirrorPromptFromSpec } from "./promptFactory";
+import { buildScenarioSpecs } from "./seed/scenarioSeeds";
 
 /** Mock users, standing in for real auth — lets Private vs. Org-wide visibility actually be demoed. */
 export const USER_VERONICA = "user_veronica";
 export const USER_DAN = "user_dan";
 export const USER_PRIYA = "user_priya";
 
+/**
+ * Cosmetic-only: synthesizes a handful of earlier Runs before the "real" hand-authored one, so the
+ * global Runs list (and a Spec's own run-history picker) have more than a single row to browse in
+ * the demo. Built by deterministically flipping a few rows' first score and back-dating
+ * `createdAt` — not meant to tell a coherent "improved over time" story, just to populate the list
+ * with plausible-looking history.
+ */
+function withSyntheticRunHistory(finalResults: RunItemResult[], daysAgoForEach: number[], targetId: string): RunGroup[] {
+  return daysAgoForEach.map((days, i) => {
+    const results = finalResults.map((r, j) => {
+      const flip = (j + i) % 4 === 0;
+      const scores: AssertionScore[] = r.scores.map((s, k) =>
+        flip && k === 0 ? { ...s, passed: false, score: s.score !== undefined ? Math.min(s.score, 0.4) : s.score } : s,
+      );
+      return { ...r, scores };
+    });
+    const run = finalizeRun(results, "live", "full", targetId, USER_VERONICA);
+    return { ...run, createdAt: Date.now() - days * 24 * 60 * 60 * 1000 };
+  });
+}
+
 export function seedUsers(): MockUser[] {
   return [
-    { id: USER_VERONICA, name: "Prompt Hanks", initials: "PH" },
-    { id: USER_DAN, name: "Eval Presley", initials: "EP" },
-    { id: USER_PRIYA, name: "Leonardo DiPromptio", initials: "LD" },
+    { id: USER_VERONICA, name: "Prompt Hanks", initials: "PH", email: "veronica.kravets@pearl.com" },
+    { id: USER_DAN, name: "Eval Presley", initials: "EP", email: "eval.presley@pearl.com" },
+    { id: USER_PRIYA, name: "Leonardo DiPromptio", initials: "LD", email: "leonardo.dipromptio@pearl.com" },
   ];
 }
 
@@ -237,6 +261,9 @@ const CCHEADLINE_RUN_V1: { headline: string; scores: { pass: boolean; score: num
  */
 export function buildCcheadlineSpec(): SpecProject {
   let spec = createBlankSpec("Conversational Chat Headline", USER_VERONICA, "org");
+  // Real Prompt Management project id this Spec's mirrored Prompt corresponds to — see
+  // `SpecProject.psProjectId`. Distinct from `spec.id`, which is only an AI Studio-internal key.
+  spec.psProjectId = 4128;
 
   // Requirements — a flat list, no guardrail/criteria split (that split proved artificial against
   // real Spec documents). rSingleProblem, rNoConjunctions, rVariableCount, and rSentenceCase
@@ -456,9 +483,11 @@ export function buildCcheadlineSpec(): SpecProject {
     // max_completion_tokens/presence_penalty/seed values weren't recorded when this was captured,
     // so `settings` is left at its defaults here even though `TargetVersion` now models it.
     messages: [{ id: newId("msg"), role: "system", content: CCHEADLINE_PROMPT }],
+    // Real Prompt Management version id for this exact published version — see `TargetVersion.psVersionId`.
+    psVersionId: 24391,
   };
 
-  spec.dataset = CCHEADLINE_CHATS.map((chat) => buildDatasetItem({ Pearl_User_Chat: chat }, ["Pearl_User_Chat"], "seed"));
+  spec.dataset = CCHEADLINE_CHATS.map((chat) => buildDatasetItem({ Pearl_User_Chat: chat }, ["Pearl_User_Chat"], "manual"));
 
   const results: RunItemResult[] = spec.dataset.map((item, i) => {
     const row = CCHEADLINE_RUN_V1[i];
@@ -470,13 +499,28 @@ export function buildCcheadlineSpec(): SpecProject {
         score: row.scores[j].score,
       }),
     );
-    return { datasetItemId: item.id, output: row.headline, scores };
+    return {
+      datasetItemId: item.id,
+      output: row.headline,
+      scores,
+      ...simulatedPerf(item.id, item.input, row.headline, spec.target!.model),
+    };
   });
 
-  results[0].note =
-    'Pattern across the run: 8 of 13 generated headlines literally start with "Fix your..." — a repetitive template the model settled on. That\'s exactly what "Write an organic headline" is catching (scores 0-0.4 on 10 of 13 rows, the dominant failure). Tightening the Target\'s phrasing guidance/examples to break this pattern is the natural first fix to try, then re-run against these same 13 rows to see the score move — that\'s "launch v2" for this Spec.';
+  // Flags the row as an example of the run's dominant failure pattern — 8 of 13 generated
+  // headlines literally start with "Fix your...", a repetitive template the model settled on that
+  // "Write an organic headline" is catching (scores 0-0.4 on 10 of 13 rows). Tightening the
+  // Target's phrasing guidance/examples to break this pattern is the natural first fix to try.
+  results[0].labels = ["repetitive-pattern"];
 
-  spec.runs = [finalizeRun(results, "live")];
+  // 24 back-dated rows (every 3 days back to ~10 weeks) + the "real" final run, so the global
+  // Eval runs list has enough rows across both Specs to actually need pagination, not just a
+  // single page of 8 — see `withSyntheticRunHistory`.
+  const ccheadlineHistoryDaysAgo = Array.from({ length: 24 }, (_, i) => (i + 1) * 3);
+  spec.runs = [
+    ...withSyntheticRunHistory(results, ccheadlineHistoryDaysAgo, spec.target.id),
+    finalizeRun(results, "live", "full", spec.target.id, spec.ownerId),
+  ];
   return spec;
 }
 
@@ -564,7 +608,7 @@ const CQA_CONVERSATIONS: { conversation: string; pricingHelp: boolean }[] = [
 
 /**
  * The one synthetic row in this Spec's seed dataset (`source: "synthetic"`, unlike the 13 real
- * rows above from `source: "seed"`) — every one of the 45 real rows in cqa-evals.txt actually
+ * rows above from `source: "manual"`) — every one of the 45 real rows in cqa-evals.txt actually
  * passed (see eval-A7J-2026-05-26T12_17_05.csv, 100% PASS), so a deliberately tricky row is added
  * here to demonstrate reviewing/promoting a failing case, matching the exact ambiguous-"they"
  * failure mode the system prompt's own K-shot examples warn about.
@@ -582,6 +626,9 @@ const CQA_SYNTHETIC_CONVERSATION =
  */
 export function buildCqaSpec(): SpecProject {
   let spec = createBlankSpec("CQA Pricing/Refund Detection", USER_PRIYA, "org");
+  // Real Prompt Management project id this Spec's mirrored Prompt corresponds to — see
+  // `SpecProject.psProjectId`. Distinct from `spec.id`, which is only an AI Studio-internal key.
+  spec.psProjectId = 4256;
 
   const rTrueCriteria = newRequirement(
     "Classify as true ONLY if the customer explicitly references the JustAnswer membership fee, supported by words like 'you' (indicating direct address to JustAnswer).",
@@ -698,6 +745,8 @@ export function buildCqaSpec(): SpecProject {
     status: "published",
     createdAt: Date.now() - 3 * 24 * 60 * 60 * 1000,
     promptContent: CQA_SYSTEM_PROMPT,
+    // Real Prompt Management version id for this exact published version — see `TargetVersion.psVersionId`.
+    psVersionId: 24793,
     messages: [
       { id: newId("msg"), role: "system", content: CQA_SYSTEM_PROMPT },
       { id: newId("msg"), role: "human", content: CQA_USER_PROMPT },
@@ -728,7 +777,7 @@ export function buildCqaSpec(): SpecProject {
 
   spec.dataset = [
     ...CQA_CONVERSATIONS.map((c) =>
-      buildDatasetItem({ Conversation: c.conversation }, ["Conversation"], "seed", String(c.pricingHelp)),
+      buildDatasetItem({ Conversation: c.conversation }, ["Conversation"], "manual", String(c.pricingHelp)),
     ),
     buildDatasetItem({ Conversation: CQA_SYNTHETIC_CONVERSATION }, ["Conversation"], "synthetic", "false"),
   ];
@@ -757,21 +806,40 @@ export function buildCqaSpec(): SpecProject {
         score: 1,
       },
     ];
-    return { datasetItemId: item.id, output, scores };
+    return {
+      datasetItemId: item.id,
+      output,
+      scores,
+      ...simulatedPerf(item.id, item.input, output, spec.target!.model),
+    };
   });
 
-  results[results.length - 1].note =
-    "Synthetic row, not from the real July eval run (every one of the 45 real rows there passed) — added to " +
-    "exercise the failing-row review flow. It reproduces the exact ambiguous-\"they\" failure mode the system " +
-    "prompt's own K-shot examples warn about, just with a different vendor (a photo-restoration order instead " +
-    "of a biometrics fee).";
+  // Not from the real July eval run (every one of the 45 real rows there passed) — added to
+  // exercise the failing-row review flow. It reproduces the exact ambiguous-"they" failure mode
+  // the system prompt's own K-shot examples warn about, just with a different vendor (a
+  // photo-restoration order instead of a biometrics fee).
+  results[results.length - 1].labels = ["ambiguous-pronoun"];
 
-  spec.runs = [finalizeRun(results, "live")];
+  // 24 back-dated rows (every 2 days back to ~7 weeks) + the "real" final run — see the matching
+  // comment in `buildCcheadlineSpec` for why this list got longer than a single history point.
+  const cqaHistoryDaysAgo = Array.from({ length: 24 }, (_, i) => (i + 1) * 2);
+  spec.runs = [
+    ...withSyntheticRunHistory(results, cqaHistoryDaysAgo, spec.target.id),
+    finalizeRun(results, "live", "full", spec.target.id, spec.ownerId),
+  ];
   return spec;
 }
 
 export function seedSpecs(): SpecProject[] {
-  return [buildCcheadlineSpec(), buildCqaSpec()];
+  // Only the numbered Scenario 1-5 specs are seeded here (see the header comment in
+  // scenarioSeeds.ts — Scenarios 1-4 are CSV-backed, Scenario 5 is fully invented to cover
+  // assert-set/not-equals/contains-html) — "Conversational Chat Headline" and "CQA Pricing/Refund
+  // Detection" are a separate, pre-existing Assistant-chat demo (not built from Veronica's
+  // Results-page CSVs, not one of the numbered Scenarios), so they're kept out of the initial
+  // Home/Eval-runs list to reduce noise. `buildCcheadlineSpec`/`buildCqaSpec` are still used
+  // directly by the Assistant's scripted demo flows (see assistantCcheadlineDemo.ts /
+  // assistantCqaDemo.ts) and by `seedLibrary` below, so they aren't dead code.
+  return buildScenarioSpecs(USER_VERONICA);
 }
 
 /**

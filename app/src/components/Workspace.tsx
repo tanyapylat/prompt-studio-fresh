@@ -92,7 +92,7 @@ export function saveTab(specId: string, tab: Tab) {
 }
 
 export function Workspace() {
-  const { selected: spec, select, updateSpec } = useStore();
+  const { selected: spec, select, updateSpec, currentUserId } = useStore();
   const [tab, setTab] = useState<Tab>(() => readStoredTab(spec?.id));
   const [specCollapsed, setSpecCollapsed] = useState(false);
   const [specWidth, setSpecWidth] = useState(readStoredSpecWidth);
@@ -230,7 +230,7 @@ export function Workspace() {
     if (itemIds.length === 0) return;
     run(
       "sample",
-      (signal) => rerun(spec!, itemIds, signal),
+      (signal) => rerun(spec!, itemIds, signal, currentUserId),
       (updated) => updateSpec(specId, () => updated),
       "results",
     );
@@ -242,10 +242,10 @@ export function Workspace() {
   // North Star round-trip. Generate/Regenerate is the one thing here that's actually AI-authored,
   // so that one still opens North Star, narrated, per the rest of the app's convention.
   function handleRunFull() {
-    run("full", (signal) => rerun(spec!, undefined, signal), (updated) => updateSpec(specId, () => updated), "results");
+    run("full", (signal) => rerun(spec!, undefined, signal, currentUserId), (updated) => updateSpec(specId, () => updated), "results");
   }
   function handlePublish() {
-    run("publish", (signal) => publishSpec(spec!, signal), (updated) => updateSpec(specId, () => updated), "results");
+    run("publish", (signal) => publishSpec(spec!, signal, currentUserId), (updated) => updateSpec(specId, () => updated), "results");
   }
   function toggleDatasetSelect(id: string) {
     setSelectedDatasetIds((prev) => {

@@ -10,20 +10,12 @@ import type {
   SpecProject,
 } from "./types";
 import { newId } from "./utils/id";
+import { seededRandom } from "./utils/random";
 import { estimateCostUsd, estimateTokens } from "./pricing";
 import { datasetItemLabel, datasetVariableNames } from "./dataset";
 
 export const DEFAULT_TARGET_MODEL = "gpt-4o-mini";
 export const DEFAULT_TEMPERATURE = 0.7;
-
-function seededRandom(seed: string): number {
-  let h = 0;
-  for (let i = 0; i < seed.length; i++) {
-    h = (h << 5) - h + seed.charCodeAt(i);
-    h |= 0;
-  }
-  return (Math.abs(h) % 1000) / 1000;
-}
 
 function extractPhrase(text: string, after: RegExp): string | null {
   const m = text.match(after);
@@ -208,6 +200,7 @@ export function classifyAssertionsFor(spec: SpecProject): Assertion[] {
 }
 
 function violationRate(a: Assertion): number {
+  if (a.children?.length) return a.children.reduce((sum, c) => sum + violationRate(c), 0) / a.children.length;
   if (a.tier === "deterministic") {
     if (!a.check || (a.check.mode === "contains" && a.check.value === "")) return 0.1;
     return 0.16;
@@ -299,6 +292,10 @@ export function scoreCodeAssertion(check: CodeCheck, output: string): { passed: 
     case "equals": {
       const passed = text.trim() === check.value.trim();
       return { passed, reason: passed ? `Output equals "${check.value}".` : `Output does not equal "${check.value}".` };
+    }
+    case "not_equals": {
+      const passed = text.trim() !== check.value.trim();
+      return { passed, reason: passed ? `Output correctly differs from "${check.value}".` : `Output equals "${check.value}", which it shouldn't.` };
     }
     case "contains": {
       if (!check.value) return { passed: true, reason: "Structural check passed." };
@@ -415,6 +412,10 @@ export function scoreCodeAssertion(check: CodeCheck, output: string): { passed: 
         passed,
         reason: passed ? "Found SQL-like syntax (heuristic keyword match)." : "No SQL-like syntax detected.",
       };
+    }
+    case "contains_html": {
+      const passed = /<([a-zA-Z][\w:-]*)[^>]*>/.test(text);
+      return { passed, reason: passed ? "Found at least one HTML tag." : "No HTML tag found in the output." };
     }
     case "levenshtein": {
       const reference = check.reference ?? "";
@@ -536,6 +537,64 @@ export function describeScore(assertion: Assertion, passed: boolean): string {
   return passed ? "Judge: satisfies the rubric." : "Judge: does not satisfy the rubric.";
 }
 
+/**
+ * Scores one assertion (deterministic/custom_code/rubric_grading) against a simulated output —
+ * the same three branches `runSuiteOffline` always had, just factored out so a composite/grouped
+ * assertion's `children` (see `Assertion.children`) can call this per child too, not just the
+ * top-level loop. `passed`/`itemId` drive the simulated-rubric branch's fake score exactly as
+ * before; real deterministic/custom-code scoring ignores them (it scores the real output).
+ */
+function scoreOneAssertion(assertion: Assertion, passed: boolean, output: string, input: string, itemId: string): AssertionScore {
+  if (assertion.children?.length) return scoreAssertionGroup(assertion, output, input, itemId);
+  if (assertion.tier === "deterministic" && assertion.check) {
+    const real = scoreCodeAssertion(assertion.check, output);
+    return { assertionId: assertion.id, passed: real.passed, reason: real.reason, score: real.passed ? 1 : 0 };
+  }
+  if (assertion.tier === "custom_code" && assertion.code) {
+    const real = scoreCustomCode(assertion.code, assertion.codeLanguage ?? "javascript", output, input);
+    return { assertionId: assertion.id, passed: real.passed, reason: real.reason, score: real.passed ? 1 : 0 };
+  }
+  // Simulated rubric score: a plausible fractional value on the "passing"/"failing" side of
+  // 0.5, not just a flat 1/0 — keeps the offline path exercising the same score field a live
+  // llm-rubric judge would populate.
+  const seed = seededRandom(`${itemId}:${assertion.id}:score`);
+  const score = passed ? 0.7 + seed * 0.3 : seed * 0.5;
+  return { assertionId: assertion.id, passed, reason: describeScore(assertion, passed), score };
+}
+
+/**
+ * Composite/grouped assertion (`Assertion.children` set — promptfoo's `assert-set`): scores every
+ * child independently by its own tier (one level deep only — a child's own `children` are ignored,
+ * matching every real-world example seen so far), then rolls up to a single weighted-average score
+ * carried on the parent, with the full per-child breakdown preserved on `childScores` for the UI.
+ */
+function scoreAssertionGroup(assertion: Assertion, output: string, input: string, itemId: string): AssertionScore {
+  const children = assertion.children ?? [];
+  const childScores = children.map((child) => {
+    const seed = seededRandom(`${itemId}:${child.id}`);
+    const passed = seed >= violationRate(child);
+    return scoreOneAssertion(child, passed, output, input, itemId);
+  });
+  const totalWeight = children.reduce((sum, c) => sum + (c.weight ?? 1), 0) || 1;
+  const weightedScore =
+    childScores.reduce((sum, s, i) => sum + (s.score ?? (s.passed ? 1 : 0)) * (children[i].weight ?? 1), 0) / totalWeight;
+  const threshold = assertion.groupThreshold ?? 0.5;
+  const passed = weightedScore >= threshold;
+  const failing = childScores
+    .filter((s) => !s.passed)
+    .map((s) => children.find((c) => c.id === s.assertionId)?.description)
+    .filter(Boolean);
+  return {
+    assertionId: assertion.id,
+    passed,
+    score: weightedScore,
+    reason: passed
+      ? `Weighted score ${weightedScore.toFixed(2)} meets the ${threshold.toFixed(2)} threshold across ${children.length} sub-check(s).`
+      : `Weighted score ${weightedScore.toFixed(2)} is below the ${threshold.toFixed(2)} threshold — dragged down by: ${failing.join(", ") || "one or more sub-checks"}.`,
+    childScores,
+  };
+}
+
 /** Fully offline/simulated suite run — used as the fallback when no LLM is configured or reachable. */
 export function runSuiteOffline(spec: SpecProject, itemIds?: string[]): RunGroup {
   const target = spec.target;
@@ -552,22 +611,9 @@ export function runSuiteOffline(spec: SpecProject, itemIds?: string[]): RunGroup
 
     const output = simulateOutput(item.input, scored);
 
-    const scores: AssertionScore[] = scored.map(({ assertion, passed }) => {
-      if (assertion.tier === "deterministic" && assertion.check) {
-        const real = scoreCodeAssertion(assertion.check, output);
-        return { assertionId: assertion.id, passed: real.passed, reason: real.reason, score: real.passed ? 1 : 0 };
-      }
-      if (assertion.tier === "custom_code" && assertion.code) {
-        const real = scoreCustomCode(assertion.code, assertion.codeLanguage ?? "javascript", output, item.input);
-        return { assertionId: assertion.id, passed: real.passed, reason: real.reason, score: real.passed ? 1 : 0 };
-      }
-      // Simulated rubric score: a plausible fractional value on the "passing"/"failing" side of
-      // 0.5, not just a flat 1/0 — keeps the offline path exercising the same score field a live
-      // llm-rubric judge would populate.
-      const seed = seededRandom(`${item.id}:${assertion.id}:score`);
-      const score = passed ? 0.7 + seed * 0.3 : seed * 0.5;
-      return { assertionId: assertion.id, passed, reason: describeScore(assertion, passed), score };
-    });
+    const scores: AssertionScore[] = scored.map(({ assertion, passed }) =>
+      scoreOneAssertion(assertion, passed, output, item.input, item.id),
+    );
 
     // Fabricated, not measured — same "directionally correct, not billing-grade" convention as
     // the Playground's offline path (`handlePlaygroundRun`'s simulated branch in apiPlugin.ts).
@@ -575,19 +621,25 @@ export function runSuiteOffline(spec: SpecProject, itemIds?: string[]): RunGroup
     const completionTokens = estimateTokens(output);
     const costUsd = estimateCostUsd(target.model, promptTokens, completionTokens);
     const latencyMs = Math.round(350 + seededRandom(`${item.id}:latency`) * 2400);
+    const tokenUsage = { promptTokens, completionTokens, totalTokens: promptTokens + completionTokens };
 
-    return { datasetItemId: item.id, output, scores, latencyMs, costUsd };
+    return { datasetItemId: item.id, output, scores, latencyMs, costUsd, tokenUsage };
   });
 
-  return finalizeRun(results, "simulated", itemIds && itemIds.length > 0 ? "sample" : "full");
+  return finalizeRun(results, "simulated", itemIds && itemIds.length > 0 ? "sample" : "full", target.id);
 }
 
 export function finalizeRun(
   results: RunItemResult[],
   mode: RunGroup["mode"],
   scope: RunGroup["scope"] = "full",
+  targetId?: string,
+  ranByUserId?: string,
 ): RunGroup {
-  const totalScores = results.flatMap((r) => r.scores);
+  // n/a scores (a check that didn't apply to that row) count toward neither pass nor fail — same
+  // exclusion `results.ts`'s row/assertion rollups apply, kept consistent here so the headline
+  // number stamped onto the RunGroup always matches what the Results tab recomputes and displays.
+  const totalScores = results.flatMap((r) => r.scores.filter((s) => !s.na));
   const passRate = totalScores.length
     ? totalScores.filter((s) => s.passed).length / totalScores.length
     : 0;
@@ -599,6 +651,8 @@ export function finalizeRun(
     results,
     passRate,
     scope,
+    targetId,
+    ranByUserId,
   };
 }
 
@@ -648,7 +702,11 @@ export function suggestRunInsightsHeuristic(spec: SpecProject, run: RunGroup): R
     .slice(0, 3);
   for (const s of worstAssertions) {
     const pct = Math.round(s.failRate * 100);
-    if (s.assertion.tier === "rubric_grading") {
+    if (s.assertion.children?.length) {
+      improvements.push(
+        `"${s.assertion.description}" (a grouped/weighted metric) misses its threshold ${pct}% of the time (${s.failCount}/${s.total}) — open a failing row's detail panel to see which sub-check is dragging the average down.`,
+      );
+    } else if (s.assertion.tier === "rubric_grading") {
       improvements.push(
         `"${s.assertion.description}" fails ${pct}% of the time (${s.failCount}/${s.total}) — consider tightening the rubric or the prompt's instructions around this.`,
       );

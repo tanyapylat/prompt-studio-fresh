@@ -1,5 +1,6 @@
 import type { Plugin } from "vite";
 import type { IncomingMessage, ServerResponse } from "node:http";
+import { applyCors } from "./cors";
 import type {
   Assertion,
   GenerateSelection,
@@ -77,9 +78,84 @@ function readJsonBody<T>(req: IncomingMessage): Promise<T> {
 }
 
 function sendJson(res: ServerResponse, status: number, body: unknown) {
+  applyCors(res);
   res.statusCode = status;
   res.setHeader("Content-Type", "application/json");
   res.end(JSON.stringify(body));
+}
+
+function requestPath(req: IncomingMessage): string {
+  return (req.url ?? "").split("?")[0] ?? "";
+}
+
+export async function handleApiRoute(req: IncomingMessage, res: ServerResponse): Promise<boolean> {
+  const url = requestPath(req);
+  if (!url.startsWith("/api/")) return false;
+
+  if (req.method === "OPTIONS") {
+    applyCors(res);
+    res.statusCode = 204;
+    res.end();
+    return true;
+  }
+
+  if (url === "/api/health" || url === "/api/health/") {
+    sendJson(res, 200, { hasApiKey: hasApiKey() });
+    return true;
+  }
+
+  try {
+    if (url === "/api/generate" || url === "/api/generate/") {
+      const { spec, selection } = await readJsonBody<{ spec: SpecProject; selection: GenerateSelection }>(req);
+      sendJson(res, 200, await handleGenerate(spec, selection ?? { prompt: true, assertions: true, dataset: true }));
+      return true;
+    }
+    if (url === "/api/run" || url === "/api/run/") {
+      const { spec, itemIds } = await readJsonBody<{ spec: SpecProject; itemIds?: string[] }>(req);
+      sendJson(res, 200, await handleRun(spec, itemIds));
+      return true;
+    }
+    if (url === "/api/suggest-review-insights" || url === "/api/suggest-review-insights/") {
+      const { spec, runId } = await readJsonBody<{ spec: SpecProject; runId: string }>(req);
+      sendJson(res, 200, await handleSuggestReviewInsights(spec, runId));
+      return true;
+    }
+    if (url === "/api/assistant-chat" || url === "/api/assistant-chat/") {
+      sendJson(res, 200, await handleAssistantChat(await readJsonBody<AssistantChatRequest>(req)));
+      return true;
+    }
+    if (url === "/api/playground-run" || url === "/api/playground-run/") {
+      sendJson(res, 200, await handlePlaygroundRun(await readJsonBody<PlaygroundRunRequest>(req)));
+      return true;
+    }
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("[spec-studio-api]", message);
+    sendJson(res, 502, { error: message });
+    return true;
+  }
+
+  return false;
+}
+
+function attachApi(middlewares: { use: (fn: (req: IncomingMessage, res: ServerResponse, next: () => void) => void) => void }) {
+  middlewares.use((req, res, next) => {
+    applyCors(res);
+    if (req.method === "OPTIONS") {
+      res.statusCode = 204;
+      res.end();
+      return;
+    }
+    void handleApiRoute(req, res)
+      .then((handled) => {
+        if (!handled) next();
+      })
+      .catch((err: unknown) => {
+        const message = err instanceof Error ? err.message : String(err);
+        console.error("[spec-studio-api]", message);
+        sendJson(res, 502, { error: message });
+      });
+  });
 }
 
 async function handleGenerate(spec: SpecProject, selection: GenerateSelection) {
@@ -115,13 +191,13 @@ async function handleGenerate(spec: SpecProject, selection: GenerateSelection) {
   }
 
   if (selection.dataset) {
-    const seedItems = spec.examples.map((e) => ({
+    const manualItems = spec.examples.map((e) => ({
       id: newId("item"),
       input: e.input,
-      source: "seed" as const,
+      source: "manual" as const,
       expectedOutput: e.expectedOutput,
     }));
-    const syntheticCount = Math.max(2, DESIRED_DATASET_SIZE - seedItems.length);
+    const syntheticCount = Math.max(2, DESIRED_DATASET_SIZE - manualItems.length);
     let syntheticInputs: string[];
 
     if (mode === "live") {
@@ -133,7 +209,7 @@ async function handleGenerate(spec: SpecProject, selection: GenerateSelection) {
       syntheticInputs = generateSyntheticItems(spec, syntheticCount).map((i) => i.input);
     }
     response.dataset = [
-      ...seedItems,
+      ...manualItems,
       ...syntheticInputs.map((input) => ({ id: newId("item"), input, source: "synthetic" as const })),
     ];
   }
@@ -228,7 +304,8 @@ async function handleRun(spec: SpecProject, itemIds?: string[]) {
       }
     }
 
-    results.push({ datasetItemId: item.id, output, scores, latencyMs, costUsd });
+    const tokenUsage = { promptTokens: usage.promptTokens, completionTokens: usage.completionTokens, totalTokens: usage.promptTokens + usage.completionTokens };
+    results.push({ datasetItemId: item.id, output, scores, latencyMs, costUsd, tokenUsage });
   }
 
   return { results, mode: "live" as GenerationMode };
@@ -361,61 +438,10 @@ export function apiPlugin(): Plugin {
   return {
     name: "spec-studio-api",
     configureServer(server) {
-      server.middlewares.use("/api/health", (_req, res) => {
-        sendJson(res, 200, { hasApiKey: hasApiKey() });
-      });
-      server.middlewares.use("/api/generate", (req, res) => {
-        readJsonBody<{ spec: SpecProject; selection: GenerateSelection }>(req)
-          .then(({ spec, selection }) =>
-            handleGenerate(spec, selection ?? { prompt: true, assertions: true, dataset: true }),
-          )
-          .then((body) => sendJson(res, 200, body))
-          .catch((err: unknown) => {
-            const message = err instanceof Error ? err.message : String(err);
-            console.error("[spec-studio-api]", message);
-            sendJson(res, 502, { error: message });
-          });
-      });
-      server.middlewares.use("/api/run", (req, res) => {
-        readJsonBody<{ spec: SpecProject; itemIds?: string[] }>(req)
-          .then(({ spec, itemIds }) => handleRun(spec, itemIds))
-          .then((body) => sendJson(res, 200, body))
-          .catch((err: unknown) => {
-            const message = err instanceof Error ? err.message : String(err);
-            console.error("[spec-studio-api]", message);
-            sendJson(res, 502, { error: message });
-          });
-      });
-      server.middlewares.use("/api/suggest-review-insights", (req, res) => {
-        readJsonBody<{ spec: SpecProject; runId: string }>(req)
-          .then(({ spec, runId }) => handleSuggestReviewInsights(spec, runId))
-          .then((body) => sendJson(res, 200, body))
-          .catch((err: unknown) => {
-            const message = err instanceof Error ? err.message : String(err);
-            console.error("[spec-studio-api]", message);
-            sendJson(res, 502, { error: message });
-          });
-      });
-      server.middlewares.use("/api/assistant-chat", (req, res) => {
-        readJsonBody<AssistantChatRequest>(req)
-          .then(handleAssistantChat)
-          .then((body) => sendJson(res, 200, body))
-          .catch((err: unknown) => {
-            const message = err instanceof Error ? err.message : String(err);
-            console.error("[spec-studio-api]", message);
-            sendJson(res, 502, { error: message });
-          });
-      });
-      server.middlewares.use("/api/playground-run", (req, res) => {
-        readJsonBody<PlaygroundRunRequest>(req)
-          .then(handlePlaygroundRun)
-          .then((body) => sendJson(res, 200, body))
-          .catch((err: unknown) => {
-            const message = err instanceof Error ? err.message : String(err);
-            console.error("[spec-studio-api]", message);
-            sendJson(res, 502, { error: message });
-          });
-      });
+      attachApi(server.middlewares);
+    },
+    configurePreviewServer(server) {
+      attachApi(server.middlewares);
     },
   };
 }

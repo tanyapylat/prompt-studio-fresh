@@ -1,10 +1,10 @@
-﻿import { useRef, useState } from "react";
+﻿import { useMemo, useRef, useState } from "react";
 import { Beaker, ChevronDown, FolderInput, FolderOutput, ListPlus, Loader2, Rows3, Shuffle, Upload, WrapText, X } from "lucide-react";
 import { useStore } from "../../store";
 import type { DatasetItem, SpecProject } from "../../types";
 import { markArtifactManuallyEdited } from "../../specFactory";
 import { datasetToLibraryEntry, type SaveToLibraryMeta } from "../../libraryFactory";
-import { datasetVariableNames } from "../../dataset";
+import { collectAllDatasetLabels, datasetVariableNames } from "../../dataset";
 import { useDatasetViewPrefs } from "../../datasetViewPrefs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -50,6 +50,7 @@ export function DatasetPane({
 
   const variableNames = datasetVariableNames(spec.target?.messages);
   const isMultiVariable = variableNames.length > 1;
+  const allLabels = useMemo(() => collectAllDatasetLabels(spec.dataset), [spec.dataset]);
 
   function patchDataset(fn: (items: DatasetItem[]) => DatasetItem[]) {
     updateSpec(spec.id, (s) => markArtifactManuallyEdited({ ...s, dataset: fn(s.dataset), updatedAt: Date.now() }, "dataset"));
@@ -254,6 +255,7 @@ export function DatasetPane({
           onNavigate={setDetailItemId}
           onPatch={patchDataset}
           onDelete={handleDeleteItem}
+          allLabels={allLabels}
         />
       )}
     </div>

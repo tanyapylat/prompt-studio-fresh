@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { ArrowDown, ArrowUp, ArrowUpDown, Filter } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Filter, Info } from "lucide-react";
 
 export type SortDir = "asc" | "desc";
 export type UpdatedAtPreset = "any" | "today" | "week" | "month";
@@ -51,8 +51,18 @@ export function ColumnHeader<K extends string>({
   const isActiveSort = activeSort === columnKey;
   return (
     <div className="group relative flex items-center gap-1">
+      {/* Explanatory tooltips are otherwise invisible (native `title` only shows up if you happen
+          to hover) — this icon is the hint that there's more to read here. Kept as a plain `span`,
+          separate from the sort button and placed before the label, so hovering/clicking it can
+          never register as a sort click, and it stays put instead of drifting whenever the label
+          or sort arrow next to it changes width. `cursor-help` (not the button's pointer cursor)
+          signals it isn't itself clickable. */}
+      {title && (
+        <span title={title} className="shrink-0 cursor-help text-slate-400 hover:text-slate-600">
+          <Info size={11} />
+        </span>
+      )}
       <button
-        title={title}
         onClick={() => onSort(columnKey)}
         className={`flex items-center gap-1 hover:text-slate-800 ${isActiveSort ? "text-slate-800" : ""}`}
       >

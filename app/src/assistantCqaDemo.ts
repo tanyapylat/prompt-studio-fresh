@@ -155,7 +155,7 @@ export function matchCqaDemoStep(text: string, spec: SpecProject | null): CqaDem
           target: {
             ...full.target!,
             promptContent: updatedPrompt,
-            messages: full.target!.messages.map((m, i) =>
+            messages: full.target!.messages?.map((m, i) =>
               i === 0
                 ? {
                     ...m,
@@ -177,7 +177,7 @@ export function matchCqaDemoStep(text: string, spec: SpecProject | null): CqaDem
         {
           name: "add_spec_items",
           summary:
-            'Pinned the synthetic failing row as a permanent dataset row (source: "seed", expected: false). ' +
+            'Pinned the synthetic failing row as a permanent dataset row (source: "manual", expected: false). ' +
             "It will run in every future full eval suite, not just the one-off that found it.",
         },
       ],
@@ -191,7 +191,7 @@ export function matchCqaDemoStep(text: string, spec: SpecProject | null): CqaDem
         setSpec({
           ...spec!,
           dataset: spec!.dataset.map((row) =>
-            row.id === syntheticRow.id ? { ...row, source: "seed" as const } : row,
+            row.id === syntheticRow.id ? { ...row, source: "manual" as const } : row,
           ),
           updatedAt: Date.now(),
         });

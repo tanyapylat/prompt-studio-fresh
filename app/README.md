@@ -85,6 +85,18 @@ app/
 See [`../requirements/`](../requirements/README.md) for the full, granular requirement blocks
 this app implements (and the ones it deliberately doesn't yet).
 
+## Azure Deployment
+
+Deploy from the repo root with `.\deploy.ps1`. The script reads `deployment-config.json` (repo root), sets `VITE_PUBLIC_BASE_URL` to that file's `azureUrl`, runs `npm install` and `npm run build` in `app/`, copies `app/dist/` to `.publish/`, bundles `app/server/prodServer.ts` to `.publish/server.js`, zips `.publish/` to `.publish/publish.zip`, and uploads it with Kudu zip deploy.
+
+Wildcard CORS (`Access-Control-Allow-Origin: *`) is applied on the Node/Vite server in `app/server/cors.ts` and `app/server/apiPlugin.ts` (dev, preview, and Azure). Do not enable credentialed cross-origin requests (`Access-Control-Allow-Credentials`).
+
+Public base URL is `VITE_PUBLIC_BASE_URL` (`app/vite.config.ts` `base`, and `app/src/publicUrl.ts` for API/asset URLs). Local: unset, so the app uses relative paths at `http://localhost:5173`. Production: `https://veronica-ai-studio.azurewebsites.net` from `deployment-config.json` `azureUrl`, injected at build time by `deploy.ps1`.
+
+The Geist/Inter webfonts need `app/server/fontsourceAssets.ts`: `@fontsource` emits `url(./files/*.woff2)` into the bundled CSS but the build leaves those URLs unresolved, so the plugin copies every referenced `.woff2` into `dist/assets/files/`. Without it the deployed app renders in a system font while local dev looks correct. Relatedly, `app/server/prodServer.ts` only falls back to `index.html` for extensionless client-side routes — a missing asset returns 404 instead of HTML, so this class of failure stays visible.
+
+Validate with `npm run build` in `app/` (optionally with `VITE_PUBLIC_BASE_URL` set), `npm run dev` for local pages, a request for `/assets/files/inter-latin-wght-normal.woff2` expecting `Content-Type: font/woff2`, and a cross-origin `GET` plus `OPTIONS` against `/api/health` expecting `Access-Control-Allow-Origin: *` and no `Access-Control-Allow-Credentials`.
+
 ## Known simplifications (this is deliberately not the full data model)
 
 - No separate version-history tables — Assertions/Dataset/Eval are single mutable records with no

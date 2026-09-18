@@ -29,7 +29,7 @@ export function AddDatasetRowModal({
 
   function handleAdd() {
     if (!hasContent) return;
-    onAdd(buildDatasetItem(values, variableNames, "case-c", expectedOutput));
+    onAdd(buildDatasetItem(values, variableNames, "manual", expectedOutput));
     setValues(emptyValues());
     setExpectedOutput("");
     setAddedCount((c) => c + 1);

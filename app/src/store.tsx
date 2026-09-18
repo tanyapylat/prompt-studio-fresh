@@ -8,6 +8,7 @@ import type {
   MockUser,
   Prompt,
   PromptDraft,
+  RunGroup,
   SpecProject,
 } from "./types";
 import { seedLibrary, seedPrompts, seedSpecs, seedUsers, USER_VERONICA } from "./seed";
@@ -36,6 +37,8 @@ interface State {
   library: Library;
   /** Which library Dataset entry the Datasets full-page workspace should show, if any. */
   selectedLibraryDatasetId: string | null;
+  /** Which Run the standalone Run Detail page should show, if any — a RunGroup id, globally unique across every Spec. */
+  selectedRunId: string | null;
   users: MockUser[];
   currentUserId: string;
 }
@@ -52,6 +55,7 @@ type Action =
   | { type: "updateLibraryEntry"; kind: LibraryKind; id: string; updater: (e: LibraryEntry) => LibraryEntry }
   | { type: "deleteLibraryEntry"; kind: LibraryKind; id: string }
   | { type: "selectLibraryDataset"; id: string | null }
+  | { type: "selectRun"; id: string | null }
   | { type: "selectPrompt"; id: string | null; versionId?: string | null }
   | { type: "createPrompt"; name: string; ownerId: string; visibility?: LibraryVisibility }
   | { type: "savePromptDraft"; promptId: string; draft: PromptDraft | null }
@@ -131,6 +135,8 @@ function reducer(state: State, action: Action): State {
       };
     case "selectLibraryDataset":
       return { ...state, selectedLibraryDatasetId: action.id };
+    case "selectRun":
+      return { ...state, selectedRunId: action.id };
     case "pinFromLibrary": {
       const entry = (state.library[action.kind] as LibraryEntry[]).find((e) => e.id === action.libraryId);
       if (!entry) return state;
@@ -244,6 +250,9 @@ interface StoreValue {
   library: Library;
   selectedLibraryDatasetId: string | null;
   selectedLibraryDataset: LibraryDataset | null;
+  selectedRunId: string | null;
+  /** The Spec that owns `selectedRunId` and the matching RunGroup itself, or null if nothing is selected. */
+  selectedRun: { spec: SpecProject; run: RunGroup } | null;
   users: MockUser[];
   currentUserId: string;
   currentUser: MockUser;
@@ -258,6 +267,7 @@ interface StoreValue {
   updateLibraryEntry: (kind: LibraryKind, id: string, updater: (e: LibraryEntry) => LibraryEntry) => void;
   deleteLibraryEntry: (kind: LibraryKind, id: string) => void;
   selectLibraryDataset: (id: string | null) => void;
+  selectRun: (id: string | null) => void;
   selectPrompt: (id: string | null, versionId?: string | null) => void;
   createPrompt: (name: string, ownerId: string, visibility?: LibraryVisibility) => void;
   savePromptDraft: (promptId: string, draft: PromptDraft | null) => void;
@@ -281,6 +291,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       selectedPromptVersionId: null,
       library: seedLibrary(),
       selectedLibraryDatasetId: null,
+      selectedRunId: null,
       users: seedUsers(),
       currentUserId: USER_VERONICA,
     };
@@ -297,6 +308,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     library: state.library,
     selectedLibraryDatasetId: state.selectedLibraryDatasetId,
     selectedLibraryDataset: state.library.datasets.find((d) => d.id === state.selectedLibraryDatasetId) ?? null,
+    selectedRunId: state.selectedRunId,
+    selectedRun: (() => {
+      if (!state.selectedRunId) return null;
+      for (const spec of state.specs) {
+        const run = spec.runs.find((r) => r.id === state.selectedRunId);
+        if (run) return { spec, run };
+      }
+      return null;
+    })(),
     users: state.users,
     currentUserId: state.currentUserId,
     currentUser: state.users.find((u) => u.id === state.currentUserId) ?? state.users[0],
@@ -312,6 +332,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     updateLibraryEntry: (kind, id, updater) => dispatch({ type: "updateLibraryEntry", kind, id, updater }),
     deleteLibraryEntry: (kind, id) => dispatch({ type: "deleteLibraryEntry", kind, id }),
     selectLibraryDataset: (id) => dispatch({ type: "selectLibraryDataset", id }),
+    selectRun: (id) => dispatch({ type: "selectRun", id }),
     selectPrompt: (id, versionId) => dispatch({ type: "selectPrompt", id, versionId }),
     createPrompt: (name, ownerId, visibility) => dispatch({ type: "createPrompt", name, ownerId, visibility }),
     savePromptDraft: (promptId, draft) => dispatch({ type: "savePromptDraft", promptId, draft }),

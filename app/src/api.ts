@@ -10,9 +10,10 @@ import type {
   TargetVersion,
 } from "./types";
 import type { AssistantMessage, AssistantToolCall, AssistantViewContext } from "./assistantTools";
+import { publicUrl } from "./publicUrl";
 
 async function post<T>(path: string, body: unknown, signal?: AbortSignal): Promise<T> {
-  const res = await fetch(path, {
+  const res = await fetch(publicUrl(path), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -124,7 +125,7 @@ export interface PlaygroundRunResponse {
 
 /** Ad-hoc Playground tester — multi-message, tools, and structured output; not tied to any Spec's dataset/assertions. */
 export async function runPlaygroundRemote(opts: PlaygroundRunRequest): Promise<PlaygroundRunResponse> {
-  const res = await fetch("/api/playground-run", {
+  const res = await fetch(publicUrl("/api/playground-run"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(opts),
@@ -139,7 +140,7 @@ export async function runPlaygroundRemote(opts: PlaygroundRunRequest): Promise<P
 
 export async function checkApiHealth(): Promise<{ hasApiKey: boolean }> {
   try {
-    const res = await fetch("/api/health");
+    const res = await fetch(publicUrl("/api/health"));
     return await res.json();
   } catch {
     return { hasApiKey: false };

@@ -1,0 +1,4 @@
+.publish/
+
+# Contains a live Azure Kudu zip-deploy password (userPWD) in plaintext — never commit this.
+deployment-config.json

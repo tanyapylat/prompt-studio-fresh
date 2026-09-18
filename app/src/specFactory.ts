@@ -452,10 +452,21 @@ export async function generateFromSpec(
   });
 }
 
-/** `itemIds`, when provided and non-empty, re-runs only that subset of the Dataset — a sample run. */
-export async function rerun(spec: SpecProject, itemIds?: string[], signal?: AbortSignal): Promise<SpecProject> {
+/**
+ * `itemIds`, when provided and non-empty, re-runs only that subset of the Dataset — a sample run.
+ * `ranByUserId` stamps who triggered this Run (see `RunGroup.ranByUserId`) — falls back to the
+ * Spec's own owner when the caller doesn't have a real "current user" to pass (e.g. a background
+ * job), so the Eval runs list's Author column always has something real to show.
+ */
+export async function rerun(spec: SpecProject, itemIds?: string[], signal?: AbortSignal, ranByUserId?: string): Promise<SpecProject> {
   const { results, mode } = await runSuiteRemote(spec, itemIds, signal);
   const previousRun = spec.runs[spec.runs.length - 1];
-  const run = finalizeRun(carryForwardAnnotations(results, previousRun), mode, itemIds && itemIds.length > 0 ? "sample" : "full");
+  const run = finalizeRun(
+    carryForwardAnnotations(results, previousRun),
+    mode,
+    itemIds && itemIds.length > 0 ? "sample" : "full",
+    spec.target?.id,
+    ranByUserId ?? spec.ownerId,
+  );
   return { ...spec, runs: [...spec.runs, run], updatedAt: run.createdAt };
 }

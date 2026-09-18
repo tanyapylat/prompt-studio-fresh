@@ -1,4 +1,5 @@
 import type { RunGroup, SpecProject } from "./types";
+import { seededRandom } from "./utils/random";
 
 /**
  * Quality/safety-style metrics shown in Review, distinct from the per-Requirement `Assertion`
@@ -14,15 +15,6 @@ export interface ReviewMetric {
   score: number;
   passed: boolean;
   description: string;
-}
-
-function seededRandom(seed: string): number {
-  let h = 0;
-  for (let i = 0; i < seed.length; i++) {
-    h = (h << 5) - h + seed.charCodeAt(i);
-    h |= 0;
-  }
-  return (Math.abs(h) % 1000) / 1000;
 }
 
 /**

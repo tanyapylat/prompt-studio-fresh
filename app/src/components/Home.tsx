@@ -277,7 +277,7 @@ export function Home() {
           {openFilterKey && <div className="fixed inset-0 z-20" onClick={() => setOpenFilterKey(null)} />}
 
           <div
-            className={`relative z-10 grid ${ROW_COLUMNS} gap-3 rounded-t-2xl border border-b-0 border-slate-200 bg-slate-50 px-4 py-2 text-[11px] font-medium uppercase tracking-wide text-slate-500`}
+            className={`relative z-10 grid ${ROW_COLUMNS} gap-3 rounded-t-2xl border border-b-0 border-slate-200 bg-slate-50 px-4 py-2 text-xs font-medium uppercase tracking-wide text-slate-500`}
           >
             <span />
             <ColumnHeader
@@ -590,6 +590,15 @@ export function Home() {
                               {relativeTime(lastRun.createdAt)}
                               {lastRun.scope === "sample" ? " · sample" : ""}
                             </span>
+                          </button>
+                        )}
+                        {lastRun && (
+                          <button
+                            onClick={() => window.open(`/runs/${lastRun.id}`, "_blank")}
+                            className="mt-1 text-[11px] font-medium text-primary hover:underline"
+                            title="Open this run on its own full-page view (new tab), alongside every other run across every Spec"
+                          >
+                            View full run history →
                           </button>
                         )}
                       </div>

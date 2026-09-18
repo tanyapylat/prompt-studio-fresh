@@ -6,7 +6,7 @@ export type Status = "draft" | "published";
  * - `rubric_grading`: an LLM-as-judge rubric — the most expensive tier, used only when the first two can't cover it.
  */
 export type AssertionTier = "deterministic" | "custom_code" | "rubric_grading";
-export type DatasetItemSource = "seed" | "synthetic" | "case-c";
+export type DatasetItemSource = "synthetic" | "manual";
 export type GenerationMode = "live" | "simulated";
 export type GenerateArtifact = "prompt" | "assertions" | "dataset";
 export type GenerateSelection = Record<GenerateArtifact, boolean>;
@@ -17,6 +17,8 @@ export interface MockUser {
   id: string;
   name: string;
   initials: string;
+  /** Standing in for real SSO/auth identity — shown as-is in the Eval runs list's Author column. */
+  email: string;
 }
 
 /**
@@ -80,6 +82,7 @@ export type OutputMode = "text" | "json_schema" | "tool_call";
  */
 export type CodeCheckMode =
   | "equals"
+  | "not_equals"
   | "contains"
   | "icontains"
   | "excludes"
@@ -96,6 +99,7 @@ export type CodeCheckMode =
   | "is_xml"
   | "contains_xml"
   | "contains_sql"
+  | "contains_html"
   | "levenshtein"
   | "rouge_n"
   | "latency"
@@ -107,11 +111,11 @@ export type CodeCheckMode =
 export interface CodeCheck {
   mode: CodeCheckMode;
   /**
-   * equals/contains/icontains/excludes/starts_with: the literal phrase.
+   * equals/not_equals/contains/icontains/excludes/starts_with: the literal phrase.
    * contains_all/contains_any/icontains_all/icontains_any/not_contains_any/not_icontains_any: comma-separated phrases.
    * regex_match/regex_excludes: a regular expression source (passes when it does/doesn't match).
    * enum: comma-separated list of the only allowed exact outputs (case-insensitive, trimmed).
-   * valid_json/contains_json/is_xml/contains_xml/contains_sql/word_count: unused (word_count uses `min`/`max` instead).
+   * valid_json/contains_json/is_xml/contains_xml/contains_sql/contains_html/word_count: unused (word_count uses `min`/`max` instead).
    * levenshtein/rouge_n: unused — the comparison text lives in `reference`.
    * latency/cost: unused — the limit lives in `threshold` (ms / USD).
    */
@@ -146,6 +150,23 @@ export interface Assertion {
    * in the Results rollup. Undefined = fall back to `SpecProject.defaultPassThreshold`.
    */
   passThreshold?: number;
+  /**
+   * Composite/grouped assertion — promptfoo's `assert-set` (e.g. several weighted sub-checks
+   * rolled into one named metric with its own pass threshold; real-world example: an "H1 tag
+   * quality" metric averaging a length check, a keyword check, and a tone check). When this is
+   * set, THIS assertion's own `tier`/`check`/`code`/`rubric` are not used for scoring — each
+   * child is scored independently by its own tier, then this assertion's score is the weighted
+   * average of the children's scores (see `weight`) and it passes when that average reaches
+   * `groupThreshold`. `tier` is still set (arbitrarily, to keep every other tier-driven code path
+   * — Library, the Eval pane's 3-tier layout — working unmodified) but should be ignored by
+   * anything that already checks `children` first; see `AssertionScore.childScores` for how a
+   * row's per-child breakdown is carried alongside the group's own aggregate score.
+   */
+  children?: Assertion[];
+  /** Only meaningful on a `children` entry of some other assertion — its share of the parent group's weighted-average score. Undefined = 1 (equal weight). */
+  weight?: number;
+  /** Composite/grouped assertion only: weighted-average score (0-1) `children` must reach for this assertion to pass. Undefined = 0.5. */
+  groupThreshold?: number;
 }
 
 export interface JudgePolicy {
@@ -173,6 +194,16 @@ export interface DatasetItem {
   createdAt?: number;
   /** When this row's fields were last edited — undefined on legacy rows; equals `createdAt` on unedited rows. */
   updatedAt?: number;
+  /**
+   * Reviewer annotation on the dataset row itself — persistent and independent of any particular
+   * Run (unlike `RunItemResult.labels`, which describes one Run's output for this row and gets
+   * carried forward copy-by-copy across reruns). Use this for observations about the row itself,
+   * e.g. "this is an edge case" or "ambiguous phrasing", that should stick around no matter how
+   * the prompt changes.
+   */
+  note?: string;
+  /** Short, filterable tags on the dataset row itself — same UI/semantics as `RunItemResult.labels`, one level up. */
+  labels?: string[];
 }
 
 /**
@@ -239,6 +270,14 @@ export interface TargetVersion {
   /** When this version became the active Target — absent on older seed data. */
   createdAt?: number;
   /**
+   * The real numeric version id from the production Prompt Management system — distinct from
+   * this Target's own `id`, which is only an AI Studio-internal key. Undefined until this exact
+   * version has actually been published/synced there (e.g. a fresh, never-published draft has no
+   * id yet). This is the id real eval-run tooling reports alongside a project id — see
+   * `SpecProject.psProjectId`.
+   */
+  psVersionId?: number;
+  /**
    * Structured Playground template mirrored alongside `promptContent` — optional so older/simpler
    * data (and the untouched Generate flow) stay valid. `promptContent` always equals the flattened
    * System message content, so the Eval Suite never needs to know these exist.
@@ -259,6 +298,8 @@ export interface PromptVersion {
   temperature: number;
   status: Status;
   createdAt: number;
+  /** Mirrored from the source `TargetVersion.psVersionId` (Spec-linked) — see there. Undefined for standalone Prompt versions or ones never published yet. */
+  psVersionId?: number;
   /** Structured Playground template for this version — see TargetVersion for why this is optional. */
   messages?: PromptMessage[];
   tools?: PromptTool[];
@@ -297,6 +338,8 @@ export interface Prompt {
   visibility: LibraryVisibility;
   /** The Spec this Prompt is mirrored from, or null if it's a standalone Prompt. */
   specId: string | null;
+  /** Mirrored from `SpecProject.psProjectId` — see there. Undefined for standalone Prompts, which have no project id yet. */
+  psProjectId?: number;
   /** Oldest first — the current working version is `versions[versions.length - 1]` by convention. */
   versions: PromptVersion[];
   activeVersionId: string;
@@ -318,20 +361,60 @@ export interface AssertionScore {
    * like "0.3 vs 0.4 out of 1" isn't lost. Undefined on legacy rows that predate this field.
    */
   score?: number;
+  /**
+   * True when this specific assertion simply didn't apply to this row (seen in real exports —
+   * e.g. a `one_detail_pet` check on a car-repair test case) — distinct from failing it. `passed`
+   * is meaningless when this is true and should be ignored; the UI renders a neutral "n/a" chip
+   * and every pass-rate rollup (row/assertion/run) excludes it from both numerator and denominator.
+   */
+  na?: boolean;
+  /**
+   * Present only when this score belongs to a composite/grouped assertion (`Assertion.children`
+   * set) — each child's own score, in the same shape and keyed the same way (`assertionId`) as a
+   * normal top-level score, so the UI can render the breakdown behind the group's aggregate
+   * pass/fail without those children ever being separate top-level rows in `RunItemResult.scores`
+   * (which would double-count them in every rollup).
+   */
+  childScores?: AssertionScore[];
+}
+
+/** Prompt/completion/total token counts for one generation call — same shape as the Playground's `PlaygroundUsage` in `api.ts`. */
+export interface TokenUsage {
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
 }
 
 export interface RunItemResult {
   datasetItemId: string;
   output: string;
   scores: AssertionScore[];
-  /** Longer freeform qualitative commentary — edited in the side panel's Metadata tab only. */
-  note?: string;
-  /** Short, filterable tags a reviewer attaches while triaging (e.g. "hallucination", "needs fix") — editable inline in the table and the side panel. */
+  /** Short, filterable tags a reviewer attaches while triaging (e.g. "hallucination", "needs fix") — editable inline in the table and the side panel; the only annotation mechanism at this level (unlike `DatasetItem`, which also has a persistent freeform `note`). */
   labels?: string[];
   /** Wall-clock time of the generation call that produced `output` — excludes judge grading calls. */
   latencyMs?: number;
   /** Estimated cost (USD) of the generation call that produced `output`, from token usage × model pricing. */
   costUsd?: number;
+  /** Token counts behind `costUsd` — same "directionally correct, not billing-grade" convention. */
+  tokenUsage?: TokenUsage;
+  /**
+   * When set, the generation call itself failed (timeout, provider error, etc.) before any
+   * assertion could run — a third row status alongside pass/fail, matching Promptfoo's own
+   * Pass/Fail/Error split. `scores` is empty and `output` is typically blank when this is set.
+   */
+  error?: string;
+}
+
+/** One compared prompt/target's full result set inside a comparison Run — see `RunGroup.comparison`. */
+export interface RunVariant {
+  /** Stable within the Run — not globally unique like `RunGroup.id`. */
+  id: string;
+  /** Human-readable column header, e.g. "Prompt 3643 · v23612" — real promptId/versionId when known, otherwise a plain name. */
+  label: string;
+  /** The Spec's `TargetVersion.id` this variant evaluated, when it corresponds to a real mirrored Prompt version. */
+  targetId?: string;
+  results: RunItemResult[];
+  passRate: number;
 }
 
 /**
@@ -355,6 +438,31 @@ export interface RunGroup {
    * rows) rather than every row — useful for a quick check before running a huge dataset in full.
    */
   scope: "full" | "sample";
+  /**
+   * The Spec's `TargetVersion.id` that was active when this Run happened — i.e. which exact
+   * mirrored Prompt version it evaluated. Stamped once at run time and never updated afterward,
+   * so a Run keeps pointing at the version it actually ran against even after the Spec's Target
+   * changes later. See `versionIdForTarget`/`mirrorPromptIdForSpec` in `promptFactory.ts` for how
+   * this maps to the corresponding Prompt/PromptVersion row. Undefined on legacy runs that
+   * predate this field — falls back to the Spec's current Target in the UI.
+   */
+  targetId?: string;
+  /**
+   * `MockUser.id` of whoever triggered this Run — stamped once at run time by `finalizeRun`,
+   * standing in for a real "run as" identity so the Eval runs list's Author column has something
+   * real to show (not invented per-row). Undefined on legacy/seed runs that predate this field —
+   * the UI falls back to the Spec's owner in that case, same convention as `targetId`.
+   */
+  ranByUserId?: string;
+  /**
+   * Present only when this Run compared 2+ prompts/targets against the exact same dataset and
+   * assertions in one go (e.g. "new version vs. existing baseline") — Promptfoo-style multi-provider
+   * comparison, triggered as a single eval, not assembled after the fact from separate Runs.
+   * `variants[0]` always mirrors this Run's own top-level `results`/`targetId`/`passRate` (kept in
+   * sync at creation time) so every existing single-Run view keeps working unchanged; the
+   * comparison table/charts read `variants` directly instead.
+   */
+  comparison?: { variants: RunVariant[] };
 }
 
 export interface Comment {
@@ -479,6 +587,26 @@ export interface SpecProject {
   /** Set when this Spec was forked as a new version of another Spec. */
   forkedFromId?: string;
   forkedFromName?: string;
+
+  /**
+   * The real numeric project id from the production Prompt Management system that this Spec's
+   * mirrored Prompt corresponds to — distinct from this Spec's own `id`, which is only an AI
+   * Studio-internal key. Undefined until the Spec's Prompt has actually been synced there
+   * (brand-new/never-published Specs have no id yet). See `TargetVersion.psVersionId` for the
+   * matching per-version id.
+   */
+  psProjectId?: number;
+  /**
+   * A human-readable Prompt name to show ahead of `name` when identifying a Run (e.g. in the Eval
+   * runs list / Run detail header) — distinct from `name`, which for some Specs (e.g. the
+   * CSV-imported Scenario demos) is really an eval-scenario description, not the underlying
+   * Prompt's own name. NOTE FOR ENGINEER: in production this identity is really "Prompt +
+   * specific published Version" (see `psProjectId` + `TargetVersion.psVersionId`), not just "a
+   * Prompt" — `describeRunPromptIdentity` in `promptFactory.ts` renders both together for exactly
+   * that reason. Undefined falls back to the mirrored Prompt's `name` (which today always equals
+   * `name` — see `mirrorPromptFromSpec`).
+   */
+  promptDisplayName?: string;
 
   /** Undefined on legacy/seed data — treated as "no divergence info yet" (no staleness warnings). */
   syncState?: SpecSyncState;

@@ -6,10 +6,10 @@ import { useEffect, useState } from "react";
  * `SpecProject`/Library/export and never shows up as an edit to the Spec.
  */
 
-export type ResultsSortField = "failCount" | "latencyMs" | "costUsd";
+export type ResultsSortField = "failCount" | "latencyMs" | "costUsd" | "tokens";
 export type ResultsSortDir = "asc" | "desc";
 /** Optional columns a user can hide — Status, Input(s), and the row-actions column are always shown. */
-export type ResultsColumnId = "output" | "referenceOutput" | "checks" | "latency" | "cost" | "labels";
+export type ResultsColumnId = "source" | "output" | "referenceOutput" | "checks" | "latency" | "cost" | "tokens" | "labels";
 
 export interface ResultsViewPrefs {
   /** Compact (truncated, single-line) vs full (wrapped, multi-line) table cells. */
@@ -20,29 +20,52 @@ export interface ResultsViewPrefs {
   hiddenColumns: ResultsColumnId[];
   /** When the prompt has more than one variable: one combined "Inputs" column vs. one column per variable. */
   splitInputColumns: boolean;
+  /**
+   * Metrics column: one small named chip per assertion (pass/fail + score), Promptfoo-style,
+   * instead of just the aggregate "X/Y passed" badge. On by default — parity with promptfoo's own
+   * results view, where per-assertion chips are always what you see; can still be turned off to
+   * save horizontal room once a metric's already well understood.
+   */
+  showCheckChips: boolean;
+  /**
+   * Metrics column: when `showCheckChips` is on, only render chips for metrics that actually
+   * failed (n/a and passing chips are hidden) — a more compact, problems-only view. Off by
+   * default. Configured via a small filter control in the Metrics column header itself, not the
+   * Columns menu, since it's specific to that one column.
+   */
+  metricsOnlyFailing: boolean;
 }
 
+/** Wrapped-by-default, per-item — flipped from the old compact default so a fresh Spec's Results tab opens already showing full output/reasoning (promptfoo parity was compact-first; we're not). */
 export const DEFAULT_RESULTS_VIEW_PREFS: ResultsViewPrefs = {
-  wrap: false,
+  wrap: true,
   pageSize: 25,
   sortField: "failCount",
   sortDir: "desc",
   hiddenColumns: [],
   splitInputColumns: false,
+  showCheckChips: true,
+  metricsOnlyFailing: false,
 };
 
 export const RESULTS_PAGE_SIZE_OPTIONS = [10, 25, 50, 100] as const;
 
-const STORAGE_PREFIX = "prompt-studio:results-view:";
+// v3 — bumped so browsers that already cached prefs under v1/v2 (before Labels was moved back to
+// "visible by default") fall through to the corrected `computeAutoHiddenColumns` defaults instead
+// of being stuck on the old, buggy saved shape forever.
+const STORAGE_PREFIX = "prompt-studio:results-view:v3:";
 
-function readPrefs(specId: string): ResultsViewPrefs {
+function readPrefs(specId: string, autoHiddenColumns: ResultsColumnId[]): ResultsViewPrefs {
   try {
     const raw = localStorage.getItem(`${STORAGE_PREFIX}${specId}`);
-    if (!raw) return DEFAULT_RESULTS_VIEW_PREFS;
+    // No saved prefs yet for this Spec — start from the shape-aware smart default (computed by the
+    // caller from row count/variable count/comparison-variant count) instead of always-empty. Once
+    // a real preference exists (even an explicit empty array), it always wins over the auto-guess.
+    if (!raw) return { ...DEFAULT_RESULTS_VIEW_PREFS, hiddenColumns: autoHiddenColumns };
     const parsed = JSON.parse(raw);
     return { ...DEFAULT_RESULTS_VIEW_PREFS, ...parsed };
   } catch {
-    return DEFAULT_RESULTS_VIEW_PREFS;
+    return { ...DEFAULT_RESULTS_VIEW_PREFS, hiddenColumns: autoHiddenColumns };
   }
 }
 
@@ -54,12 +77,19 @@ function writePrefs(specId: string, prefs: ResultsViewPrefs) {
   }
 }
 
-/** Reads/writes `ResultsViewPrefs` for one Spec, persisted to localStorage so it survives reloads. */
-export function useResultsViewPrefs(specId: string) {
-  const [prefs, setPrefs] = useState<ResultsViewPrefs>(() => readPrefs(specId));
+/**
+ * Reads/writes `ResultsViewPrefs` for one Spec, persisted to localStorage so it survives reloads.
+ * `autoHiddenColumns` — computed by the caller via `computeAutoHiddenColumns` from the current
+ * Run's shape (row count, variable count, comparison-variant count) — seeds `hiddenColumns` only
+ * the very first time this Spec's Results view is opened; any explicit user choice afterward
+ * (including the Columns menu) always takes over from then on.
+ */
+export function useResultsViewPrefs(specId: string, autoHiddenColumns: ResultsColumnId[] = []) {
+  const [prefs, setPrefs] = useState<ResultsViewPrefs>(() => readPrefs(specId, autoHiddenColumns));
 
   useEffect(() => {
-    setPrefs(readPrefs(specId));
+    setPrefs(readPrefs(specId, autoHiddenColumns));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [specId]);
 
   function update(patch: Partial<ResultsViewPrefs>) {
@@ -79,4 +109,23 @@ export function useResultsViewPrefs(specId: string) {
   }
 
   return { prefs, update, toggleColumn };
+}
+
+/**
+ * The smart initial column visibility, computed once from the Run's own shape — never overrides an
+ * explicit user choice (see `readPrefs`).
+ *   - Latency/Cost/Tokens are always hidden by default now (not just "when crowded") — this
+ *     per-row metadata is one click away in the detail panel's Metadata footer, and a column set
+ *     that silently changes shape as a dataset grows was more surprising than useful. Still just a
+ *     default — the Columns menu always brings any of them back, and that choice sticks.
+ *   - Labels is shown by default (unlike Latency/Cost/Tokens) — it's the reviewer-facing "group
+ *     assertions with a short tag" annotation feature, not per-row performance metadata, so it
+ *     should be visible without an extra click.
+ *   - Reference Output is hidden by default only when *no* row in the Run actually has one — shown
+ *     by default the moment at least one does, regardless of crowding.
+ */
+export function computeAutoHiddenColumns(shape: { hasReferenceOutputs: boolean }): ResultsColumnId[] {
+  const hidden: ResultsColumnId[] = ["latency", "cost", "tokens"];
+  if (!shape.hasReferenceOutputs) hidden.push("referenceOutput");
+  return hidden;
 }

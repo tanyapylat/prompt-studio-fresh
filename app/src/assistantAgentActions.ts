@@ -128,7 +128,7 @@ export async function runAssistantTool(
           args.scope === "sample"
             ? pickRandomIds(ctx.spec.dataset.map((d) => d.id), args.sampleSize ?? DEFAULT_SAMPLE_SIZE)
             : undefined;
-        const updated = await rerun(ctx.spec, itemIds, ctx.signal);
+        const updated = await rerun(ctx.spec, itemIds, ctx.signal, ctx.ownerId);
         ctx.setSpec(updated);
         const run = updated.runs[updated.runs.length - 1];
         return { ok: true, summary: `Ran the suite (${run.results.length} row(s)) — ${Math.round(run.passRate * 100)}% pass rate.` };
@@ -137,7 +137,7 @@ export async function runAssistantTool(
       case "publish_spec": {
         if (!ctx.spec) return noSpecError();
         if (!ctx.spec.target) return { ok: false, summary: "There's no Prompt to publish yet — generate one first." };
-        const updated = await publishSpec(ctx.spec, ctx.signal);
+        const updated = await publishSpec(ctx.spec, ctx.signal, ctx.ownerId);
         ctx.setSpec(updated);
         const run = updated.runs[updated.runs.length - 1];
         return {

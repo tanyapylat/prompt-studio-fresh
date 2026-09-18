@@ -1,51 +1,25 @@
-﻿import { useMemo, useState } from "react";
-import { Beaker, Loader2, Rows3, Search, WrapText } from "lucide-react";
-import { useStore } from "../../store";
-import { useAssistantActions } from "../../assistantContext";
+﻿import { useEffect, useState } from "react";
+import { ArrowUpRight, History } from "lucide-react";
 import type { SpecProject } from "../../types";
-import { datasetVariableNames } from "../../dataset";
-import {
-  buildResultRows,
-  collectAllLabels,
-  matchesFilters,
-  matchesSearch,
-  matchesStatusFilter,
-  resultRowsToCsv,
-  resultRowsToJson,
-  DEFAULT_RESULTS_FILTERS,
-  type ResultStatusFilter,
-} from "../../results";
-import { downloadTextFile, timestampForFilename } from "../../download";
-import { suggestRunInsightsHeuristic } from "../../engine";
-import { useResultsViewPrefs } from "../../resultsViewPrefs";
-import { Button } from "@/components/ui/button";
-import { RunSummary } from "../results/RunSummary";
-import { ResultsTable } from "../results/ResultsTable";
-import { ResultsColumnsMenu } from "../results/ResultsColumnsMenu";
-import { ResultsFiltersMenu } from "../results/ResultsFiltersMenu";
-import { ResultsExportMenu } from "../results/ResultsExportMenu";
-import { ResultItemPanel } from "../results/ResultItemPanel";
+import { RunDetailBody } from "../results/RunDetailBody";
 
-const STATUS_FILTERS: { id: ResultStatusFilter; label: string }[] = [
-  { id: "all", label: "All" },
-  { id: "passed", label: "Passed" },
-  { id: "failed", label: "Failed" },
-];
-
-function slugify(name: string): string {
-  return (
-    name
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "") || "results"
-  );
+/** "MM/DD/YYYY, h:mm AM/PM" — matches the format used elsewhere in the app (e.g. Home.tsx's Updated column). */
+function formatUsDateTime(ts: number): string {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "2-digit",
+    day: "2-digit",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  }).format(ts);
 }
 
 /**
- * The Results tab: a summary of the latest Run (pass rate, latency/cost, pass-rate-by-assertion,
- * "what to review first"), then a search/filter/columns/export toolbar over the paginated
- * `ResultsTable`, and the `ResultItemPanel` detail drawer for one row (prompt/output, per-assertion
- * evaluation, metadata/note) at a time.
+ * The Results tab: shows one Run — defaults to the latest, but a run-history picker lets you look
+ * at any prior Run for this Spec without leaving the Workspace. "View full history" jumps to the
+ * standalone Run Detail page (reachable from the sidebar's Runs section) for the same run, which
+ * is where cross-Spec browsing and a full-page layout live.
  */
 export function ResultsPane({
   spec,
@@ -56,70 +30,15 @@ export function ResultsPane({
   onRunSample: (itemIds: string[]) => void;
   sampleRunBusy: boolean;
 }) {
-  const { updateSpec } = useStore();
-  const { openWithPrompt } = useAssistantActions();
-
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<ResultStatusFilter>("all");
-  const [filters, setFilters] = useState(DEFAULT_RESULTS_FILTERS);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [detailItemId, setDetailItemId] = useState<string | null>(null);
-
-  const { prefs, update: updatePrefs, toggleColumn } = useResultsViewPrefs(spec.id);
-
-  const variableNames = datasetVariableNames(spec.target?.messages);
-  const isMultiVariable = variableNames.length > 1;
   const lastRun = spec.runs[spec.runs.length - 1] ?? null;
-  const allLabels = useMemo(() => collectAllLabels(spec), [spec]);
-  const allRows = useMemo(() => (lastRun ? buildResultRows(spec, lastRun) : []), [spec, lastRun]);
-  const heuristicInsights = useMemo(
-    () => (lastRun ? suggestRunInsightsHeuristic(spec, lastRun) : { reviewFirst: [], improvements: [] }),
-    [spec, lastRun],
-  );
+  const [selectedRunId, setSelectedRunId] = useState<string | null>(lastRun?.id ?? null);
 
-  const filteredRows = useMemo(
-    () =>
-      allRows.filter(
-        (row) => matchesStatusFilter(row, statusFilter) && matchesSearch(row, search, variableNames) && matchesFilters(row, filters),
-      ),
-    [allRows, statusFilter, search, variableNames, filters],
-  );
-
-  const sortedRows = useMemo(() => {
-    const sorted = [...filteredRows];
-    sorted.sort((a, b) => {
-      const av = prefs.sortField === "failCount" ? a.failCount : (a.result[prefs.sortField] ?? 0);
-      const bv = prefs.sortField === "failCount" ? b.failCount : (b.result[prefs.sortField] ?? 0);
-      return prefs.sortDir === "asc" ? av - bv : bv - av;
-    });
-    return sorted;
-  }, [filteredRows, prefs.sortField, prefs.sortDir]);
-
-  function handleSort(field: typeof prefs.sortField) {
-    updatePrefs({ sortField: field, sortDir: prefs.sortField === field && prefs.sortDir === "asc" ? "desc" : "asc" });
-  }
-
-  function patchResult(itemId: string, patch: Partial<{ note: string; labels: string[] }>) {
-    if (!lastRun) return;
-    updateSpec(spec.id, (s) => ({
-      ...s,
-      runs: s.runs.map((run) =>
-        run.id === lastRun.id
-          ? { ...run, results: run.results.map((r) => (r.datasetItemId === itemId ? { ...r, ...patch } : r)) }
-          : run,
-      ),
-    }));
-  }
-
-  function handleExport(scope: "all" | "filtered" | "selected", format: "json" | "csv") {
-    const source = scope === "all" ? allRows : scope === "selected" ? allRows.filter((r) => selectedIds.has(r.result.datasetItemId)) : filteredRows;
-    const base = `${slugify(spec.name)}-results-${timestampForFilename()}`;
-    if (format === "json") {
-      downloadTextFile(`${base}.json`, resultRowsToJson(source, spec, variableNames), "application/json");
-    } else {
-      downloadTextFile(`${base}.csv`, resultRowsToCsv(source, variableNames), "text/csv");
-    }
-  }
+  // Whenever a new Run lands (or we switch Specs), snap back to the latest — otherwise re-running
+  // a sample would silently leave the reviewer staring at a now-stale older Run.
+  useEffect(() => {
+    setSelectedRunId(lastRun?.id ?? null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [spec.id, lastRun?.id]);
 
   if (!lastRun) {
     return (
@@ -132,113 +51,47 @@ export function ResultsPane({
     );
   }
 
+  const run = spec.runs.find((r) => r.id === selectedRunId) ?? lastRun;
+  const isLatest = run.id === lastRun.id;
+  const history = [...spec.runs].reverse(); // newest first in the picker
+
   return (
     <div className="space-y-4">
-      <h3 className="text-sm font-semibold text-slate-800">Results</h3>
-
-      <RunSummary
-        spec={spec}
-        run={lastRun}
-        rows={allRows}
-        insights={heuristicInsights}
-        onAskNorthStar={() => openWithPrompt("Refresh review insights for this run.")}
-        onReviewItem={setDetailItemId}
-      />
-
-      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
-        <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white p-0.5">
-          <button
-            title="Compact view"
-            onClick={() => updatePrefs({ wrap: false })}
-            className={`rounded-md px-1.5 py-1 ${!prefs.wrap ? "bg-primary text-primary-foreground" : "text-slate-500 hover:text-slate-800"}`}
-          >
-            <Rows3 size={13} />
-          </button>
-          <button
-            title="Full view (wrap text)"
-            onClick={() => updatePrefs({ wrap: true })}
-            className={`rounded-md px-1.5 py-1 ${prefs.wrap ? "bg-primary text-primary-foreground" : "text-slate-500 hover:text-slate-800"}`}
-          >
-            <WrapText size={13} />
-          </button>
-        </div>
-        <ResultsColumnsMenu prefs={prefs} onToggleColumn={toggleColumn} onUpdate={updatePrefs} isMultiVariable={isMultiVariable} />
-        <span className="mx-1 h-5 w-px bg-slate-200" />
-        <div className="relative">
-          <Search size={12} className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search rows…"
-            className="w-40 rounded-md border border-slate-200 bg-white py-1 pl-6 pr-2 text-xs text-slate-800 outline-none focus:border-ring"
-          />
-        </div>
-        <div className="flex items-center gap-0.5 rounded-lg border border-slate-200 bg-white p-0.5">
-          {STATUS_FILTERS.map((f) => (
-            <button
-              key={f.id}
-              onClick={() => setStatusFilter(f.id)}
-              className={`rounded-md px-2 py-1 text-[11px] font-medium ${
-                statusFilter === f.id ? "bg-primary text-primary-foreground" : "text-slate-500 hover:text-slate-800"
-              }`}
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="text-sm font-semibold text-slate-800">Results</h3>
+        {spec.runs.length > 1 && (
+          <div className="flex items-center gap-1.5 text-xs text-slate-500">
+            <History size={13} className="text-slate-400" />
+            <select
+              value={run.id}
+              onChange={(e) => setSelectedRunId(e.target.value)}
+              className="rounded-md border border-slate-200 bg-white px-1.5 py-1 text-xs text-slate-700 outline-none focus:border-ring"
             >
-              {f.label}
-            </button>
-          ))}
-        </div>
-        <ResultsFiltersMenu filters={filters} onChange={(patch) => setFilters((prev) => ({ ...prev, ...patch }))} assertions={spec.assertions} allLabels={allLabels} />
-        <ResultsExportMenu filteredCount={filteredRows.length} selectedCount={selectedIds.size} totalCount={allRows.length} onExport={handleExport} />
-        <span className="flex-1" />
-        <Button size="sm" variant="default" disabled={sampleRunBusy} onClick={() => onRunSample(sortedRows.slice(0, 5).map((r) => r.result.datasetItemId))}>
-          {sampleRunBusy ? <Loader2 size={12} className="animate-spin" /> : <Beaker size={12} />}
-          {sampleRunBusy ? "Running…" : "Re-run a sample"}
-        </Button>
+              {history.map((r, i) => (
+                <option key={r.id} value={r.id}>
+                  {i === 0 ? "Latest" : `${history.length - i} runs ago`} — {formatUsDateTime(r.createdAt)} — {Math.round(r.passRate * 100)}% pass
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
-      <ResultsTable
-        rows={sortedRows}
-        variableNames={variableNames}
-        prefs={prefs}
-        selectedIds={selectedIds}
-        onToggleSelect={(id) =>
-          setSelectedIds((prev) => {
-            const next = new Set(prev);
-            if (next.has(id)) next.delete(id);
-            else next.add(id);
-            return next;
-          })
+      <RunDetailBody
+        spec={spec}
+        run={run}
+        onRunSample={isLatest ? onRunSample : undefined}
+        sampleRunBusy={sampleRunBusy}
+        toolbarEnd={
+          <button
+            onClick={() => window.open(`/runs/${run.id}`, "_blank")}
+            className="flex items-center gap-1 rounded-md px-2 py-1.5 text-[11px] font-medium text-primary hover:underline"
+            title="Open this run on its own full-page view (new tab), alongside every other run across every Spec"
+          >
+            View full history <ArrowUpRight size={11} />
+          </button>
         }
-        onBulkSelect={(ids, selected) =>
-          setSelectedIds((prev) => {
-            const next = new Set(prev);
-            for (const id of ids) {
-              if (selected) next.add(id);
-              else next.delete(id);
-            }
-            return next;
-          })
-        }
-        onSort={handleSort}
-        onOpenItem={setDetailItemId}
-        onSetLabels={(id, labels) => patchResult(id, { labels })}
-        allLabels={allLabels}
-        onPageSizeChange={(size) => updatePrefs({ pageSize: size })}
       />
-
-      {detailItemId && (
-        <ResultItemPanel
-          rows={sortedRows}
-          datasetItemId={detailItemId}
-          variableNames={variableNames}
-          assertions={spec.assertions}
-          run={lastRun}
-          allLabels={allLabels}
-          onClose={() => setDetailItemId(null)}
-          onNavigate={setDetailItemId}
-          onSetNote={(id, note) => patchResult(id, { note })}
-          onSetLabels={(id, labels) => patchResult(id, { labels })}
-        />
-      )}
     </div>
   );
 }

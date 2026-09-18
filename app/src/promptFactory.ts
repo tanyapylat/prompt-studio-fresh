@@ -7,6 +7,7 @@ import type {
   PromptTool,
   PromptMessage,
   PromptVersion,
+  RunGroup,
   SpecProject,
   Status,
   TargetVersion,
@@ -51,6 +52,7 @@ export function mirrorPromptFromSpec(spec: SpecProject, existing?: Prompt | null
     tools: t.tools ?? [],
     outputSchema: t.outputSchema ?? defaultOutputSchema(),
     settings: t.settings ?? defaultPromptSettings(),
+    psVersionId: t.psVersionId,
   }));
 
   return {
@@ -61,6 +63,7 @@ export function mirrorPromptFromSpec(spec: SpecProject, existing?: Prompt | null
     ownerId: spec.ownerId,
     visibility: spec.visibility,
     specId: spec.id,
+    psProjectId: spec.psProjectId,
     versions,
     activeVersionId: versionIdForTarget(spec.target.id),
     draft: reconcileDraft(existing?.draft, versions),
@@ -77,6 +80,63 @@ export function mirrorPromptFromSpec(spec: SpecProject, existing?: Prompt | null
 function reconcileDraft(draft: PromptDraft | null | undefined, versions: PromptVersion[]): PromptDraft | null {
   if (!draft) return null;
   return versions.some((v) => v.id === draft.baseVersionId) ? draft : null;
+}
+
+/** What identifies "the thing that was run" — a Prompt name plus the real Prompt-Management project/version ids, when known. See `describeRunPromptIdentity` for how this renders as one string. */
+export interface RunPromptIdentity {
+  promptName: string;
+  psProjectId: number | null;
+  /** Local, sequential version number (1, 2, 3…) — distinct from `psVersionId`, the real external id. */
+  versionNumber: number | null;
+  psVersionId: number | null;
+}
+
+/**
+ * Resolves "what a Run actually evaluated" as one identity — the mirrored Prompt's real
+ * project/version ids (`psProjectId`/`psVersionId`) plus a display name. Prefers
+ * `spec.promptDisplayName` over the mirrored Prompt's own `name` (which today always equals
+ * `spec.name` — see `mirrorPromptFromSpec`) so a Spec whose `name` is really an eval-scenario
+ * description (not the underlying Prompt's name) can still show a plausible Prompt identity
+ * up front. Shared by the Eval runs list and the standalone Run detail page so both render the
+ * exact same string for the same Run.
+ */
+export function resolveRunPromptIdentity(spec: SpecProject, run: RunGroup, prompts: Prompt[]): RunPromptIdentity {
+  const promptId = mirrorPromptIdForSpec(spec.id);
+  const prompt = prompts.find((p) => p.id === promptId) ?? null;
+  const targetId = run.targetId ?? spec.target?.id ?? null;
+  const versionId = targetId ? versionIdForTarget(targetId) : null;
+  const version = versionId ? prompt?.versions.find((v) => v.id === versionId) ?? null : null;
+  // Prefer the version-specific id; fall back to the live Target directly in case the mirrored
+  // Prompt hasn't caught up yet (e.g. right after a rerun, before HMR/store settle).
+  const psVersionId =
+    version?.psVersionId ?? (spec.target && targetId === spec.target.id ? spec.target.psVersionId : undefined) ?? null;
+  return {
+    promptName: spec.promptDisplayName ?? prompt?.name ?? spec.name,
+    psProjectId: prompt?.psProjectId ?? spec.psProjectId ?? null,
+    versionNumber: version?.version ?? null,
+    psVersionId,
+  };
+}
+
+/**
+ * One human-readable line combining everything that identifies what a Run evaluated — the
+ * Prompt's name, its real Prompt Management project id, the local version number, and the real
+ * Prompt Management version id (e.g. `{"promptId": 4924, "versionId": 25928}`, the same ids a
+ * real eval-run payload reports — not AI Studio's own internal `prompt_*`/`pv_*` keys).
+ * Deliberately one flexible string, not four rigid columns — a future Run that isn't tied to a
+ * versioned Prompt at all (e.g. an agent run) can just be a name with no project/version parts,
+ * same as a Spec/version that's never been synced to Prompt Management yet says so plainly
+ * instead of showing a fake id.
+ */
+export function describeRunPromptIdentity(identity: RunPromptIdentity): string {
+  if (identity.psProjectId === null) return identity.promptName;
+  const versionPart =
+    identity.versionNumber === null
+      ? "version not synced"
+      : identity.psVersionId === null
+        ? `v${identity.versionNumber} (version id not synced)`
+        : `v${identity.versionNumber} ${identity.psVersionId}`;
+  return `${identity.promptName} ${identity.psProjectId}, ${versionPart}`;
 }
 
 /** A brand-new Prompt created directly from the Prompts catalog, independent of any Spec. */

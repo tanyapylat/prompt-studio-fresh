@@ -19,7 +19,7 @@ import { useStore } from "../../store";
 import { markArtifactManuallyEdited, rerun } from "../../specFactory";
 import type { DatasetItem, SpecProject } from "../../types";
 import { datasetToLibraryEntry, type SaveToLibraryMeta } from "../../libraryFactory";
-import { datasetVariableNames, pickRandomIds } from "../../dataset";
+import { collectAllDatasetLabels, datasetVariableNames, pickRandomIds } from "../../dataset";
 import {
   buildResultRows,
   collectAllLabels,
@@ -93,6 +93,7 @@ export function PlaygroundDatasetSection({ spec }: { spec: SpecProject }) {
   const isMultiVariable = variableNames.length > 1;
   const lastRun = spec.runs[spec.runs.length - 1] ?? null;
   const allLabels = useMemo(() => collectAllLabels(spec), [spec]);
+  const allDatasetLabels = useMemo(() => collectAllDatasetLabels(spec.dataset), [spec.dataset]);
   const resultRows = useMemo(() => (lastRun ? buildResultRows(spec, lastRun) : []), [spec, lastRun]);
   const heuristicInsights = useMemo(
     () => (lastRun ? suggestRunInsightsHeuristic(spec, lastRun) : { reviewFirst: [], improvements: [] }),
@@ -104,7 +105,7 @@ export function PlaygroundDatasetSection({ spec }: { spec: SpecProject }) {
     abortControllerRef.current = controller;
     setBusy(kind);
     try {
-      const updated = await rerun(spec, itemIds, controller.signal);
+      const updated = await rerun(spec, itemIds, controller.signal, currentUserId);
       updateSpec(spec.id, () => updated);
     } catch (e) {
       if (!(e instanceof DOMException && e.name === "AbortError")) {
@@ -145,7 +146,7 @@ export function PlaygroundDatasetSection({ spec }: { spec: SpecProject }) {
   function handleSaveDataset(meta: SaveToLibraryMeta) {
     saveToLibrary("datasets", datasetToLibraryEntry(spec, meta));
   }
-  function patchRunResults(itemId: string, patch: Partial<{ note: string; labels: string[] }>) {
+  function patchRunResults(itemId: string, patch: Partial<{ labels: string[] }>) {
     if (!lastRun) return;
     updateSpec(spec.id, (s) => ({
       ...s,
@@ -171,7 +172,7 @@ export function PlaygroundDatasetSection({ spec }: { spec: SpecProject }) {
         if (!row || !matchesStatusFilter(row, statusFilter)) return false;
       }
       if (q) {
-        const haystack = [item.input, item.expectedOutput, ...Object.values(item.variables ?? {}), row?.result.output, row?.result.note, ...(row?.result.labels ?? [])]
+        const haystack = [item.input, item.expectedOutput, ...Object.values(item.variables ?? {}), row?.result.output, ...(row?.result.labels ?? [])]
           .filter(Boolean)
           .join(" \n ")
           .toLowerCase();
@@ -440,11 +441,9 @@ export function PlaygroundDatasetSection({ spec }: { spec: SpecProject }) {
           datasetItemId={detailItemId}
           variableNames={variableNames}
           assertions={spec.assertions}
-          run={lastRun}
           allLabels={allLabels}
           onClose={closeDetail}
           onNavigate={setDetailItemId}
-          onSetNote={(id, note) => patchRunResults(id, { note })}
           onSetLabels={(id, labels) => patchRunResults(id, { labels })}
         />
       )}
@@ -459,6 +458,7 @@ export function PlaygroundDatasetSection({ spec }: { spec: SpecProject }) {
           onNavigate={setDetailItemId}
           onPatch={patchDataset}
           onDelete={handleDeleteItem}
+          allLabels={allDatasetLabels}
         />
       )}
     </div>

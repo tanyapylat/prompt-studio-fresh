@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { ChevronDown, ChevronLeft, FolderInput, ListPlus, Trash2, Upload } from "lucide-react";
 import { useStore } from "../../store";
 import type { DatasetItem, LibraryDataset } from "../../types";
-import { libraryDatasetVariableNames } from "../../dataset";
+import { collectAllDatasetLabels, libraryDatasetVariableNames } from "../../dataset";
 import { useDatasetViewPrefs, type DatasetSortField } from "../../datasetViewPrefs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -37,6 +37,8 @@ export function DatasetWorkspace() {
     items.sort((a, b) => ((a[prefs.sortField] ?? 0) - (b[prefs.sortField] ?? 0)) * dir);
     return items;
   }, [entry, prefs.sortField, prefs.sortDir]);
+
+  const allLabels = useMemo(() => collectAllDatasetLabels(entry?.items ?? []), [entry]);
 
   if (!entry) return null;
   const isMine = entry.ownerId === currentUserId;
@@ -223,6 +225,7 @@ export function DatasetWorkspace() {
           onNavigate={(id) => setOpenItem({ id, mode: "view" })}
           onPatch={patchItems}
           onDelete={handleDeleteItem}
+          allLabels={allLabels}
         />
       )}
     </div>

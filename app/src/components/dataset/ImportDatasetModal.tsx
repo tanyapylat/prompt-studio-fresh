@@ -86,7 +86,7 @@ export function ImportDatasetModal({
           values[target] = cell;
         }
       });
-      return buildDatasetItem(values, variableNames, "case-c", expectedOutput);
+      return buildDatasetItem(values, variableNames, "manual", expectedOutput);
     });
     onImport(items, importMode);
     onClose();

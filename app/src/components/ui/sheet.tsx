@@ -23,7 +23,7 @@ export function SheetOverlay({ className, ...props }: ComponentProps<typeof Dial
   );
 }
 
-const SHEET_WIDTHS = { md: "max-w-lg", lg: "max-w-2xl", xl: "max-w-3xl" } as const;
+const SHEET_WIDTHS = { md: "max-w-lg", lg: "max-w-2xl", xl: "max-w-3xl", "2xl": "max-w-6xl", full: "max-w-none" } as const;
 
 export function SheetContent({
   className,

@@ -4,6 +4,7 @@ import {
   ChevronsUpDown,
   Compass,
   FileText,
+  FlaskConical,
   ListChecks,
   PanelLeftClose,
   PanelLeftOpen,
@@ -14,19 +15,21 @@ import {
 import { useStore } from "../store";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
-export type Section = "specs" | "prompts" | "assertions" | "datasets" | "observability" | "dashboard";
+export type Section = "specs" | "prompts" | "assertions" | "datasets" | "runs" | "observability" | "dashboard";
 
 const NAV: { id: Section; label: string; icon: typeof FileText; soon?: boolean }[] = [
   { id: "specs", label: "Specs", icon: FileText },
   { id: "prompts", label: "Prompts", icon: Sparkles },
   { id: "assertions", label: "Assertions", icon: ListChecks },
   { id: "datasets", label: "Datasets", icon: TableProperties },
+  { id: "runs", label: "Eval runs", icon: FlaskConical },
   { id: "observability", label: "Observability", icon: Activity, soon: true },
   { id: "dashboard", label: "Dashboard", icon: TrendingUp },
 ];
 
 export function Sidebar({ section, onSectionChange }: { section: Section; onSectionChange: (s: Section) => void }) {
-  const { specs, prompts, library, users, currentUser, switchUser, select, selectPrompt, selectLibraryDataset } = useStore();
+  const { specs, prompts, library, users, currentUser, switchUser, select, selectPrompt, selectLibraryDataset, selectRun } =
+    useStore();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
 
@@ -35,12 +38,14 @@ export function Sidebar({ section, onSectionChange }: { section: Section; onSect
     prompts: prompts.length,
     assertions: library.assertions.length,
     datasets: library.datasets.length,
+    runs: specs.reduce((sum, s) => sum + s.runs.length, 0),
   };
 
   function goToSection(id: Section) {
     select(null);
     selectPrompt(null);
     selectLibraryDataset(null);
+    selectRun(null);
     onSectionChange(id);
   }
 

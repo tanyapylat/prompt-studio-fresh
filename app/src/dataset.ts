@@ -2,6 +2,17 @@ import type { DatasetItem, DatasetItemSource, LibraryDataset, PromptMessage } fr
 import { extractVariableNames } from "./promptTemplate";
 import { newId } from "./utils/id";
 
+/** Shared display strings/tones for `DatasetItemSource`, so the "synthetic vs. manual" significator looks and reads the same everywhere it appears (Dataset table, Results table, both detail panels, filters) — same two-way split Prompt Studio uses (an AI-generated sparkle vs. everything else). */
+export const DATASET_SOURCE_LABEL: Record<DatasetItemSource, string> = {
+  synthetic: "Synthetic",
+  manual: "Manual",
+};
+
+export const DATASET_SOURCE_TONE: Record<DatasetItemSource, "neutral" | "info" | "accent"> = {
+  synthetic: "info",
+  manual: "neutral",
+};
+
 /**
  * Which named `{variable}` values a Dataset row should collect, derived from the current Target's
  * structured messages. Falls back to the single legacy `input` variable when the Target has no
@@ -83,6 +94,44 @@ export function withUpdatedExpectedOutput(item: DatasetItem, expectedOutput: str
     expectedOutput: expectedOutput.trim() ? expectedOutput : undefined,
     updatedAt: Date.now(),
   };
+}
+
+/**
+ * Returns a copy of `item` with its reviewer note/labels replaced — deliberately does NOT bump
+ * `updatedAt` (unlike content edits above), since annotating a row isn't "editing" it in the
+ * sense that field means elsewhere (surfaced as a Modified At column/sort).
+ */
+export function withUpdatedNote(item: DatasetItem, note: string): DatasetItem {
+  return { ...item, note: note.trim() ? note : undefined };
+}
+
+export function withUpdatedLabels(item: DatasetItem, labels: string[]): DatasetItem {
+  return { ...item, labels };
+}
+
+/**
+ * Best-effort formatting for a piece of free-text input/output data, since it can be genuinely
+ * anything (a plain sentence, a JSON blob, a whole chat transcript…) — there's no one right way
+ * to render it. The one safe, unambiguous win: if it happens to parse as JSON, pretty-print it
+ * (2-space indent) instead of showing it as one unreadable line. Anything else is returned as-is.
+ */
+export function tryPrettyPrintText(text: string): string {
+  const trimmed = text.trim();
+  if (!trimmed || (trimmed[0] !== "{" && trimmed[0] !== "[")) return text;
+  try {
+    return JSON.stringify(JSON.parse(trimmed), null, 2);
+  } catch {
+    return text;
+  }
+}
+
+/** Every distinct label used anywhere in this Spec's dataset rows — powers the label filter/autocomplete for dataset-level annotation. */
+export function collectAllDatasetLabels(items: DatasetItem[]): string[] {
+  const set = new Set<string>();
+  for (const item of items) {
+    for (const l of item.labels ?? []) set.add(l);
+  }
+  return [...set].sort((a, b) => a.localeCompare(b));
 }
 
 /** One-line, human-readable summary of a row — every variable when there's more than one, else just the value. */

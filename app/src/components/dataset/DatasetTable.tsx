@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ChevronLeft, ChevronRight, ChevronsUpDown, ChevronDown, ChevronUp, Eye, MoreVertical, Pencil, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronsUpDown, ChevronDown, ChevronUp, Eye, MoreVertical, Pencil, StickyNote, Trash2 } from "lucide-react";
 import type { DatasetItem } from "../../types";
 import { datasetItemInputsPreview, resolveDatasetItemValues } from "../../dataset";
 import {
@@ -7,10 +7,8 @@ import {
   type DatasetSortField,
   type DatasetViewPrefs,
 } from "../../datasetViewPrefs";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-
-const TONE_FOR = { seed: "neutral", synthetic: "info", "case-c": "accent" } as const;
+import { DatasetSourceIcon } from "./DatasetSourceIcon";
 
 function formatTimestamp(ts?: number): string {
   if (!ts) return "—";
@@ -104,11 +102,11 @@ export function DatasetTable({
 
   return (
     <div className="overflow-hidden rounded-lg border border-slate-200">
-      <div className="overflow-x-auto">
+      <div className="max-h-[70vh] overflow-auto">
         <table className="w-full border-collapse text-left text-xs">
-          <thead className="bg-slate-50">
+          <thead className="sticky top-0 z-10 bg-slate-50">
             <tr>
-              <th className="w-8 border-b border-slate-200 px-2.5 py-2">
+              <th className="w-8 border-b border-slate-200 bg-slate-50 px-2.5 py-2">
                 <input
                   type="checkbox"
                   checked={allPageSelected}
@@ -118,29 +116,29 @@ export function DatasetTable({
                 />
               </th>
               {showSource && (
-                <th className="w-20 border-b border-slate-200 px-2.5 py-2 text-xs font-medium text-slate-500">Source</th>
+                <th className="w-20 border-b border-slate-200 bg-slate-50 px-2.5 py-2 text-xs font-medium text-slate-500">Source</th>
               )}
               {inputColumns.map((col) => (
-                <th key={col} className="min-w-[200px] border-b border-slate-200 px-2.5 py-2 text-xs font-medium text-slate-500">
+                <th key={col} className="min-w-[200px] border-b border-slate-200 bg-slate-50 px-2.5 py-2 text-xs font-medium text-slate-500">
                   {col === "__combined__" ? "Inputs" : `{${col}}`}
                 </th>
               ))}
               {showReferenceOutput && (
-                <th className="min-w-[160px] border-b border-slate-200 px-2.5 py-2 text-xs font-medium text-slate-500">
+                <th className="min-w-[160px] border-b border-slate-200 bg-slate-50 px-2.5 py-2 text-xs font-medium text-slate-500">
                   Reference Output
                 </th>
               )}
               {showCreatedAt && (
-                <th className="w-36 border-b border-slate-200 px-2.5 py-2">
+                <th className="w-36 border-b border-slate-200 bg-slate-50 px-2.5 py-2">
                   <SortHeader label="Created At" field="createdAt" prefs={prefs} onSort={onSort} />
                 </th>
               )}
               {showUpdatedAt && (
-                <th className="w-36 border-b border-slate-200 px-2.5 py-2">
+                <th className="w-36 border-b border-slate-200 bg-slate-50 px-2.5 py-2">
                   <SortHeader label="Modified At" field="updatedAt" prefs={prefs} onSort={onSort} />
                 </th>
               )}
-              <th className="w-9 border-b border-slate-200 px-2 py-2" />
+              <th className="w-9 border-b border-slate-200 bg-slate-50 px-2 py-2" />
             </tr>
           </thead>
           <tbody>
@@ -162,7 +160,14 @@ export function DatasetTable({
                   </td>
                   {showSource && (
                     <td className="border-b border-slate-100 px-2.5 py-2">
-                      <Badge tone={TONE_FOR[item.source]}>{item.source}</Badge>
+                      <div className="flex items-center gap-1.5">
+                        <DatasetSourceIcon source={item.source} />
+                        {item.note?.trim() && (
+                          <span title="Has a note">
+                            <StickyNote size={12} className="shrink-0 text-amber-500" />
+                          </span>
+                        )}
+                      </div>
                     </td>
                   )}
                   {inputColumns.map((col) => (

@@ -5,24 +5,17 @@ import {
   parseVariablesJson,
   resolveDatasetItemValues,
   stringifyVariables,
+  tryPrettyPrintText,
   withUpdatedExpectedOutput,
+  withUpdatedLabels,
+  withUpdatedNote,
   withUpdatedVariables,
 } from "../../dataset";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { AutoGrowTextarea } from "@/components/ui/auto-grow-textarea";
 import { Sheet, SheetBody, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-
-const TONE_FOR = { seed: "neutral", synthetic: "info", "case-c": "accent" } as const;
-
-/** Pretty-prints `text` if it happens to parse as JSON, otherwise returns it unchanged. */
-function tryPrettyPrint(text: string): string {
-  try {
-    return JSON.stringify(JSON.parse(text), null, 2);
-  } catch {
-    return text;
-  }
-}
+import { LabelChips } from "../results/LabelChips";
+import { DatasetSourceIcon } from "./DatasetSourceIcon";
 
 /**
  * Full-detail side panel for one Dataset row — the "full view" companion to the compact table.
@@ -40,6 +33,7 @@ export function DatasetItemPanel({
   onNavigate,
   onPatch,
   onDelete,
+  allLabels,
 }: {
   items: DatasetItem[];
   itemId: string;
@@ -50,6 +44,8 @@ export function DatasetItemPanel({
   onNavigate: (id: string) => void;
   onPatch: (fn: (items: DatasetItem[]) => DatasetItem[]) => void;
   onDelete: (id: string) => void;
+  /** Every label already used across this dataset — powers the annotation label editor's autocomplete. */
+  allLabels: string[];
 }) {
   const index = items.findIndex((it) => it.id === itemId);
   const item = index >= 0 ? items[index] : null;
@@ -60,6 +56,7 @@ export function DatasetItemPanel({
   const [jsonDraft, setJsonDraft] = useState("");
   const [jsonError, setJsonError] = useState<string | null>(null);
   const [expectedOutputDraft, setExpectedOutputDraft] = useState("");
+  const [noteDraft, setNoteDraft] = useState("");
 
   useEffect(() => {
     if (!item) return;
@@ -72,9 +69,23 @@ export function DatasetItemPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [itemId, mode === "edit"]);
 
+  useEffect(() => {
+    setNoteDraft(item?.note ?? "");
+    // Re-sync the note draft whenever we switch rows.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [itemId]);
+
   if (!item) return null;
 
   const values = resolveDatasetItemValues(item, variableNames);
+
+  function patchItem(fn: (it: DatasetItem) => DatasetItem) {
+    onPatch((current) => current.map((it) => (it.id === itemId ? fn(it) : it)));
+  }
+
+  function handleNoteBlur() {
+    if (noteDraft !== (item?.note ?? "")) patchItem((it) => withUpdatedNote(it, noteDraft));
+  }
 
   function handleFieldChange(name: string, value: string) {
     setFieldDrafts((prev) => {
@@ -120,7 +131,7 @@ export function DatasetItemPanel({
               <SheetTitle>
                 Row {index + 1} of {items.length}
               </SheetTitle>
-              <Badge tone={TONE_FOR[item.source]}>{item.source}</Badge>
+              <DatasetSourceIcon source={item.source} size={15} />
             </div>
             <div className="flex items-center gap-1">
               <Button
@@ -168,6 +179,16 @@ export function DatasetItemPanel({
                 <X size={16} />
               </button>
             </div>
+          </div>
+          <div className="mt-2.5 flex items-center gap-2">
+            <span className="shrink-0 text-[11px] font-medium uppercase tracking-wide text-slate-400">Labels</span>
+            <LabelChips
+              labels={item.labels ?? []}
+              suggestions={allLabels}
+              onChange={(next) => patchItem((it) => withUpdatedLabels(it, next))}
+              size="md"
+              placeholder="Add a label…"
+            />
           </div>
         </SheetHeader>
 
@@ -246,7 +267,7 @@ export function DatasetItemPanel({
             {mode === "view" ? (
               item.expectedOutput ? (
                 <pre className="max-h-80 overflow-auto whitespace-pre-wrap rounded-lg border border-slate-200 bg-slate-50 p-3 font-mono text-xs text-slate-800">
-                  {tryPrettyPrint(item.expectedOutput)}
+                  {tryPrettyPrintText(item.expectedOutput)}
                 </pre>
               ) : (
                 <p className="text-xs italic text-slate-400">No reference output set.</p>
@@ -260,6 +281,21 @@ export function DatasetItemPanel({
                 maxHeight={320}
               />
             )}
+          </div>
+
+          <div className="space-y-2 border-t border-slate-200 pt-4">
+            <h4 className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Reviewer note</h4>
+            <p className="text-[11px] text-slate-400">
+              Sticks to this dataset row itself — unlike a Run result's note, it isn't tied to any one run and won't get overwritten by a rerun.
+            </p>
+            <AutoGrowTextarea
+              value={noteDraft}
+              onChange={(e) => setNoteDraft(e.target.value)}
+              onBlur={handleNoteBlur}
+              placeholder="What's worth remembering about this row…"
+              minHeight={64}
+              maxHeight={240}
+            />
           </div>
         </SheetBody>
       </SheetContent>
