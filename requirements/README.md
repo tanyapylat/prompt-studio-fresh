@@ -35,7 +35,7 @@ behave). IDs are stable references you can point at in a prompt or a commit mess
 | [07-workspace-and-navigation.md](07-workspace-and-navigation.md) | The five-pane workspace shell, top action bar, app-level state |
 | [08-library-and-real-data.md](08-library-and-real-data.md) | Org-wide library, save-to-library, semantic search, build-from-real-data (all planned) |
 | [09-versioning-and-provenance.md](09-versioning-and-provenance.md) | Draft/published lifecycle, forking-on-edit, provenance breadcrumbs, fingerprinting (cross-cutting) |
-| [10-run-results-page-redesign.md](10-run-results-page-redesign.md) | The Run Results page ground-up redesign — table/panel/comparison UX, composite assertions, filters, and the 5 demo scenarios. A self-contained handoff doc (own ID prefix `RES-`), written to be read on its own, e.g. by an engineer breaking it into stories. Supersedes the Results-specific blocks in [05-runs-and-results.md](05-runs-and-results.md) (RUN-6/7/8/10/11). |
+| [10-run-results-page-redesign.md](10-run-results-page-redesign.md) | The Run Results page ground-up redesign, in business/requirements terms (not implementation detail) — what the page must do, why, and the 5 demo scenarios it was checked against. A self-contained handoff doc (own ID prefix `RES-`), meant to be read on its own, e.g. by an engineer breaking it into stories. Supersedes the Results-specific blocks in [05-runs-and-results.md](05-runs-and-results.md) (RUN-6/7/8/10/11). |
 
 ## What's genuinely new here vs. the concept docs
 

@@ -1,682 +1,538 @@
 # Run Results Page — Redesign Requirements
 
-**Author:** Veronica Kravets · **Audience:** engineering (to be broken down into stories) · **Grounded in:** a working click-through prototype at [`app/`](../app/README.md)
+**Author:** Veronica Kravets · **Audience:** engineering (to be broken down into stories)
+
+**Deployed prototype:** _{{ add link here }}_
 
 ## 0. Purpose & how to use this document
 
-The individual Run Results page (what you land on after an eval run finishes — one prompt or a
-side-by-side comparison of several, scored against a dataset) was the single highest-leverage,
-most-used screen in AI Studio and needed a ground-up UX pass. Rather than write requirements in
-the abstract, we built a **click-through prototype** first, iterated on it against real exported
-eval data and a round of UAT feedback, and are now writing this document *from* that finished
-prototype — not the other way around. Every requirement below has a working reference
-implementation you can click through before you scope or estimate it.
+The individual Run Results page — what you land on after an eval run finishes, whether that's one
+prompt or a side-by-side comparison of several, scored against a dataset — is the single
+highest-leverage, most-used screen in the product. This document describes, in business/product
+terms, **what the redesigned page needs to do and why** — not how a prototype happens to have
+built it. A click-through prototype exists (link above) purely so every requirement below can be
+seen in action with real example data instead of staying abstract; treat it as an illustration of
+the intended behavior, not a spec of its own.
 
-**This document has three jobs**, matching the three things asked for:
+**This document has three jobs:**
 
-1. **§4 Functional Requirements** — what has to be implemented, as discrete, story-sized
-   requirement blocks (`RES-1`, `RES-2`, …), each with acceptance criteria and a pointer to
-   exactly where it's demonstrated in the prototype.
-2. **§6 Demo Scenarios** — the 5 seeded scenarios built to exercise specific data shapes and
-   edge cases, so you're never designing against a hypothetical.
-3. **§2 How to Read the Prototype** — how to run it, navigate it, and where in the source to
-   look when the prose here is ambiguous.
+1. **§4 Requirements** — what has to be true of the finished page, as discrete, story-sized
+   requirement blocks (`RES-1`, `RES-2`, …), each with the reasoning behind it and how to tell
+   it's working.
+2. **§3 Demo scenarios** — the specific business situations the prototype was checked against,
+   and how to find each one in the deployed link above.
+3. **§2 Background** — the real-world data this was scoped against, and what to trust vs. not
+   trust when reading the prototype's example numbers.
 
-**How to use this to plan stories:** each `RES-` block is written to be independently
-story-sized. Section groupings (A–L) are a reasonable epic/milestone split. §7 and §8 exist so
-you don't accidentally scope in something that was deliberately left as prototype-only or
-explicitly deferred — read those before estimating.
-
----
-
-## 1. Context & background
-
-- This is a **UX/interaction prototype**, not shipped product. `app/` is a standalone
-  click-through React app with no real backend, no persistence beyond the browser's
-  `localStorage` (and only for view preferences — wrap/compact, hidden columns, etc. — never for
-  data), and no real model calls on this page. Every run result you see was **seeded**, not
-  computed live. §2.3 explains exactly what's real vs. invented in that seed data and why that
-  distinction matters for you.
-- The redesign was scoped against **real exported eval data** Veronica provided (7 Promptfoo-style
-  CSV exports covering single-prompt runs, a 3-way prompt comparison, and runs with/without
-  reference outputs), plus a large **config export** (`configs-new-2026-6-24.csv`, ~23MB, actual
-  production eval *configurations*, not results) that was cross-checked afterward to find gaps in
-  assertion-type coverage. That second pass is what produced Scenario 5 and the `not-equals` /
-  `contains-html` / composite-assertion ("assert-set") requirements — see §4.E and §6.
-- Two rounds of UAT feedback from Veronica against the running prototype are folded into the
-  requirements below already; nothing here is a first draft.
+**How to use this to plan stories:** each `RES-` block is written to be independently story-sized.
+The lettered section groupings (A–L) are a reasonable epic/milestone split. §6 and §7 exist so
+nothing gets accidentally scoped in that was deliberately left as a future decision or explicitly
+descoped for this round — read those before estimating.
 
 ---
 
-## 2. How to read the prototype
+## 1. Goals & guiding principles
 
-### 2.1 Run it
-
-```powershell
-cd app
-npm install   # only if you haven't already
-npm run dev
-```
-
-Open whatever URL Vite prints (defaults to `http://localhost:5173/`, but picks the next free port
-if that's busy — check the terminal output). No login, no setup — you land on the Specs home with
-5 seeded "Scenario" Specs already run and ready to click into (see §6).
-
-### 2.2 Where to click
-
-- **Sidebar → Runs** opens the global **Eval runs list** (`RunsList.tsx`) — every run across every
-  Spec, sortable/filterable/paginated, styled like the existing Specs/Prompts list tables.
-- Click any row → opens that run's full results on its **own page, in a new browser tab**, at
-  `/runs/:runId` (`RunDetailPage.tsx`). This satisfies "individual runs open in a separate tab"
-  (RES‑1) — it's a real route, not a modal; it survives reload, and browser back/forward work.
-- The same results view is also embedded **inside a Spec's own workspace**, under its **Results**
-  tab (`ResultsPane.tsx` → same shared `RunDetailBody.tsx` component) — useful while iterating on
-  one Spec without leaving it. Both surfaces render identically; only the page chrome around them
-  differs (a "View full history" link takes you from the embedded view to the standalone page).
-- Every Scenario's Spec name is prefixed `"Scenario N — …"` so it's unambiguous which requirement
-  set a given run is meant to exercise (see §6 for the full breakdown).
-
-### 2.3 What's real vs. invented in the seed data — read this before judging any specific number
-
-Scenarios 1–4 are built from Veronica's real CSV exports: every row's actual input values, the
-model's actual output text, and its actual pass/fail/score per named check are real, parsed
-straight from the export. **Invented on top of that real data**, and clearly commented as such at
-the top of [`app/src/seed/scenarioSeeds.ts`](../app/src/seed/scenarioSeeds.ts): the system prompt
-text (the export only ever recorded a `promptId`/`versionId`, never the prompt itself), a
-human-readable Prompt name, which tier (deterministic/custom-code/LLM-rubric) each named check
-belongs to, the actual LLM-rubric instructions a judge would have been given (the export only ever
-has a name + pass/fail, never the rubric text), dataset-row source (manual vs. synthetic), a
-handful of reviewer notes, and 2 synthetic "Error" rows (no real row in any export ever came back
-as an API-level error).
-
-**Scenario 5 is the one exception** — nothing in it comes from a source file; the rows, outputs,
-and every score are hand-authored specifically to exercise `not-equals`, `contains-html`, and a
-weighted composite ("assert-set") metric, none of which existed in any of the 7 real exports. See
-§6.5.
-
-**The takeaway for you:** don't treat any specific number, output string, or rubric wording in the
-prototype as something to match byte-for-byte — the *interaction design and data model* are what's
-being specified. Where a real system's actual data shape differs (e.g. a real judge's actual
-rubric text, real token pricing), use that instead.
-
-### 2.4 Source map — where each requirement area lives
-
-| Area | Key files |
-|---|---|
-| Routing / entry points | `App.tsx`, `RunsList.tsx`, `RunDetailPage.tsx`, `ResultsPane.tsx` |
-| Shared results logic (rows, filters, search, CSV/JSON export) | `results.ts` |
-| View preferences (wrap, hidden columns, sort, chip density) | `resultsViewPrefs.ts` |
-| Summary header, per-assertion rollup, heuristic insights | `components/results/RunSummary.tsx`, `engine.ts` (`suggestRunInsightsHeuristic`) |
-| Single-run table | `components/results/ResultsTable.tsx` |
-| Single-run detail panel | `components/results/ResultItemPanel.tsx` |
-| Comparison (N-way) view: table, charts, panel | `components/results/ComparisonRunBody.tsx`, `charts.tsx`, `ComparisonItemPanel.tsx` |
-| Filters / Columns / Export popovers | `components/results/ResultsFiltersMenu.tsx`, `ResultsColumnsMenu.tsx`, `ResultsExportMenu.tsx` |
-| Assertion/check data model + catalog | `types.ts` (`Assertion`, `AssertionScore`, `AssertionTier`, `CodeCheck`), `assertionCatalog.ts` |
-| Scoring logic (incl. composite/grouped assertions) | `engine.ts` (`scoreOneAssertion`, `scoreAssertionGroup`, `scoreCodeAssertion`) |
-| Seed data / the 5 Scenarios | `seed/scenarioSeeds.ts`, `seed/scenarioFixtures.generated.ts` |
-
----
-
-## 3. Goals & design principles
-
-These are the "why" behind §4 — worth keeping in mind when a story's exact behavior is ambiguous:
+Why this page is being redesigned, and the priorities that should settle any ambiguity below:
 
 1. **Never make the reviewer hold context in their head.** The single biggest complaint about the
-   old design was a 3-tab detail panel (prompt/output → evaluation → metadata) where reading a
-   rubric meant losing sight of the output it was judging. Every layout decision here optimizes
-   for "what you're comparing stays on screen together."
-2. **Density is a choice, not a default you fight.** Compact vs. full view is one click, not a
-   setting buried in a menu; column visibility defaults are chosen so the common case needs no
-   configuration, but every default is overridable and that choice sticks.
-3. **Promptfoo parity where it's proven, better where it's obviously worth it.** Per-metric chips,
-   pass-reasoning for both fail *and* pass, filters, and the comparison charts all mirror
-   Promptfoo's own eval UI (a tool the team already trusts) rather than inventing new conventions
-   from scratch — but the two-column detail panel, adaptive column visibility, and composite
-   assertions go beyond what Promptfoo's own UI does.
-4. **A metric's pass/fail is the one signal that must never be ambiguous.** Every other visual
-   dimension (metric type, row source, grouping) has to be layered on *without* competing with the
-   green/red pass-fail signal — see RES‑28 for a concrete case where this constrained the design.
-5. **Nothing here should silently lie about data it doesn't have.** Cost/latency/tokens are
-   estimates and must read as such; a column that would be empty for this run's shape shouldn't
-   show at all (Reference Output) rather than showing a column of dashes.
+   current page is that reading a piece of AI-generated output, then judging why a check on it
+   passed or failed, then checking metadata, meant flipping between separate tabs/screens — by
+   the time you reached the reasoning, you'd already lost sight of the output it was judging.
+   Every layout decision below optimizes for "everything I'm comparing stays in front of me at
+   once."
+2. **Density is a choice, not a default you fight.** A compact view and a fully detailed view
+   both need to exist, one click apart — not a setting buried three menus deep. Every column has
+   a sensible default (shown, hidden, or shown-only-when-relevant), but any user override sticks.
+3. **Match the industry-standard eval-tool experience where it's already proven, improve on it
+   where it's obviously worth it.** Per-check result chips, reasoning for both a pass and a fail,
+   filtering, and comparison charts should feel familiar to anyone who's used a mainstream
+   open-source eval tool. The two-panel review layout, adaptive column visibility, and
+   weighted/composite checks are meant to go further than that baseline.
+4. **A check's pass/fail must never be ambiguous.** Every other visual signal (what kind of check
+   it is, where a test case came from, how results are grouped) has to be layered on without
+   competing with the one signal that matters most: did it pass or fail. See RES‑29 for a concrete
+   case where this shaped the design.
+5. **Never present an estimate as a measured fact.** Cost/latency/token figures are estimates
+   until real usage metering is wired up; the page has to read that way wherever they appear.
 
 ---
 
-## 4. Functional Requirements
+## 2. Background — what this was scoped against
 
-Every block: an ID, a one-line summary, acceptance criteria, and where it's demonstrated. Statuses
-are all **Prototyped** (built and clickable in `app/`, not shipped) unless noted otherwise.
+- This redesign was scoped against **real historical eval exports**: 7 exported result sets
+  covering single-prompt runs, a 3-way prompt comparison, and runs both with and without a
+  reference/expected answer to compare against — plus a much larger **export of eval
+  configurations** (not results — the actual setup of many real eval suites) that was reviewed
+  afterward specifically to check for gaps: check types or structures the redesign hadn't
+  accounted for yet. That second pass is where the "not-equals" / "contains HTML" check types and
+  the weighted/composite check requirement (§4.E) came from.
+- Two rounds of hands-on feedback against the running prototype are already folded into the
+  requirements below — this isn't a first draft.
 
-### A. Navigation & entry points
+### What's real vs. invented in the prototype's example data
 
-#### RES-1 — Runs open in their own browser tab
-Clicking a run anywhere in the app (Eval runs list, a Spec's Results tab) opens that run's full
-results on its own page, in a new tab, at a real bookmarkable/shareable URL — not a modal or an
-in-place navigation that loses the list you clicked from.
-- Acceptance: `window.open()` to `/runs/{runId}`, a real route; reload/back/forward all work; the
-  originating list/tab is untouched.
-- Demo: any row in `RunsList.tsx`, or "View full history" from a Spec's Results tab.
+Four of the five demo scenarios (§3) are built from the real exports above: every example
+input, every example model output, and every example pass/fail/score is real, taken straight from
+that export. A handful of supporting details the exports never captured were **invented on top of
+that real data**, purely to make the demo readable — most notably: what the underlying prompt
+actually says (exports only ever recorded which prompt/version ran, never its content), a
+human-readable name for that prompt, and — for AI-judged checks — the actual grading instructions
+a judge would have been given (exports only ever recorded a check's name and its pass/fail, never
+its instructions). One scenario (Scenario 5, §3) is entirely invented, to demonstrate a check
+shape that hadn't come up yet in the real exports.
 
-#### RES-2 — Run detail page header: identity, version history, way back
-The standalone run page's header shows: the resolved prompt identity (RES‑5), a version-history
-switcher for other runs against the *same* prompt version, the run's own id/timestamp, and a way
-back to either the originating list or that Spec's workspace (whichever makes sense given how you
-arrived).
-- Demo: `RunDetailPage.tsx`.
+**The takeaway:** don't treat any specific number, output, or wording in the prototype as
+something to match exactly — the *behavior and rules* being demonstrated are the requirement, not
+the illustrative content sitting inside them.
 
-#### RES-3 — Global Eval Runs list
-A cross-Spec list of every run, sortable by id/description/author/created/pass-rate/test-count,
-with per-column filters, resizable/hideable columns, and pagination — the landing point for
-"browse everything," parallel to the existing Specs/Prompts list UX.
-- Demo: `RunsList.tsx`.
+---
 
-### B. Run summary header (top of every results page, single-run or comparison)
+## 3. Demo scenarios — what to look at, and where to find it
+
+Five example runs are available at the link above, so every requirement in §4 can be checked
+against something concrete instead of a hypothetical. Each one is named so it's unambiguous which
+business case it represents — open the runs list at the link above and look for a name starting
+with **"Scenario N — …"**.
+
+| # | Look for a run named… | Represents | Illustrates |
+|---|---|---|---|
+| 1 | *Scenario 1 — Compliance chat, 14 assertions* (and two sibling variants: *Intake bot, 7 inputs & n/a checks* / *Pet-service greeter, 4 inputs*) | A single prompt evaluated with no expected/reference answer to compare against | The base single-run view; a case with many checks at once; a case with several input fields per test case; checks that don't apply to every test case; one test case that hard-errored instead of scoring |
+| 2 | *Scenario 2 — Intake bot, 3-prompt comparison* | Three candidate prompt versions evaluated side by side, on the same test cases and same checks | The whole comparison view — shared table, charts, filters, and detail view across variants |
+| 3 | *Scenario 3 — Pricing-help detector* and *Contact-preference classifier* | A single prompt evaluated **with** a known correct/expected answer to compare each output against | How the page behaves once a reference answer exists — one example with a yes/no-style reference, one with a multiple-choice-style reference |
+| 4 | *Scenario 4 — Category/lead classifier, 100 rows* | A single prompt evaluated against a large test set (100+ cases) with several input fields each, and a reference answer | How the page holds up at scale — density, column choices, one hard-errored test case mixed into a large run |
+| 5 | *Scenario 5 — Funnel headlines, grouped & new check types* | A single prompt, entirely invented for this purpose | A weighted, multi-part check (§4.E) and two additional standard check types not seen in the real exports |
+
+### Scenario 5, in detail — the one to study for weighted/composite checks
+
+An invented "funnel-page headline generator": given a service category (e.g. "Divorce Lawyer"),
+the prompt writes a page headline and a one-line description. Its checks:
+
+1. Output must contain proper markup for a headline (a new standard check type).
+2. Output must **not** be the generic fallback headline for that category (a new standard check
+   type, using per-row data).
+3. **"Headline quality score"** — a single named check that is really an equally-weighted average
+   of three smaller checks (headline length, category-relevant keyword present, and a
+   benefit-led-not-clickbait tone check graded by an AI judge), passing once that average clears a
+   set bar.
+4. A separate AI-judged check on whether the description is compelling and specific.
+
+The example test cases deliberately isolate different situations, each worth opening once you're
+in the prototype: two clean passes; one failing *only* check 1 with everything else passing; one
+failing *only* check 2 similarly in isolation; two where the weighted check (#3) fails outright;
+and — the single most important example in the whole prototype — **one case where one of the
+three smaller checks inside the weighted check fails, but the weighted check still passes overall**
+because the average of all three still clears the bar. That last case is the one to point to when
+explaining why "weighted average" is more useful than "every sub-check must pass."
+
+---
+
+## 4. Requirements
+
+Every block: an ID, what must be true, why, and how to tell it's working. Section groupings A–L
+are a reasonable story/epic split.
+
+### A. Getting to a run's results
+
+#### RES-1 — A run's results open in their own place, not on top of what you were doing
+Opening any run's results must not replace or hide the list you opened it from. It should behave
+like a distinct destination with its own address — something you could bookmark, share with a
+colleague, or open again later, and reloading it should show the same thing.
+- Why: reviewing results is naturally a "keep several open at once, compare them" task; losing the
+  list you were browsing every time you open one result defeats that.
+
+#### RES-2 — The results page always states which prompt/version it evaluated, and lets you move sideways to related runs
+The top of the page must make it obvious *what* was actually run (RES‑5), let you jump to other
+runs of that exact same prompt version (e.g. to spot flakiness across reruns), and offer a clear
+way back to wherever you came from.
+
+#### RES-3 — One place to browse every run, across every project
+A single list surfaces every run system-wide — sortable, filterable, with pagination — so
+"browse everything that's ever been run" doesn't require opening each project one at a time.
+
+### B. The summary header (top of every results page, single run or comparison)
 
 #### RES-4 — Aggregate status at a glance
-Shows: total row count, total metric count, aggregate pass rate as a large percentage, and — when
-this run only scored a chosen subset of the dataset rather than the whole thing — a "Sample run —
-N of M rows" badge instead of the usual full-run framing.
-- Demo: `RunSummary.tsx` header block, `RunDetailPage.tsx` (`run.scope === "sample"` badge).
+Shows, without any interaction: how many test cases ran, how many checks were evaluated, the
+overall pass rate, and a clear flag when this run only scored a chosen subset of the test cases
+rather than the whole set.
 
-#### RES-5 — Real prompt identity, not just an internal Spec name
-The primary heading is the resolved Prompt identity — human-readable name + the **real** external
-Prompt-Management project id and version id (e.g. `Compliance Chat Assistant 4595, v1 2100`,
-not AI Studio's own internal ids) — with the Spec's own name shown as a secondary line only when
-it's not just a duplicate of the Prompt name (true for every Scenario Spec, since `spec.name` there
-is really an eval-scenario description, e.g. "Scenario 1 — Compliance chat, 14 assertions").
-- Acceptance: format is `"{name} {projectId}, v{versionNumber} {versionId}"`; falls back
-  gracefully (e.g. "version not synced") when a version was never synced to Prompt Management.
-- Demo: `promptFactory.ts` (`resolveRunPromptIdentity` / `describeRunPromptIdentity`),
-  `RunDetailPage.tsx`, `RunsList.tsx`'s Description column.
+#### RES-5 — The page names the real prompt and version it evaluated, not an internal label
+The main heading must show the actual, human-recognizable name of what was evaluated, together
+with its real, externally-meaningful project and version identifiers — the same identifiers
+someone would use to find that exact prompt version anywhere else in the organization — rather
+than only this tool's own internal label. Any internal/eval-specific label (e.g. a description of
+which business scenario this run represents) should still be shown, but only as secondary
+information, and only when it actually adds something beyond the real name.
+- Why: reviewers, engineers, and auditors need to know *exactly* which real, versioned prompt
+  produced these results without cross-referencing anything else.
+- Acceptance: if the real version was never registered/synced anywhere yet, say so plainly instead
+  of showing a blank or a guess.
 
-#### RES-6 — Per-assertion pass-rate rollup, grouped, clickable
-A row of pill/chips, one per top-level assertion (a composite/grouped assertion — RES‑29 — counts
-as exactly one chip here, never expanded into its children), each showing `name · X% (n/m)`,
-color-coded pass/fail-against-threshold, grouped visually by the assertion's own `group` tag
-(mirroring how the assertion-authoring screen groups them). Clicking a chip filters the table below
-to "every row where this exact metric had this exact outcome"; clicking it again clears the filter.
-- Demo: `RunSummary.tsx` (`AssertionRollup`, `AssertionChip`).
+#### RES-6 — A pass-rate breakdown per check, grouped, and clickable to filter
+Directly below the header, show every check's own pass rate for this run, visually grouped the
+same way checks are grouped when they're authored (so, e.g., every "Guardrails"-tagged check rolls
+up together), color-coded against whether it's meeting its own required pass bar. Clicking a
+check's entry should narrow the results table below to exactly the rows where that check had a
+given outcome; clicking it again should clear that narrowing.
 
-#### RES-7 — Run-level cost/latency/token summary
-A compact stat strip: total/avg cost, avg/median/max latency, total tokens, tokens-per-second —
-run-level aggregates, separate from the per-row figures (RES‑18).
-- Demo: `RunSummary.tsx` (`Stat`), `results.ts` (`averageOf`, `totalOf`, `maxOf`, `tokensPerSecond`).
+#### RES-7 — Run-level cost, latency, and token summary
+A compact strip of run-level totals/averages (cost, latency, tokens) — separate from the same
+figures shown per individual test case (RES‑19).
 
-#### RES-8 — Automated "review this first" suggestions (free tier only)
-A zero-cost, instant, client-computed pass over the run surfaces (a) the rows with the most failing
-metrics, worth reviewing first, and (b) which metrics fail most often and a one-line hint on likely
-cause (rubric/prompt/code). A "deeper pass" action exists to hand off to an AI assistant for a
-richer analysis — **building that deeper AI-assisted pass itself is out of scope**; see §7.
-- Demo: `RunSummary.tsx` ("Review first" / "Worth improving"), `engine.ts`
-  (`suggestRunInsightsHeuristic`).
+#### RES-8 — Automatic, free "review this first" guidance
+Without any user action or cost, the page should point out which test cases have the most
+failing checks (worth reviewing first) and which checks fail most often, with a short plain-
+language hint at likely cause. A path to hand this off for a deeper, opt-in AI-assisted analysis
+should exist as an escalation, but building that deeper analysis itself is **out of scope** for
+this round (§6).
 
-### C. Results table — structure & density
+### C. The results table — structure & density
 
-#### RES-9 — Compact vs. full view toggle, full by default
-A two-icon segmented toggle switches every cell between single-line/truncated (compact) and
-wrapped/multi-line (full). Full is the default on first view of any run.
-- Demo: `RunDetailBody.tsx` toolbar (Rows3/WrapText icons), `resultsViewPrefs.ts`
-  (`DEFAULT_RESULTS_VIEW_PREFS.wrap = true`).
+#### RES-9 — A compact view and a fully detailed view, one click apart, detailed by default
+Every row must be viewable either as a single truncated line per field (compact) or fully
+expanded/wrapped (detailed), switchable with one click. Detailed is the default the first time
+anyone opens a given run's results.
 
 #### RES-10 — Row numbering
-A leading `#` column, always visible, numbering visible rows in their current sorted/filtered
-order (not a stable dataset-row id).
-- Demo: `ResultsTable.tsx`.
+Every visible row is numbered in its current sorted/filtered order, so a reviewer can say "case
+#14" and mean something concrete and locatable.
 
-#### RES-11 — Three-state row status: Passed / Failed / Error
-A row that errored *before* any metric could run (e.g. a simulated provider timeout) is visually
-and semantically distinct from a row that ran and failed a metric — different icon/color, and its
-Metrics cell reads "Errored before metrics ran" rather than showing empty/zeroed chips. Error rows
-are excluded from every pass-rate rollup the same way n/a scores are.
-- Demo: `ResultsTable.tsx` status cell, `types.ts` (`RunItemResult.error`), `results.ts`
-  (`rowStatus`).
+#### RES-11 — Three distinct outcomes per row: passed, failed, or errored
+A test case that broke before any check could even run (e.g. the underlying system never
+responded) must look and read differently from a test case that ran fully and simply failed a
+check — different visual treatment, and its checks column should say plainly that nothing could be
+scored, rather than showing empty or zeroed-out results. Errored rows must be excluded from every
+pass-rate calculation, the same way not-applicable checks are (RES‑26).
 
-#### RES-12 — Dataset row source indicator
-Every row shows whether its dataset item is manually authored or synthetically generated, via a
-small distinct icon — separate from (and orthogonal to) row status.
-- Demo: `components/dataset/DatasetSourceIcon.tsx`, `types.ts` (`DatasetItemSource`).
+#### RES-12 — Where each test case came from is visible per row
+Every row shows, via a small distinct indicator, whether that test case was written by a person or
+generated — independent of, and never confused with, whether it passed or failed.
 
-#### RES-13 — Resizable columns
-Every column has a drag handle on its right edge; width persists per Spec across reloads.
-- Demo: `ResultsTable.tsx` (`ColResizeHandle`), same pattern reused in `RunsList.tsx`.
+#### RES-13 — Column widths are adjustable
+Every column's width can be dragged wider or narrower, and that choice is remembered.
 
-#### RES-14 — Full-screen mode, clearly labeled
-A dedicated, clearly text-labeled ("Full screen" / "Exit full screen", not icon-only) control
-expands the results table (single-run *or* comparison) to a fixed full-viewport overlay with its
-own close action — available identically in both the single-run and the N-way comparison layouts.
-- Acceptance: the control must be visually distinct enough to notice next to the compact/wrap
-  toggle — icon-only was tried and missed by UAT; both layouts now use the same labeled-button
-  treatment.
-- Demo: `RunDetailBody.tsx` and `ComparisonRunBody.tsx`, both have a `fullScreen` state and a
-  `<Button>` with the Maximize2/Minimize2 icon plus visible text.
+#### RES-14 — A clearly-labeled full-screen mode, in every layout
+A prominent, clearly worded control (not just an icon that's easy to miss) expands the results
+table to fill the whole screen, with an equally clear way to exit — available identically whether
+you're looking at a single run or a multi-prompt comparison.
+- Note: an icon-only version of this control was tried first and was missed by real users during
+  review — it needs to read as an obvious, labeled action, not something to discover by accident.
 
-#### RES-15 — Consistent top alignment
-Every cell in a row — checkbox, `#`, status, source, every data column — aligns to the top of the
-row regardless of how tall that row grows in full view, so a short cell next to a tall wrapped one
-never looks misaligned.
-- Demo: `ResultsTable.tsx` (`align-top` on every `<td>`).
+#### RES-15 — Every row's cells line up at the top, regardless of row height
+When one field in a row wraps onto several lines and its neighbors don't, every cell in that row
+must still start at the same vertical position — nothing should look "sunken" or misaligned just
+because a neighboring cell is short.
 
-#### RES-16 — Table fills available width, no dead whitespace
-The table stretches to use all available horizontal space as columns are hidden/shown/resized,
-instead of leaving an empty strip on the right once visible columns no longer add up to the
-container's width.
-- Demo: `ResultsTable.tsx` — a `ResizeObserver`-driven trailing filler column.
+#### RES-16 — The table always fills the available width
+As columns are hidden, shown, or resized, the table should stretch to use all the horizontal space
+available rather than leaving a dead, unused strip once the visible columns no longer add up to
+the full width.
 
-#### RES-9b — Sortable columns, paginated
-Sortable by fail-count (default, descending — worst rows first), latency, cost, or tokens; results
-paginated with a configurable page size.
-- Demo: `RunDetailBody.tsx` (`handleSort`), `resultsViewPrefs.ts` (`ResultsSortField`,
-  `RESULTS_PAGE_SIZE_OPTIONS`).
+#### RES-17 — Sortable, with the worst results surfaced first by default, and paginated
+Results can be sorted by how many checks failed (the default — worst test cases first, no filter
+required to see them), or by latency/cost/tokens; large runs are paginated with a choice of page
+size.
 
-### D. Columns — content & defaults
+### D. Which columns show, and when
 
-#### RES-17 — Column set
-Always visible, never hideable: row-select checkbox, `#`, Status, Source, Inputs, Output, Metrics.
-Optional (hideable, see RES‑18/19/21): Reference Output, Labels, Latency, Cost, Tokens.
-- Demo: `resultsViewPrefs.ts` (`ResultsColumnId`).
+#### RES-18 — A sensible, minimal default column set
+Always shown, and never something a user can accidentally hide: a way to select rows, the row
+number, pass/fail/error status, where the test case came from, its inputs, the model's output, and
+its check results. Everything else is optional and controlled the way RES‑22 describes.
 
-#### RES-18 — Latency/Cost/Tokens hidden by default, always
-These three are hidden on first view of any run regardless of dataset size — not "hidden only when
-crowded." Still one click away via the Columns menu, and that choice persists. When hidden, their
-values aren't fully lost: the Metrics cell (single-run) and each variant's status badge
-(comparison) show a small inline "Promptfoo-style" summary line of whichever of the three are
-currently hidden, so the data stays glanceable without needing 3 extra columns permanently open.
-- Demo: `resultsViewPrefs.ts` (`computeAutoHiddenColumns`), `ResultsTable.tsx` /
-  `ComparisonRunBody.tsx` (the compact footer line inside the Metrics/badge cell).
+#### RES-19 — Latency, cost, and token columns are hidden by default, always — not just when the table is crowded
+These three don't show automatically even on a run with very few test cases and plenty of room —
+they're performance/cost bookkeeping, not the primary review signal, so they stay one click away
+regardless of how much space is available. When hidden, they aren't fully lost: a short inline
+summary of whichever of the three are currently hidden still appears folded into the check-results
+column, so the numbers stay glanceable without needing three permanently-open columns.
 
-#### RES-19 — Reference Output shown only when present anywhere in the run
-Hidden by default only when *no* row in the run has a reference/expected output; shown by default
-the moment at least one does — never a column of dashes.
-- Demo: `resultsViewPrefs.ts` (`computeAutoHiddenColumns`'s `hasReferenceOutputs` check).
+#### RES-20 — A reference/expected-answer column shows only when at least one test case actually has one
+If no test case in this run has a known correct answer to compare against, that column shouldn't
+exist at all for this run — never a column full of blanks. The moment at least one test case does
+have one, it should show automatically.
 
-#### RES-20 — Inputs column: combined by default, distinguishable, splittable
-By default all input variables render in one "Inputs" column; a Columns-menu toggle splits it into
-one column per variable when the prompt has more than one. When combined, each variable is
-rendered as a distinguishable `name: value` pair (bold/tinted name, not a flat run-on string of
-concatenated values) — in wrap mode, each pair stacks on its own line.
-- Demo: `ResultsTable.tsx` (`CombinedInputsCell`), reused identically in `ComparisonRunBody.tsx`.
+#### RES-21 — When a prompt takes several inputs, they're combined into one readable column by default, with an option to split them out
+By default, every input field for a test case is shown together in one column, each one clearly
+labeled by name (not run together as an unlabeled string of values) — with an option to instead
+give each input field its own column when that's more useful (only offered when the prompt
+actually has more than one input field).
 
-#### RES-21 — Columns menu
-One popover exposes: a checkbox per optional column (RES‑17/18/19), "show per-metric chips"
-on/off (independent of the Metrics column's own visibility — turning Metrics off must never also
-hide the control that turns chips back on), and "one column per variable" (only shown when
-relevant). The Metrics column's own "only show failing" density toggle deliberately lives in that
-column's own header instead, not here (RES‑24).
-- Demo: `ResultsColumnsMenu.tsx`.
+#### RES-22 — One place to control every optional column, plus a couple of directly related display choices
+A single menu exposes every column that can be hidden/shown (RES‑18–21), plus: turning the
+per-check result indicators on/off (kept independent from the check-results column's own
+visibility — turning that column off must never also remove the only control that turns those
+indicators back on) and switching between combined vs. per-field input columns. The check-results
+column's own "only show failures" density option lives on that column itself instead (RES‑25), not
+in this general menu.
 
-### E. Metrics / checks column & assertion types
+### E. Check results & check types
 
-#### RES-22 — Rename "Checks" → "Metrics" everywhere
-Column header, detail-panel section title, CSV/JSON export field names, and every menu label.
-- Demo: grep `"Metrics"` across `ResultsTable.tsx`, `ResultItemPanel.tsx`, `ComparisonRunBody.tsx`,
-  `results.ts` (export builders).
+#### RES-23 — "Checks" is called "Metrics" everywhere
+Every label a user sees for this concept — the column, the detail-view section, anything
+exported — should consistently say "Metrics," not "Checks."
 
-#### RES-23 — Per-row Metrics cell: one chip per assertion
-Promptfoo-style: a pass/fail icon, a short truncated name, and the numeric score (when the
-assertion type produces one) — clicking a chip filters the whole table to that metric+outcome
-(same mechanism as RES‑6's rollup chips).
-- Demo: `ResultsTable.tsx`.
+#### RES-24 — One compact result indicator per check, per row
+Each row shows a small pass/fail indicator per check, with its short name and its score (when that
+check produces one). Clicking one narrows the whole table to exactly that check's outcome — the
+same behavior as clicking a check in the header rollup (RES‑6).
 
-#### RES-24 — Metrics column density toggle: "only failing/errored"
-A small filter control **in the Metrics column's own header** — not the global Columns menu —
-switches between showing every metric's chip vs. only the failing/n/a ones, for a much more
-compact table when most metrics pass most of the time.
-- Demo: `ResultsTable.tsx` (`MetricsHeaderFilter`), `resultsViewPrefs.ts`
-  (`metricsOnlyFailing`).
+#### RES-25 — The Metrics column can be switched to "only show failures/errors"
+A density control that lives specifically on the Metrics column's own header — separate from the
+general column menu (RES‑22) — lets a reviewer collapse every passing check out of view and see
+only what's failing or errored, for a much faster read on a mostly-passing run.
 
-#### RES-25 — Not-applicable ("n/a") scores are a distinct third state
-An assertion that didn't apply to a given row (e.g. a pet-specific check on a vehicle-related row)
-renders as a neutral "n/a" chip — not counted as passed or failed — and is excluded from both the
-numerator and denominator of every pass-rate rollup at every level (row, assertion, run,
-comparison-variant). An assertion that's n/a on *every* row it ran against shows "no applicable
-rows" in the summary rollup instead of a misleading 100%/0%.
-- Demo: `types.ts` (`AssertionScore.na`), `RunSummary.tsx`, `engine.ts` (pass-rate math).
+#### RES-26 — A check can be explicitly "not applicable" to a given test case, and that must never count as a pass or a fail
+Some checks legitimately don't apply to every test case (e.g. a pet-related check on a
+vehicle-related test case). That state needs its own neutral, clearly distinct treatment — and
+must be excluded from both sides of every pass-rate calculation, at the level of a single test
+case, a single check summed across the run, or a whole run. If a check never applied to a single
+test case in the run, say so plainly instead of showing a misleading 0% or 100%.
 
-#### RES-26 — Rubric text is reachable from the compact chip, not force-shown
-The compact per-row chip for an LLM-rubric metric surfaces the actual rubric text in its hover
-tooltip (alongside the reason) — full text lives in the detail panel (RES‑39), never crowding the
-compact table.
-- Demo: `ResultsTable.tsx` (chip `title` attribute).
+#### RES-27 — The full grading instructions behind an AI-judged check are always reachable, without crowding the compact view
+The compact per-row indicator surfaces the actual instructions an AI judge was given (e.g. on
+hover), rather than forcing them into the table itself; the full text is always available in the
+detailed per-row view (RES‑40).
 
-#### RES-27 — Reasoning shown for both PASS and FAIL, inline in full view
-In wrapped/full view, every metric chip shows its pass-or-fail reason as a line underneath — not
-just for failures. A bare "Passed." next to a fully-reasoned failure reads as a placeholder;
-every LLM-judged metric must carry a real one- or two-sentence explanation either way.
-Deterministic/custom-code checks may stay terse ("Passed.") since there's nothing to explain.
-- Demo: `ResultsTable.tsx`, `ResultItemPanel.tsx`.
+#### RES-28 — Every check shows its reasoning, whether it passed or failed
+In the detailed table view, every check's result includes a short explanation of *why* — not only
+for failures. A check that passed with no explanation at all reads as unfinished next to a
+fully-explained failure; this must be avoided for every AI-judged check. Simple built-in checks
+(e.g. an exact-match check) can stay terse, since there's nothing meaningful to explain either way.
 
-#### RES-28 — Metric "type" is visible and filterable, but only LLM-rubric gets a color
-Every metric is classified as one of: a built-in deterministic check, custom code, an LLM rubric,
-or a composite group (RES‑29) — shown as a small type badge next to the metric in the detail panel,
-and filterable via "Metric type" in the Filters panel (RES‑33). **Design constraint:** the detail
-panel already has an unambiguous green/red pass-fail signal (icon + score badge + reason color);
-giving deterministic/custom-code their own saturated colors on top of that would compete with it
-(concretely: a green "type" badge next to a red ✗ on a failing deterministic check reads as
-contradictory). So only the type that's genuinely easy to miss — LLM rubric — gets an actual color
-(a muted "info"/sky tone), echoed as a thin left-border accent on the whole metric card; composite
-groups get their own distinct accent (violet/"accent" tone); deterministic and custom-code stay
-plain/neutral.
-- Demo: `ResultItemPanel.tsx` (`assertionTypeTone`, `assertionAccentBorder`).
+#### RES-29 — Every check shows what kind it is, but only one kind gets an actual color
+Every check should be labeled by kind — a simple built-in check, custom logic, an AI-judged check,
+or a weighted/composite check (RES‑30) — and it must be possible to filter by kind. Deliberately,
+only the AI-judged kind gets an actual distinct color treatment (a muted, non-alarming tone,
+reused as a subtle accent on that check's whole result card); weighted/composite checks get their
+own distinct-but-equally-muted treatment; the rest stay visually neutral.
+- Why: the detail view already has an unambiguous pass/fail signal (an icon, a score, and
+  color already used for that). Giving every kind of check its own saturated color on top of that
+  would compete with it — e.g. a bright "green" kind-label sitting next to a red fail icon reads as
+  contradictory. AI-judged checks are the one kind that's genuinely easy to overlook otherwise, so
+  that's the one exception.
 
-#### RES-29 — Composite/grouped assertions ("assert-set")
-Support Promptfoo's `assert-set` concept: several weighted sub-checks rolled into one named metric
-with its own pass threshold (real-world example this was scoped from: an "H1 tag quality score"
-averaging a length check, a keyword check, and a tone check).
-- Acceptance:
-  - A group is scored as the **weighted average** of its sub-checks' own scores
-    (`Σ(childScore × weight) / Σ(weight)`, weight defaults to 1) and passes when that average
-    reaches the group's own threshold (default 0.5).
-  - Each sub-check is scored independently, by its own type (deterministic/custom-code/LLM-rubric)
-    — a group can mix types among its children.
-  - The group appears as **exactly one row/chip** everywhere a normal assertion would (summary
-    rollup, table Metrics cell, filters) — its children are never separate top-level rows and are
-    never double-counted in any rollup.
-  - The full per-child breakdown (each child's own pass/fail/score/reason) is always reachable:
-    indented under the parent chip in the table's wrap view, and as an expandable "Sub-checks"
-    list in the detail panel, showing each child's score and its own weight if not 1.
-  - A row can have some sub-checks fail while the group as a whole still passes, if the weighted
-    average still clears the threshold — this must be visibly demonstrable, not just true in the
-    math (see Scenario 5, §6.5).
-- Demo: `engine.ts` (`scoreOneAssertion`, `scoreAssertionGroup`), `types.ts` (`Assertion.children`
-  / `.weight` / `.groupThreshold`, `AssertionScore.childScores`), `ResultsTable.tsx` /
-  `ResultItemPanel.tsx` rendering, `results.ts` (`flattenAssertions`).
-- **Note on how this was modeled** — read before designing the real data model: the prototype
-  deliberately did **not** add a 4th value to the existing 3-value assertion-tier enum
-  (`deterministic` / `custom_code` / `rubric_grading`). Adding one would have forced updates to
-  every place in this codebase that exhaustively switches on that enum, including an entirely
-  separate org-wide Library-of-reusable-assertions subsystem that has nothing to do with the
-  Results page. Instead, "is this a group" is modeled as an orthogonal property (`children`
-  present or not), independent of `tier`. **This was the pragmatic choice for a click-through
-  prototype with a large existing surface area to avoid destabilizing — it is not necessarily the
-  right modeling choice for the real system.** If the real backend's assertion model can cleanly
-  support a first-class "group" type without that same blast radius, that's likely the better
-  design; treat this note as "here's the constraint we were working around," not "do it this way."
+#### RES-30 — Support a weighted, multi-part check ("composite check")
+A single named check can really be several smaller checks rolled together with individual
+weights, passing once their weighted average clears a set bar — e.g. an overall "headline
+quality" check that's really an average of a length check, a keyword check, and a tone check.
+- The smaller checks inside it can themselves be of any kind (built-in, custom, or AI-judged), and
+  can be mixed.
+- Everywhere a normal check would appear — the header rollup, the per-row indicator, filters — the
+  composite check must appear as exactly **one** entry with its own aggregate result; its smaller
+  checks are never separately counted or double-counted in any pass-rate calculation.
+- The full breakdown of every smaller check's own result must always be reachable underneath the
+  main entry, never hidden away.
+- It must be visibly possible for some of the smaller checks to fail while the composite check as
+  a whole still passes, if the weighted average still clears the bar — see Scenario 5 (§3) for a
+  concrete example a reviewer can point to.
+- Note for whoever designs the underlying data model: this document intentionally doesn't
+  prescribe *how* a composite check should be represented internally — that's an engineering
+  decision — only the behavior it must produce.
 
-#### RES-30 — Deterministic-check catalog: add not-equals and contains-html
-Two additions to the built-in parameterized check catalog, found missing during the config-export
-coverage check (§1): `not-equals` (output must not exactly match a given string) and
-`contains-html` (output must contain at least one HTML tag). Both slot into the existing catalog
-mechanism — no special-casing needed elsewhere (the assertion-authoring screen's mode picker is
-already catalog-driven).
-- Demo: `assertionCatalog.ts`, `engine.ts` (`scoreCodeAssertion`).
+#### RES-31 — Two additional standard, built-in check types
+Alongside whatever standard checks already exist, add: a check that the output must **not** match
+a specific value (as opposed to must match), and a check that the output must contain valid markup
+for a given element (found to be a real, recurring need when reviewing real eval configurations,
+not something either of the existing checks covered).
 
 ### F. Filtering & search
 
-#### RES-31 — Free-text search across every text field
-A single search box matches against a row's input values, output, reference output, and reviewer
-note — not just the visible/truncated text, the full underlying value.
-- Demo: `RunDetailBody.tsx` (search state), `results.ts` (`matchesSearch`).
+#### RES-32 — One search box, matching every text field on a row
+A single free-text search matches against every input field, the output, the reference answer (if
+any), and any reviewer note on that row — matching the full underlying text, not just whatever's
+currently visible/truncated.
 
-#### RES-32 — Quick status pills
-All / Passed / Failed / Error — one click, always visible in the toolbar, independent of the full
-Filters panel.
-- Demo: `RunDetailBody.tsx` (`STATUS_FILTERS`).
+#### RES-33 — One-click status filters
+All / Passed / Failed / Errored — always visible, no menu required, independent of the fuller
+filter panel (RES‑34).
 
-#### RES-33 — Advanced Filters panel
-A popover covering every filterable dimension: a specific metric + its outcome (pass/fail), metric
-type (deterministic/custom-code/LLM-rubric), label (including an explicit "(no label)" option),
-dataset row source, latency/cost/token min-max ranges, reference-output presence, and reviewer-note
-presence. Shows an active-filter count badge; "Clear all" resets everything at once.
-- Demo: `ResultsFiltersMenu.tsx`.
+#### RES-34 — A full filter panel covering every meaningful dimension
+Beyond the quick status filters: filter by a specific check and its outcome, by check kind, by
+label (including explicitly "has no label"), by where a test case came from, by latency/cost/token
+ranges, by whether a reference answer exists, and by whether a reviewer note exists. Show how many
+filters are currently active, and offer a one-click way to clear all of them at once.
 
-#### RES-34 — Filters only exist for visible columns
-Every filter section in RES‑33 is conditionally rendered based on whether its corresponding column
-is currently shown (RES‑21) — hiding the Cost column also hides the cost range filter, so a user
-can never be silently filtering on a number they can't currently see/verify.
-- Demo: `ResultsFiltersMenu.tsx` (`showLatency`/`showCost`/`showTokens`/etc. gates).
+#### RES-35 — You can only filter on what's currently visible
+Every section of the filter panel only appears if its related column is currently shown (RES‑22)
+— hiding, say, the cost column also removes the ability to filter by a cost range, so nobody can
+end up filtering on a number they can no longer see or verify.
 
-#### RES-35 — Chip-click filtering is one unified mechanism
-Clicking a per-row metric chip (RES‑23) or a summary-rollup chip (RES‑6) both drive the exact same
-underlying filter state; clicking an already-active chip clears it; applying a chip filter resets
-the quick status pill (RES‑32) back to "All" so the two can never silently contradict each other
-(e.g. "Passed" + "this metric failed" would always show zero rows).
-- Demo: `RunDetailBody.tsx` (`handleFilterByAssertion`).
+#### RES-36 — Clicking a result to filter is one consistent behavior everywhere, and never silently contradicts another filter
+Clicking a check's result — from a row or from the header rollup (RES‑6/24) — always drives the
+same underlying filter, clicking it again always clears it, and applying it always resets the
+quick status filter (RES‑33) back to "all," so the two can never combine into a filter that's
+guaranteed to show zero results (e.g. "passed" plus "this check failed").
 
-### G. Detail side panel
+### G. The detail view for a single test case
 
-#### RES-36 — Two-column layout replaces the old 3-tab design
-Opening a row's detail view shows a single full-width panel, not tabs: **left column**, pinned —
-every input value, the model's output, the reference output (if present), the reviewer note.
-**Right column**, scrollable — every metric, always expanded, with its full reasoning. This
-directly replaces the old design's problem: reading a rubric used to mean losing sight of the
-output it judged, because they lived on different tabs.
-- Demo: `ResultItemPanel.tsx`.
+#### RES-37 — One two-part view, not separate tabs, replaces the current design
+Opening a test case's full detail must show, at once, on one screen: every input, the output, and
+the reference answer (if any) pinned on one side, always visible — and every check's full result
+and reasoning on the other side, scrollable independently. This directly replaces the previous
+tabbed design's core problem: reading a check's reasoning used to mean losing sight of the output
+it was judging, because they lived on different tabs.
 
-#### RES-37 — Metadata is a footer, not a tab
-Row/run identifiers, timestamps, and token/cost/latency detail collapse into a small
-footer/section rather than consuming a whole tab of the old design.
-- Demo: `ResultItemPanel.tsx` (metadata section).
+#### RES-38 — Metadata is a small section, not a whole tab
+Identifiers, timestamps, and performance figures collapse into a compact section rather than
+consuming as much visual weight as the output and the check results.
 
-#### RES-38 — Prev/next navigation without closing
-Chevron controls step to the previous/next row (in current sort/filter order) without closing and
-reopening the panel.
-- Demo: `ResultItemPanel.tsx` (`onNavigate`).
+#### RES-39 — Step to the next/previous test case without closing the detail view
+Simple forward/back controls move to the next or previous test case (in whatever order the table
+is currently sorted/filtered to) without closing and reopening the view.
 
-#### RES-39 — Per-metric card content, by type
-Every metric renders as a card: pass/fail/n/a icon, name, type badge (RES‑28), score.
-- Deterministic check → what value/pattern it checked against (no source needed, the mode name
-  plus its parameter says everything).
-- Custom code → **no source code shown** — the metric's name is treated as sufficient context;
-  showing the function body was judged as noise, not useful review context.
-- LLM rubric → the actual rubric text, collapsible/expandable if long (a "Show full rubric"
-  toggle) rather than either truncating it or letting it consume the whole panel.
-- Composite group (RES‑29) → its pass threshold, plus the full sub-check breakdown described in
-  RES‑29's acceptance criteria.
-- Demo: `ResultItemPanel.tsx` (`RubricText`, `checkValueDisplay`, sub-check rendering block).
+#### RES-40 — What each check's detail shows depends on its kind
+A simple built-in check shows what value or pattern it checked against — nothing more is needed.
+Custom-logic checks show their name only; the underlying logic itself is not shown — reviewing it
+was judged to add noise, not useful context, for this audience. AI-judged checks show their actual
+full grading instructions, collapsible if long, rather than either cutting them off or letting them
+take over the screen. A weighted/composite check (RES‑30) shows its pass bar and the full result
+of every smaller check inside it.
 
-### H. Annotations
+### H. Letting a reviewer annotate what they see
 
-#### RES-40 — Reviewer note per dataset row
-A free-text note, edited inline from the detail panel, persists on the **dataset row** (not the
-run) — so it survives reruns and prompt changes, unlike a run-scoped annotation would. Searchable
-(RES‑31) and filterable (has-note / no-note, RES‑33).
-- Demo: `ResultItemPanel.tsx`, `dataset.ts` (`withUpdatedNote`).
+#### RES-41 — A free-text note per test case, that survives future runs
+A reviewer can attach a free-text note to a test case; it must persist on that test case itself
+(not just on this one run), so it's still there after a prompt change and a rerun. It must be
+searchable (RES‑32) and filterable (RES‑34).
 
-#### RES-41 — Short labels per run result
-Freeform short tags attached to a **run result** (not the dataset row — these are meant to group
-or flag something about *this specific run's* outcome, which may not hold true on a future rerun),
-editable from both the table and the panel, filterable including an explicit "no label" option,
-and — per the latest UAT round — **visible by default** (unlike Latency/Cost/Tokens, which are
-performance metadata and stay hidden by default; labels are the reviewer-facing annotation
-feature and shouldn't need an extra click to see).
-- Demo: `components/results/LabelChips.tsx`, `resultsViewPrefs.ts` (`computeAutoHiddenColumns`
-  does *not* include `labels`).
+#### RES-42 — Short labels per result, visible by default
+A reviewer can attach short, free-form labels to a specific result — meant to flag or group
+something about *this run's specific outcome* that the built-in checks don't capture (unlike the
+note above, a label isn't expected to still be meaningful after the prompt changes and reruns).
+Labels must be filterable, including "has no label," and — unlike performance figures (RES‑19) —
+must be visible by default, since this is reviewer-facing signal, not bookkeeping.
 
-### I. Multi-prompt comparison view
+### I. Comparing several prompt variants at once
 
-#### RES-42 — Automatic N-way layout when a run compares variants
-A single `RunGroup` can carry 2+ prompt variants run against the *same* dataset and the *same*
-assertion set (this is the only comparison shape supported — see §8 for what's explicitly not
-supported). When it does, the Results page automatically renders the comparison layout instead of
-the single-run layout; no separate route or user action needed.
-- Demo: `RunDetailBody.tsx` (dispatches to `ComparisonRunBody` when `run.comparison.variants.length
-  > 1`), `types.ts` (`RunGroup.comparison`, `RunVariant`).
+#### RES-43 — The comparison layout appears automatically whenever a run actually compares variants
+When a run evaluated two or more prompt variants against the exact same test cases and the exact
+same checks in one go, the results page must automatically show the comparison layout instead of
+the single-run layout — no separate action required to switch into it.
+- Note: comparing variants that were checked against genuinely different check sets is **not**
+  supported (§6) — only same-test-cases, same-checks comparisons.
 
-#### RES-43 — Comparison charts
-Three chart types, all rendered without a charting-library dependency (kept intentionally simple —
-see §8):
-1. **Pass-rate bar**, one bar per variant.
-2. **Grouped bar per metric**, one bar per variant within each metric group — the per-assertion
-   breakdown side by side across variants.
-3. **Agreement scatter** (only meaningful/shown for exactly 2 variants) — one dot per dataset row,
-   x/y = each variant's per-row pass fraction, colored by whether the two variants agreed.
-- Demo: `components/results/charts.tsx` (`PassRateBarChart`, `GroupedBarChart`, `ScatterChart`),
-  `ComparisonRunBody.tsx`.
+#### RES-44 — Comparison charts
+Three chart types: a pass-rate comparison across variants; a per-check breakdown comparing every
+variant side by side for each check; and, specifically when comparing exactly two variants, an
+agreement view showing, per test case, whether the two variants agreed or disagreed.
 
-#### RES-44 — One shared table, every variant side by side
-Each dataset row appears exactly once; every variant's status/output/metrics render in their own
-sub-columns within that row — not N separate tables. Uses the same column-visibility rules as the
-single-run table (RES‑17–21) and the same combined/distinguishable Inputs cell (RES‑20).
-- Demo: `ComparisonRunBody.tsx`.
+#### RES-45 — One shared table, every variant side by side, not a separate table per variant
+Each test case appears exactly once, with every variant's status/output/check-results shown
+side by side within that one row — using the same column rules as the single-run table (RES‑18–21).
 
-#### RES-45 — Comparison-specific filters and columns
-Status filter (matches if *any* variant has that status), a metric filter, and a Columns menu that
-additionally exposes per-variant Source/Latency/Cost/Tokens visibility (on top of the same global
-column set).
-- Demo: `ComparisonRunBody.tsx` (its own filter/columns controls).
+#### RES-46 — Comparison-specific filtering and column choices
+The same status and check filters as the single-run view, plus the ability to show/hide
+source/latency/cost/tokens independently per variant.
 
-#### RES-46 — Comparison detail panel: every variant side by side
-Opening a row shows all variants' outputs and every metric's outcome for that one row together —
-input/note/reference shown once (shared across variants), so a regression between two variants is
-visible without flipping between separate single-variant panels.
-- Demo: `ComparisonItemPanel.tsx`.
+#### RES-47 — The comparison detail view shows every variant side by side for one test case
+Opening a test case in the comparison view shows every variant's output and every check's outcome
+for that one test case together — inputs/note/reference (shared across variants) shown once — so a
+difference between two variants is visible without flipping between separate single-variant views.
 
-#### RES-47 — Comparison full-screen, same treatment as single-run
-Same full-screen behavior and same clearly-labeled control as RES‑14, in the comparison view's own
-prominent header banner (variant count, row/metric counts) rather than a crowded toolbar.
-- Demo: `ComparisonRunBody.tsx`.
+#### RES-48 — Full-screen mode in the comparison view too
+The same clearly-labeled full-screen control as RES‑14, available in the comparison layout as well.
 
-### J. Export
+### J. Getting data out
 
-#### RES-48 — Export current view as JSON or CSV
-Export popover offers a row-scope choice (filtered rows / selected rows / all rows) crossed with a
-format choice (JSON / CSV); filename includes the Spec name and a timestamp.
-- Demo: `ResultsExportMenu.tsx`, `results.ts` (`resultRowsToJson`, `resultRowsToCsv`).
+#### RES-49 — Export the current view as JSON or CSV
+Export whatever's currently filtered, whatever's currently selected, or everything — in either
+format.
 
-### K. Data honesty
+### K. Being honest about estimated figures
 
-#### RES-49 — Cost/latency/token figures must read as estimates
-Wherever these appear (run summary, per-row Metrics footer, comparison badges), they come from a
-token-counting/pricing estimate, not billed usage. This isn't a UI requirement so much as a
-flag for engineering: **when wiring this to the real system, the estimate-vs-billed distinction
-needs to be preserved or made explicit**, not silently presented as measured fact.
-- Demo: `pricing.ts` (`simulatedPerf`).
+#### RES-50 — Cost, latency, and token figures must always read as estimates, not measured fact
+Everywhere these appear — the summary header, the inline column-replacement summary (RES‑19), a
+comparison view — they should be understood as an estimate, not billed/measured usage, until real
+usage metering exists. This is a flag for whoever builds the real version: the estimate-vs-actual
+distinction needs to be preserved and stay visible, not quietly presented as fact once real numbers
+are available for some but not all of these figures.
 
-### L. Cross-cutting
+### L. Preferences
 
-#### RES-50 — View preferences persist per Spec, sensible smart defaults, user choice always wins
-Wrap/compact, hidden columns, sort field/direction, page size, and Metrics chip density all persist
-per Spec (not globally) across reloads. On the very first time a given Spec's results are viewed,
-hidden columns seed from a computed smart default (RES‑18/19); the instant a user makes any
-explicit choice — even re-hiding a column that was already shown — that choice wins forever after,
-never silently reverting to the computed default again.
-- Demo: `resultsViewPrefs.ts` (`useResultsViewPrefs`, `computeAutoHiddenColumns`).
+#### RES-51 — Every view choice is remembered per project, sane defaults win only until a user overrides them
+Compact/detailed view, which columns are hidden, sort order, page size, and check-result density
+all persist per project, across visits. The very first time a project's results are viewed, hidden
+columns should start from the sensible computed defaults described above (RES‑19/20); the instant
+a user makes any explicit choice of their own — even re-hiding something that was already
+shown — that choice must win from then on and never silently revert back to the computed default.
 
 ---
 
-## 5. Data model additions (summary, for backend/type design)
+## 5. Underlying rules the data itself must support
 
-For a system with an existing eval/assertion data model, these are the additions the above
-requirements assume exist somewhere:
+A short summary of the capabilities the system needs, independent of any particular UI —
+useful for whoever designs how results are actually stored and computed:
 
-| Concept | Field(s) | Notes |
-|---|---|---|
-| Row-level hard failure vs. scored failure | `RunItemResult.error?: string` | Distinct 3rd status (RES‑11); excluded from every rollup like `na` is. |
-| Not-applicable score | `AssertionScore.na?: boolean` | Excluded from numerator *and* denominator everywhere (RES‑25). |
-| Composite/grouped assertion | `Assertion.children?: Assertion[]`, `.weight?: number` (on a child), `.groupThreshold?: number` | See RES‑29's full acceptance criteria and its modeling note — this is the one place we'd actively recommend reconsidering the exact shape for a from-scratch backend design. |
-| Group's per-child breakdown | `AssertionScore.childScores?: AssertionScore[]` | Never flattened into the top-level scores list (RES‑29). |
-| Two new deterministic modes | `CodeCheckMode`: `"not_equals"`, `"contains_html"` | RES‑30. |
-| Real external prompt identity | `SpecProject.psProjectId`, `.promptDisplayName`; `Target.psVersionId` | RES‑5 — carries the *real* Prompt-Management project/version ids through to the Results page, distinct from this system's own internal ids. |
-| Multi-variant run | `RunGroup.comparison?: { variants: RunVariant[] }` | RES‑42 — one run, N prompt variants, same dataset + same assertion set only (see §8). |
-
----
-
-## 6. Demo scenarios
-
-Five seeded Specs, each prefixed `"Scenario N — …"` in the Specs/Runs lists, each built to exercise
-a specific data shape. §2.3 explains what's real vs. invented in each.
-
-| # | Spec name(s) | Shape | Exercises |
-|---|---|---|---|
-| 1 | *Compliance chat, 14 assertions* · *Intake bot, 7 inputs & n/a checks* · *Pet-service greeter, 4 inputs* | One prompt, no reference output | Base single-run table/panel; many-assertion density; multi-variable inputs; per-row n/a assertions (RES‑25); a synthetic Error row (RES‑11) |
-| 2 | *Intake bot, 3-prompt comparison* | 3 prompt variants, same dataset+assertions, no reference output | The whole comparison view (§4.I) — table, charts, filters, panel |
-| 3 | *Pricing-help detector (boolean ref)* · *Contact-preference classifier (enum ref)* | One prompt, **with** a reference output | Reference Output column's presence-based default (RES‑19); a boolean-style and an enum-style reference value |
-| 4 | *Category/lead classifier, 100 rows* | One prompt, many rows (100+), many input variables, with reference output | Table performance/density at scale; column crowding decisions; a synthetic Error row mid-dataset |
-| 5 | *Funnel headlines, grouped & new check types* | One prompt, 8 rows, fully invented (§2.3) | `not-equals`, `contains-html` (RES‑30); a 3-child weighted composite assertion (RES‑29), including the specific case of "one sub-check fails but the group still passes" |
-
-### 6.5 Scenario 5, in detail — the one to study for RES‑29/30
-
-A fully invented "funnel-page headline generator": given a service category (e.g. "Divorce
-Lawyer"), the prompt writes an `<h1>` headline and a one-line meta description. Its assertion set:
-
-1. `contains-html` (deterministic) — output must include an `<h1>` tag.
-2. `not-equals` (deterministic) — headline must not be the generic templated fallback for that row's
-   category (demonstrating a `{{var}}`-templated deterministic check value).
-3. **"H1 tag quality score"** (composite/grouped) — equal-weighted average of 3 children:
-   an H1-length check (30–70 chars, custom code), a category-keyword check (custom code), and a
-   tone check ("benefit-led, not clickbait", LLM rubric) — group threshold 0.6.
-4. "Meta description is compelling and specific" (LLM rubric, standalone).
-
-The 8 rows deliberately isolate different failure patterns — worth opening each one in the detail
-panel:
-- 2 rows where every metric passes cleanly.
-- 1 row that fails *only* `contains-html` (model dropped the `<h1>` tag) with everything else,
-  including the group, passing — proving metrics are scored independently.
-- 1 row that fails *only* `not-equals` (regenerated the exact fallback headline) similarly isolated.
-- 2 rows where the group fails, via different combinations of its 3 children failing.
-- **1 row where the group's keyword sub-check fails but the group still passes overall** — because
-  the weighted average of its 3 children (2 passing, 1 failing) still clears the 0.6 threshold.
-  This is the single most important row in the whole prototype to point at when explaining RES‑29
-  to anyone who hasn't internalized what "weighted" buys you over "all children must pass."
+- A single check's result on a single test case must be able to be marked **not applicable**,
+  distinct from pass or fail, and excluded from every pass-rate calculation everywhere (RES‑26).
+- A test case's run must be able to record a **hard error** (nothing could be scored) as a third,
+  distinct outcome from pass/fail (RES‑11).
+- A named check must be able to be a **weighted combination of several smaller checks**, each
+  possibly of a different kind, with its own pass bar, and the ability to report both its own
+  single aggregate result and the full breakdown of its parts (RES‑30).
+- Two additional standard, built-in check types are needed: "must not equal a given value" and
+  "must contain valid markup for a given element" (RES‑31).
+- The system must be able to carry the **real, externally-meaningful identity** of the prompt and
+  version a run evaluated — not only an internal label — so the results page can always show
+  genuine identity (RES‑5).
+- A single run must be able to represent **several prompt variants evaluated together** against
+  the identical test cases and identical checks, so a comparison is one run, not several
+  separately-run results stitched together after the fact (RES‑43).
 
 ---
 
-## 7. Explicitly out of scope for this round
+## 6. Explicitly out of scope for this round
 
 Called out so nothing here gets accidentally scoped into a story:
 
-- **Authoring new composite/grouped assertions.** The Results page fully *displays* assert-set
-  groups (RES‑29); the separate assertion-authoring screen was **not** extended to let a user build
-  or edit a group from scratch (add/remove children, set weights/threshold via UI). Scenario 5's
-  group was hand-built directly in seed data, not through the authoring UI.
-- **A deeper, AI-generated review pass.** The free heuristic "review this first" / "worth
-  improving" picks (RES‑8) are built and real; an LLM-backed, opt-in *deeper* analysis pass beyond
-  that heuristic was discussed and explicitly deferred — not built, not stubbed with fake output.
-- **Real model calls / real judge grading on this page.** Every score in every Scenario is seeded,
-  not computed against a live model or a live LLM judge. The scoring *engine* (pass/fail logic,
-  weighted-average aggregation) is real and reusable; the *inputs* to it (what the model actually
-  said) are not live.
-- **Per-row-varying assertion sets.** A run's assertion set is fixed for the whole run — Promptfoo
-  configs where different dataset rows are checked against genuinely different assertions were
-  identified as a real pattern in the config-export coverage check but are **not** supported here;
-  the closest equivalent covered is a fixed assertion set where some assertions are `n/a` for some
-  rows (RES‑25), which is a different (and much more common, per the coverage check) case.
-- **Comparisons across different assertion sets.** RES‑42's comparison view requires every variant
-  to share the same dataset *and* the same assertion set. Comparing two prompts that were graded
-  differently isn't supported.
-- **A charting library.** RES‑43's charts are deliberately minimal, dependency-free SVG — fine for
-  3 chart types at this scale; revisit if comparison views grow more chart types.
-- **Real cost/latency/token metering.** See RES‑49 — the *shape* (where these numbers appear, when
-  they're hidden) is the requirement; the numbers themselves are estimates.
+- **Building/editing a weighted or composite check from scratch through a UI.** This document
+  requires the results page to fully *display* one correctly (RES‑30); it does not require the
+  check-authoring experience to gain the ability to construct one.
+- **A deeper, AI-generated review pass.** The free, instant "review this first" guidance (RES‑8)
+  is required; a richer, opt-in AI-assisted analysis beyond that was discussed and is explicitly
+  deferred, not required for this round.
+- **Real-time model or AI-judge grading on this page.** The scoring *rules* in §4/§5 are the
+  requirement; live grading against a real model, in real time, is not part of this page's scope.
+- **Test cases checked against genuinely different checks per test case within one run.** A run's
+  set of checks is fixed for the whole run. The closest supported case is a fixed check set where
+  some checks legitimately don't apply to some test cases (RES‑26) — a different, and more common,
+  situation than truly varying which checks run per test case.
+- **Comparing variants that were graded with different checks.** RES‑43 requires the same test
+  cases *and* the same checks across every variant being compared.
+- **Real, metered cost/latency/token usage.** RES‑50 requires these to read as estimates; wiring
+  up real measured usage is separate future work.
 
 ---
 
-## 8. Open questions / decisions engineering should make explicitly
+## 7. Open questions for whoever scopes this next
 
-- **RES‑29's data model.** As flagged inline: we deliberately avoided adding a 4th assertion-tier
-  value to sidestep this prototype's existing exhaustive-switch surface area. A real backend
-  starting fresh (or with a less tightly-coupled tier enum) may reasonably model "group" as a true
-  first-class type instead of an orthogonal `children` property. Worth a short design spike before
-  committing to a shape.
-- **Unequal weighting.** The data model supports per-child `weight`, but Scenario 5 only
-  demonstrates equal weights (all `1`). Confirm whether unequal weighting is a real near-term need
-  (real-world configs found during the coverage check did use it) before deciding how much UI
-  affordance a weight-editing story deserves.
-- **Per-row-varying assertions** (see §7) — flagged as a real pattern (~11% of configs in the
-  coverage check used per-test assertions) but out of scope here. Worth its own requirements pass
-  if it turns out to be common in the eval configs this will actually need to support.
-- **Nested groups.** Children are scored one level deep only (a child's own `children`, if any,
-  are ignored) — no real-world example needed a group-of-groups, so this wasn't built. Flag if the
-  real system's configs ever nest deeper.
+- **Unequal weighting inside a composite check.** The requirement (RES‑30) allows it, and it's a
+  documented real-world need, but the prototype's own example only demonstrates equal weighting.
+  Worth confirming how much of a priority actual unequal-weight configuration deserves.
+- **Checks that vary per test case within a single run** (§6) — a real pattern seen in about one
+  in ten real eval configurations reviewed, but out of scope here. Worth its own requirements pass
+  if it turns out to matter more than that.
+- **Composite checks nested inside other composite checks.** Not required here — no real example
+  needed it — but worth flagging if it turns out to be a real need later.
 
 ---
 
-## 9. Glossary
+## 8. Glossary
 
-- **Run / RunGroup** — one execution of a Spec's assertion suite against its dataset, producing one
-  `RunItemResult` per dataset row (or, for a comparison run, one per row *per variant*).
-- **Comparison run** — a single `RunGroup` whose `comparison.variants` holds 2+ prompt variants
-  scored against the *same* dataset and assertion set (RES‑42).
-- **Assertion / Metric** — used interchangeably in the UI (renamed from "Check" — RES‑22); one
-  named pass/fail (or scored) test applied to every row.
-- **Tier** — an assertion's cost class: `deterministic` (built-in parameterized check, no LLM call),
-  `custom_code` (user function), `rubric_grading` (LLM-as-judge) — cheapest-first, matching the
-  existing assertion-authoring screen's own ordering.
-- **Composite / grouped assertion / assert-set** — Promptfoo's term for several weighted sub-checks
-  rolled into one named metric with its own pass threshold (RES‑29).
-- **n/a (not applicable)** — a score explicitly excluded from pass/fail accounting because the
-  check didn't apply to that particular row (RES‑25) — distinct from a hard row-level `error`
-  (RES‑11).
-- **Sample run** — a run that only scored a chosen subset of the dataset (see
-  [`requirements/05-runs-and-results.md`](05-runs-and-results.md), RUN‑12), surfaced as a distinct
-  badge in the summary header (RES‑4) instead of the usual full-run framing.
+- **Run** — one execution of a prompt's full set of checks against its test cases. A **comparison
+  run** is a single run where several prompt variants were evaluated together against the same
+  test cases and the same checks (RES‑43).
+- **Check / Metric** — used interchangeably (the page itself always says "Metric," RES‑23); one
+  named pass/fail (or scored) test applied to every test case.
+- **Check kind** — a simple built-in check (no AI involved), custom logic, an AI-judged check, or a
+  weighted/composite check (RES‑30) — ordered roughly cheapest/simplest to most expensive, matching
+  how checks are already classified when they're authored.
+- **Composite / weighted check** — a single named check that's really several smaller checks
+  averaged together with individual weights, passing once that average clears a set bar (RES‑30).
+- **Not applicable (n/a)** — a check result explicitly excluded from pass/fail accounting because
+  the check didn't make sense for that particular test case (RES‑26) — distinct from a hard
+  **error** on that test case (RES‑11).
+- **Sample run** — a run that only scored a chosen subset of the test cases rather than all of
+  them, flagged distinctly in the summary header (RES‑4).
