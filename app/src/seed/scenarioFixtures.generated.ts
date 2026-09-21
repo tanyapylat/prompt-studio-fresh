@@ -30,7 +30,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Appliance_Repair | Large-appliance_repair\",\"isHiLead\":true,\"reasoning\":\"The conversation is about an Electrolux oven with an unresponsive control panel, which is a large kitchen appliance. The problem fits squarely under 'Large-appliance_repair' within Appliance_Repair.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -51,7 +51,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Appliance_Repair | Large-appliance_repair\",\"isHiLead\":true,\"reasoning\":\"The main issue is a seized fan assembly in an under-counter GE refrigerator/ice maker, which falls under Appliance Repair. Since it involves a refrigerator, the correct sub-category is Large-appliance_repair.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -72,7 +72,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Appliance_Repair | Large-appliance_repair\",\"isHiLead\":true,\"reasoning\":\"The conversation is about a GE oven (a large kitchen appliance) not cooking food evenly. The primary issue is repair of a large appliance, specifically an oven, which fits best under 'Large-appliance_repair.'\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -93,7 +93,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Appliance_Repair | Large-appliance_repair\",\"isHiLead\":true,\"reasoning\":\"The conversation is primarily about a GE dryer emitting a burning smell, which is a large household appliance issue. The problem clearly concerns repair of a large appliance, thus the sub-category best fit is Large-appliance_repair.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -114,7 +114,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Appliance_Repair | Large-appliance_repair\",\"isHiLead\":true,\"reasoning\":\"The conversation is centered on troubleshooting and resolving a noise and damper issue with a GE Monogram refrigerator, which clearly falls under Appliance_Repair. Refrigerator repair is best categorized as Large-appliance_repair.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -135,7 +135,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"HVAC | Thermostats_and_controls\",\"isHiLead\":true,\"reasoning\":\"The main issue discussed is a Honeywell thermostat not controlling the heat properly, suspected to be due to a wiring issue, which fits under HVAC. The specific sub-category is Thermostats_and_controls due to the focus on the thermostat device.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -156,7 +156,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Appliance_Repair | Large-appliance_repair\",\"isHiLead\":true,\"reasoning\":\"The conversation is primarily about a Samsung refrigerator leaking around the filter area, which is a large appliance repair issue. 'Large-appliance_repair' is the most appropriate sub-category as it directly involves troubleshooting and fixing the refrigerator leak.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -177,7 +177,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Appliance_Repair | Large-appliance_repair\",\"isHiLead\":true,\"reasoning\":\"The conversation is about an issue with the top heating element in a Bosch oven, which qualifies as a large appliance repair under Appliance_Repair. Oven repairs involving elements are classified as Large-appliance_repair.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -198,7 +198,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Appliance_Repair | Large-appliance_repair\",\"isHiLead\":true,\"reasoning\":\"The conversation is about troubleshooting a new GE ice maker, which is a large appliance. The issue described fits under large-appliance repair within the Appliance_Repair category.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -219,7 +219,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Electrical | Electrical_troubleshooting_and_repair\",\"isHiLead\":true,\"reasoning\":\"The user needs guidance on wiring a power cord for a space heater, which is an electrical troubleshooting and repair issue. The focus is directly on determining correct wiring connections, making 'Electrical | Electrical_troubleshooting_and_repair' the best fit.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -240,7 +240,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Appliance_Repair | Small-appliance_repair\",\"isHiLead\":true,\"reasoning\":\"The conversation concerns a malfunction of a Westbend Popcorn Popper, a countertop appliance, with parts falling off. 'Small-appliance_repair' is chosen as it is not a large household appliance but requires repair due to loose components.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -261,7 +261,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Appliance_Repair | Large-appliance_repair\",\"isHiLead\":true,\"reasoning\":\"The conversation is about a Kenmore washer (a large home appliance) that is not powering on, indicating a need for appliance repair. The issue involves a washer, which clearly fits under 'Large-appliance_repair'.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -282,7 +282,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Appliance_Repair | Large-appliance_repair\",\"isHiLead\":true,\"reasoning\":\"The conversation is about a GE washer dryer combo, a large household appliance, not working as expected. The issue concerns its lint filter confirmation, fitting best under Large-appliance_repair.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -303,7 +303,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Appliance_Repair | Other\",\"isHiLead\":true,\"reasoning\":\"The conversation is about getting instructions on using the air fry function on a GE oven, which falls under Appliance_Repair. As the user only needs operational guidance and not repair, installation, or maintenance, 'Other' is the best-fitting sub-category.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -324,7 +324,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Appliance_Repair | Large-appliance_repair\",\"isHiLead\":true,\"reasoning\":\"The conversation is about a Kenmore clothes dryer that stops unexpectedly, which is a large appliance, and focuses on diagnosing and repairing it. This fits under Appliance_Repair | Large-appliance_repair since it involves troubleshooting a major household appliance.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -345,7 +345,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Windows | Other\",\"isHiLead\":true,\"reasoning\":\"The conversation centers on issues with cold windows and the inability to fix or secure them, fitting the Windows parent category. No specific sub-category such as repair or replacement is explicitly mentioned, so 'Other' is the best fit.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -366,7 +366,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Appliance_Repair | Large-appliance_repair\",\"isHiLead\":true,\"reasoning\":\"The main issue discussed is the non-functioning ice maker on an LG refrigerator, a classic large appliance repair issue. The air filter replacement is also a refrigerator maintenance task, supporting this sub-category.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -387,7 +387,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Appliance_Repair | Small-appliance_repair\",\"isHiLead\":true,\"reasoning\":\"The conversation centers around diagnosing and repairing a malfunctioning DeWalt drill, which is a small appliance or power tool; thus, 'Appliance_Repair' is the appropriate parent and 'Small-appliance_repair' matches best.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -408,7 +408,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Appliance_Repair | Small-appliance_repair\",\"isHiLead\":true,\"reasoning\":\"The conversation is about troubleshooting a cast iron skillet, which is a small kitchen appliance. The most fitting category is Appliance_Repair and the sub-category is Small-appliance_repair as the issue involves cleaning/maintenance guidance for a specific cooking pan.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -429,7 +429,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Appliance_Repair | Large-appliance_repair\",\"isHiLead\":true,\"reasoning\":\"The conversation centers on a GE front load washing machine that has lost power, which is a major household appliance. The user is seeking repair for a non-functioning unit, making 'Appliance_Repair' the parent category and 'Large-appliance_repair' the most fitting sub-category.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -450,7 +450,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Plumbing | Gas-line_plumbing\",\"isHiLead\":true,\"reasoning\":\"The conversation centers on running a gas line for a new range during a kitchen remodel, specifically discussing reusing a trench; this falls under Plumbing, and 'Gas-line_plumbing' is the most precise sub-category.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -471,7 +471,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Appliance_Repair | Large-appliance_repair\",\"isHiLead\":true,\"reasoning\":\"The user describes a problem with a large appliance (Dacor IVS1) that makes noise but does not work, indicating the need for appliance repair. It fits best under Large-appliance_repair as it is not a small appliance and not about installation or maintenance.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -492,7 +492,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Appliance_Repair | Large-appliance_repair\",\"isHiLead\":true,\"reasoning\":\"The conversation centers on troubleshooting a GE washer after a control board replacement, which is a large appliance. The issue is specific to repair and reprogramming, making 'Large-appliance_repair' the best fitting sub-category.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -513,7 +513,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Appliance_Repair | Large-appliance_repair\",\"isHiLead\":true,\"reasoning\":\"The conversation is about a GE refrigerator experiencing rising temperature and louder operation, indicating a repair need for a large home appliance. 'Large-appliance_repair' is the best fit sub-category for this type of refrigerator issue.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -534,7 +534,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Appliance_Repair | Large-appliance_repair\",\"isHiLead\":true,\"reasoning\":\"The conversation centers on troubleshooting an E5 error for a Cleveland Iron Works stove, which is a large home appliance, and the issue is its malfunction. 'Large-appliance_repair' is the most accurate sub-category as the user is seeking diagnosis and repair assistance for this appliance.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -555,7 +555,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Other\",\"isHiLead\":false,\"reasoning\":\"The conversation is about a Crosley turntable (audio equipment), which is not covered by any home-improvement parent category and is a consumer electronic device. Thus, it falls under 'Other', not Appliance_Repair.\"}",
           "status": "FAIL",
           "score": 0.75,
-          "metricScores": [
+          "assertionScores": [
             1,
             0,
             1,
@@ -576,7 +576,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Other\",\"isHiLead\":false,\"reasoning\":\"The conversation is about automotive repair for a Honda Accord, specifically a leaking fuel hose, which does not fall within any defined home improvement parent categories and is therefore classified as Other.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -597,7 +597,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Appliance_Repair | Small-appliance_repair\",\"isHiLead\":true,\"reasoning\":\"The conversation is about troubleshooting a blade locking issue in a BOSCH JS260 jigsaw, which is a small appliance. The sub-category 'Small-appliance_repair' fits best since it's about repair and usage of a handheld power tool.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -618,7 +618,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Appliance_Repair | Other\",\"isHiLead\":true,\"reasoning\":\"The main issue is with a Bosch dishwasher not connecting to the Home Connect app, which is an appliance connectivity/setup problem. None of the specific sub-categories (repairs, installation, maintenance) fit, so 'Other' is most appropriate.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -639,7 +639,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Appliance_Repair | Large-appliance_repair\",\"isHiLead\":true,\"reasoning\":\"The conversation is about troubleshooting and repairing a Kenmore washer, which is a large household appliance. The sub-category 'Large-appliance_repair' fits best as it involves diagnosing an error code and a non-functioning washer.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -660,7 +660,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Appliance_Repair | Large-appliance_repair\",\"isHiLead\":true,\"reasoning\":\"The conversation centers around troubleshooting and repairing an AirCare humidifier, which is a household appliance. It best fits under Appliance_Repair, specifically Large-appliance_repair since humidifiers are considered larger appliances.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -681,7 +681,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Other\",\"isHiLead\":false,\"reasoning\":\"The entire conversation centers on troubleshooting Roku televisions (a technology product), including setup, rebooting, and related account/password issues. As per instructions, anything involving TV hardware, remotes, or streaming platforms is categorized as 'Other,' which excludes it from home improvement lead qualification.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -702,7 +702,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Plumbing | Water-heater_services\",\"isHiLead\":true,\"reasoning\":\"The main issue is the user has no hot water and is discussing the details of a water heater, making Plumbing the correct parent. Water-heater_services fits best as the subcategory for this repair issue.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -723,7 +723,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Appliance_Repair | Small-appliance_repair\",\"isHiLead\":true,\"reasoning\":\"The conversation centers around troubleshooting a sewing machine (Bernette 46), which is a small household appliance. The specific sub-category is Small-appliance_repair, as the user wants help with a functional task involving the sewing machine.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -744,7 +744,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Appliance_Repair | Large-appliance_repair\",\"isHiLead\":true,\"reasoning\":\"The main issue is with a Bosch dishwasher, specifically needing to remove spray arms and addressing a machine care light—both mechanical and operational concerns. This fits Appliance_Repair, and for a dishwasher (a major appliance), Large-appliance_repair is the closest sub-category.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -765,7 +765,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"HVAC | Heating_and_furnace_repair\",\"isHiLead\":true,\"reasoning\":\"The conversation concerns an emergency heat issue with a Honeywell HVAC zone board and a new heating element, indicating a furnace or heating malfunction—best classified under HVAC and specifically Heating_and_furnace_repair.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -786,7 +786,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Appliance_Repair | Small-appliance_repair\",\"isHiLead\":true,\"reasoning\":\"The conversation is about troubleshooting a non-working indoor/outdoor thermometer, which is a small appliance. None of the large appliance categories fit, so 'Small-appliance_repair' is the best sub-category under Appliance_Repair.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -807,7 +807,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Appliance_Repair | Large-appliance_repair\",\"isHiLead\":true,\"reasoning\":\"The conversation is about replacing a Samsung ice maker, which is a large appliance issue. The sub-category 'Large-appliance_repair' fits best as it relates to a refrigerator ice maker replacement.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -828,7 +828,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Plumbing | Fixture_repair_and_installation\",\"isHiLead\":true,\"reasoning\":\"The user is dealing with a leaking faucet and seeking help with cartridge replacement, which falls under Plumbing, specifically Fixture_repair_and_installation as it involves a faucet component.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -849,7 +849,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Appliance_Repair | Large-appliance_repair\",\"isHiLead\":true,\"reasoning\":\"The conversation is about a Crosley ice maker (part of a refrigerator), a major kitchen appliance, not working. This fits Appliance_Repair as parent and Large-appliance_repair as sub-category since it's a refrigerator ice maker.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -870,7 +870,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Appliance_Repair | Large-appliance_repair\",\"isHiLead\":true,\"reasoning\":\"The user is reporting an issue with a Maytag dryer not heating properly, which is a large household appliance; the problem is about repair rather than installation or maintenance.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -891,7 +891,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Appliance_Repair | Small-appliance_repair\",\"isHiLead\":true,\"reasoning\":\"The conversation is about getting instructions to clean and remove the cover from a Clarefion Mini Air Purifier, which is a small appliance. The best fit is Appliance_Repair under Small-appliance_repair as it deals with maintenance or repair of a small home appliance.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -912,7 +912,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Electrical | Electrical_troubleshooting_and_repair\",\"isHiLead\":true,\"reasoning\":\"The main breaker tripping issue involves home electrical systems and falls under the Electrical parent category. As the user describes a circuit/electrical problem without specifying panel upgrade or installation, 'Electrical_troubleshooting_and_repair' is the most appropriate sub-category.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -933,7 +933,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Appliance_Repair | Small-appliance_repair\",\"isHiLead\":true,\"reasoning\":\"The primary issue is a home scent diffuser not working, which is a small appliance. 'Small-appliance_repair' fits best as it's not a major household appliance, but still a repair request.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -954,7 +954,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Appliance_Repair | Large-appliance_repair\",\"isHiLead\":true,\"reasoning\":\"The conversation centers on troubleshooting a Genkins generator, which is a large appliance. The issue relates to the battery not providing power, fitting best under large-appliance repair.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -975,7 +975,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"HVAC | Thermostats_and_controls\",\"isHiLead\":true,\"reasoning\":\"The conversation is about jumper wiring information for a Honeywell thermostat, directly relating to thermostats under HVAC. Sub-category 'Thermostats_and_controls' fits as the inquiry is about thermostat installation wiring.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -996,7 +996,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Appliance_Repair | Large-appliance_repair\",\"isHiLead\":true,\"reasoning\":\"The conversation is about a Whirlpool refrigerator not dispensing ice, which is a large appliance issue. The specific problem fits under large-appliance repair as it concerns a malfunction in a home refrigerator.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -1017,7 +1017,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Appliance_Repair | Small-appliance_repair\",\"isHiLead\":true,\"reasoning\":\"The conversation is about troubleshooting and potentially servicing a Baby Lock sewing machine, which is a small appliance. The specific issue involves mechanical performance, fitting best under small-appliance repair within Appliance_Repair.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -1038,7 +1038,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Appliance_Repair | Large-appliance_repair\",\"isHiLead\":true,\"reasoning\":\"The conversation is about troubleshooting an E2 error on a Criterion dishwasher, which is a large household appliance. 'Large-appliance_repair' fits best, as no installation or maintenance request is made, only repair.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -1059,7 +1059,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Other\",\"isHiLead\":false,\"reasoning\":\"The conversation is about obtaining a user manual and general guidance for a DYMO label maker, which is a consumer electronic device and not related to home improvement services or any listed trade category.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -1080,7 +1080,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Appliance_Repair | Large-appliance_repair\",\"isHiLead\":true,\"reasoning\":\"The conversation is about a home dishwasher (large appliance) not draining, which clearly fits under Appliance_Repair as a Large-appliance_repair. No mention of installation, maintenance, or small appliances.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -1101,7 +1101,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Other\",\"isHiLead\":false,\"reasoning\":\"The user is seeking help downloading a user manual from the Maytag website and understanding digital content, which is a technology/service/platform support issue, not a home improvement service.\"}",
           "status": "FAIL",
           "score": 0.75,
-          "metricScores": [
+          "assertionScores": [
             1,
             0,
             1,
@@ -1122,7 +1122,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Appliance_Repair | Other\",\"isHiLead\":true,\"reasoning\":\"The conversation concerns locating a component (battery compartment) on a Mister Heater Big Buddy, which is a portable heating appliance. This fits under Appliance_Repair, but the issue is not specifically about repair, installation, or maintenance, so 'Other' is most accurate.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -1143,7 +1143,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Appliance_Repair | Large-appliance_repair\",\"isHiLead\":true,\"reasoning\":\"The conversation is about a Speed Queen washer with a lid lock problem, which is a large appliance issue. 'Large-appliance_repair' best fits as it directly addresses repair of washing machines.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -1164,7 +1164,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Appliance_Repair | Large-appliance_repair\",\"isHiLead\":true,\"reasoning\":\"The conversation is about identifying the filter location in a GE dishwasher, which is a large home appliance. The sub-category Large-appliance_repair fits because dishwashers are considered large appliances and the inquiry is about maintenance and troubleshooting.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -1185,7 +1185,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"HVAC | Thermostats_and_controls\",\"isHiLead\":true,\"reasoning\":\"The conversation centers on a Honeywell thermostat issue causing the furnace to restart frequently. This is best categorized under HVAC and specifically 'Thermostats_and_controls' because the problem is related to thermostat operation and control rather than the furnace hardware itself.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -1206,7 +1206,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Appliance_Repair | Large-appliance_repair\",\"isHiLead\":true,\"reasoning\":\"The conversation is about troubleshooting a Whirlpool dishwasher with a control lock issue, which is a large appliance. The issue is about repair, not installation or maintenance, so 'Large-appliance_repair' under 'Appliance_Repair' is the best fit.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -1227,7 +1227,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Appliance_Repair | Large-appliance_repair\",\"isHiLead\":true,\"reasoning\":\"The issue is with a Whirlpool refrigerator, a major home appliance, specifically its stuck water filter. This clearly falls under Appliance_Repair, and since it's a refrigerator, the sub-category is Large-appliance_repair.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -1248,7 +1248,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Appliance_Repair | Large-appliance_repair\",\"isHiLead\":true,\"reasoning\":\"The conversation is about a Generac generator displaying an over crank error message, which relates to diagnosing and repairing a large appliance (generator); thus, the sub-category 'Large-appliance_repair' is most appropriate.\"}",
           "status": "FAIL",
           "score": 0.75,
-          "metricScores": [
+          "assertionScores": [
             1,
             0,
             1,
@@ -1269,7 +1269,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Appliance_Repair | Large-appliance_repair\",\"isHiLead\":true,\"reasoning\":\"The customer's issue is with a lift chair, which is considered a large home appliance. The problem involves inconsistent button function, matching the description of a needed repair for a large appliance, not installation or maintenance.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -1290,7 +1290,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Appliance_Repair | Large-appliance_repair\",\"isHiLead\":true,\"reasoning\":\"The conversation is about a malfunctioning dishwasher switching cycles and not cleaning properly, which is a large household appliance repair issue. The sub-category 'Large-appliance_repair' fits best as it directly relates to repairing major appliances like dishwashers.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -1311,7 +1311,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"HVAC | Heat-pump_services\",\"isHiLead\":true,\"reasoning\":\"The conversation centers around a heat pump system (Samsung) that is overheating and not responding to thermostat controls, which is an HVAC issue. 'Heat-pump_services' is the best sub-category, as the problem is specific to the heat pump's function and not general HVAC maintenance or other sub-categories.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -1332,7 +1332,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Appliance_Repair | Large-appliance_repair\",\"isHiLead\":true,\"reasoning\":\"The conversation centers on a homeowner needing replacement keys for a Generac standby generator. Since a standby generator is a large household appliance, this fits under Appliance_Repair, with Large-appliance_repair as the best sub-category since it involves a generator used for home backup power.\"}",
           "status": "FAIL",
           "score": 0.75,
-          "metricScores": [
+          "assertionScores": [
             1,
             0,
             1,
@@ -1353,7 +1353,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Other\",\"isHiLead\":false,\"reasoning\":\"The conversation focuses on diagnosing a no-spark issue with a Kohler small engine, which is an outdoor power equipment engine, not a home appliance nor a home system. This does not fit any of the specified home improvement parent categories.\"}",
           "status": "FAIL",
           "score": 0.75,
-          "metricScores": [
+          "assertionScores": [
             1,
             0,
             1,
@@ -1374,7 +1374,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Appliance_Repair | Appliance_installation_and_replacement\",\"isHiLead\":true,\"reasoning\":\"The conversation is about a brand new Bosch dishwasher that was just installed but will not start; this relates primarily to appliance installation and troubleshooting. The best fit is Appliance_Repair with Appliance_installation_and_replacement as the sub-category since the issue concerns a newly installed appliance not functioning.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -1395,7 +1395,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Appliance_Repair | Large-appliance_repair\",\"isHiLead\":true,\"reasoning\":\"The customer describes an issue with flames being too large in their GE XL44 oven, which is a major household appliance, and troubleshooting around it. Thus, Appliance_Repair is the parent, and Large-appliance_repair fits best as the oven is a large appliance.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -1416,7 +1416,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"HVAC | Thermostats_and_controls\",\"isHiLead\":true,\"reasoning\":\"The conversation centers on a Honeywell thermostat that won't stop running after hitting the set temperature, a clear issue with thermostat controls, making 'HVAC' the parent and 'Thermostats_and_controls' the best sub-category.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -1437,7 +1437,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Garage_Doors | Garage-door_openers\",\"isHiLead\":true,\"reasoning\":\"The conversation centers on programming a new remote for a Linear LDO50, which is a garage door opener. The 'Garage-door_openers' sub-category is most applicable as the issue involves remote programming for the opener, not the door or hardware.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -1458,7 +1458,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Appliance_Repair | Large-appliance_repair\",\"isHiLead\":true,\"reasoning\":\"The main issue discussed is a malfunctioning Maytag washing machine (a large home appliance). The conversation centers around troubleshooting and repairing this appliance, clearly fitting 'Large-appliance_repair' under Appliance_Repair.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -1479,7 +1479,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"HVAC | Thermostats_and_controls\",\"isHiLead\":true,\"reasoning\":\"The conversation focuses on a Honeywell thermostat failing to reliably start a furnace, which fits the HVAC parent category. The sub-category 'Thermostats_and_controls' is most appropriate as the core issue is with the operation and control of the thermostat unit.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -1500,7 +1500,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Appliance_Repair | Small-appliance_repair\",\"isHiLead\":true,\"reasoning\":\"The conversation is about troubleshooting a Dyson V11 vacuum, which is a small appliance. The user's main issue is the vacuum not charging, which is best categorized as small-appliance repair under Appliance_Repair.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -1521,7 +1521,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Appliance_Repair | Large-appliance_repair\",\"isHiLead\":true,\"reasoning\":\"The issue is about a Samsung refrigerator malfunctioning after a power outage, which is a large appliance repair scenario. The conversation is specifically about troubleshooting and resolving error codes on a large kitchen appliance.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -1542,7 +1542,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Appliance_Repair | Large-appliance_repair\",\"isHiLead\":true,\"reasoning\":\"The conversation centers on difficulty replacing a water filter in a Samsung refrigerator, which is considered a large appliance. The issue is with a repair/replacement step for the fridge, fitting the Large-appliance_repair sub-category under Appliance_Repair.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -1563,7 +1563,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Appliance_Repair | Large-appliance_repair\",\"isHiLead\":true,\"reasoning\":\"The conversation is about a GE Power Steam washer that has no power and a locked door, which is clearly a large home appliance issue. 'Large-appliance_repair' is the most suitable sub-category as it deals with major appliance repair, covering the washer in question.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -1584,7 +1584,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Appliance_Repair | Large-appliance_repair\",\"isHiLead\":true,\"reasoning\":\"This conversation is about a GE washer not turning on, which is a major home appliance issue. The sub-category 'Large-appliance_repair' fits best since it involves diagnosing and repairing a broken washing machine.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -1605,7 +1605,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Appliance_Repair | Large-appliance_repair\",\"isHiLead\":true,\"reasoning\":\"The conversation is about troubleshooting and repairing a non-working Whirlpool washing machine, which is a large home appliance. The 'Large-appliance_repair' sub-category fits as it involves diagnosing and seeking repair for a full-size washer.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -1626,7 +1626,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Other\",\"isHiLead\":false,\"reasoning\":\"The issue is related to downloading apps on a TV and managing a Roku PIN, which falls under use of a technology platform/app/streaming service or television hardware, both of which map to the 'Other' parent category as per the instructions.\"}",
           "status": "FAIL",
           "score": 0.75,
-          "metricScores": [
+          "assertionScores": [
             1,
             0,
             1,
@@ -1647,7 +1647,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Appliance_Repair | Large-appliance_repair\",\"isHiLead\":true,\"reasoning\":\"The conversation centers on a recurring ice buildup issue with a Kenmore refrigerator (a large home appliance). The most appropriate fit is Large-appliance_repair as the problem is specific to the refrigerator and ice maker functions.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -1668,7 +1668,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Appliance_Repair | Large-appliance_repair\",\"isHiLead\":true,\"reasoning\":\"The conversation is about a malfunctioning Jenn-Air oven keypad, which is a large home appliance, and the issue requires repair. 'Large-appliance_repair' is most appropriate since the problem is with the oven's control panel, not a small appliance or installation.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -1689,7 +1689,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Garage_Doors | Garage-door_openers\",\"isHiLead\":true,\"reasoning\":\"The conversation is focused on a Genie garage door opener that clicks but will not start, indicating a garage door opener issue. The sub-category 'Garage-door_openers' directly matches the described problem.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -1710,7 +1710,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Appliance_Repair | Large-appliance_repair\",\"isHiLead\":true,\"reasoning\":\"The conversation is about a GE stove with ignitors that won't stop clicking. This qualifies as a large appliance issue, specifically a repair situation, fitting the Large-appliance_repair sub-category.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -1731,7 +1731,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Appliance_Repair | Small-appliance_repair\",\"isHiLead\":true,\"reasoning\":\"The conversation centers on troubleshooting a non-functioning sprayer of a Shark Vac Mop, which is a small household appliance. 'Small-appliance_repair' is most appropriate because the issue concerns repair of a specific small cleaning device.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -1752,7 +1752,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Appliance_Repair | Large-appliance_repair\",\"isHiLead\":true,\"reasoning\":\"The conversation is about a Samsung refrigerator's ice dispenser issue, which is a large appliance problem. Large-appliance_repair best fits as it specifically concerns a refrigerator malfunction.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -1773,7 +1773,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Appliance_Repair | Other\",\"isHiLead\":true,\"reasoning\":\"The conversation centers on getting support for a GE appliance, which fits Appliance_Repair. No specific repair, installation, or maintenance issue is mentioned, so 'Other' is the proper sub-category.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -1794,7 +1794,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Appliance_Repair | Small-appliance_repair\",\"isHiLead\":true,\"reasoning\":\"The primary issue is with a Bissell carpet cleaner, a portable small appliance, not spraying water properly. This fits under Appliance_Repair, and specifically Small-appliance_repair as the device is a consumer carpet cleaner.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -1815,7 +1815,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Other\",\"isHiLead\":false,\"reasoning\":\"The conversation revolves around a duplicate billing issue for a digital service and difficulties accessing an online account, which aligns with the 'Other' parent category, as it deals with tech platform billing/support rather than home improvement.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -1836,7 +1836,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Appliance_Repair | Small-appliance_repair\",\"isHiLead\":true,\"reasoning\":\"The main issue is with a Keurig K-Duo coffee maker, which is a small appliance, and the user is seeking help to descale it. The sub-category 'Small-appliance_repair' fits best as this is about routine maintenance/repair rather than installation or other issues.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -1857,7 +1857,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Appliance_Repair | Small-appliance_repair\",\"isHiLead\":true,\"reasoning\":\"The conversation centers on troubleshooting and setup issues for a Baby Lock sewing machine, which is a small appliance. No installation or replacement is requested—it's focused on repair/usage help, so small-appliance repair best fits.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -1878,7 +1878,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Other\",\"isHiLead\":false,\"reasoning\":\"The conversation is primarily about an issue with the remote control for a fandelier (fan chandelier). Any issue regarding remotes, especially for fans or TVs, must be classified as 'Other' per the instructions provided, regardless of hardware or installation context.\"}",
           "status": "FAIL",
           "score": 0.75,
-          "metricScores": [
+          "assertionScores": [
             1,
             0,
             1,
@@ -1899,7 +1899,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Garage_Doors | Garage-door_openers\",\"isHiLead\":true,\"reasoning\":\"The conversation is about setting up a Genie universal keypad with a Genie garage door opener, specifically focusing on programming and linking the keypad to the opener, which clearly falls under Garage Doors and specifically Garage-door_openers.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -1920,7 +1920,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Locksmith | Safe_service\",\"isHiLead\":true,\"reasoning\":\"The conversation is about a home safe (SC3877) that the user cannot open due to a dead battery and lack of code. Locksmith is the parent category for safe-related services, and Safe_service is the relevant sub-category since the issue is accessing/servicing a safe.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -1941,7 +1941,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"HVAC | Thermostats_and_controls\",\"isHiLead\":true,\"reasoning\":\"The conversation is about troubleshooting and resetting a Trane HVAC unit, which involves device error codes and thermostat settings. 'Thermostats_and_controls' best fits since the user discusses thermostat setpoints and system errors relating to control.\"}",
           "status": "FAIL",
           "score": 0.75,
-          "metricScores": [
+          "assertionScores": [
             1,
             0,
             1,
@@ -1962,7 +1962,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Appliance_Repair | Small-appliance_repair\",\"isHiLead\":true,\"reasoning\":\"The conversation is about troubleshooting and repairing a Brother LS1217 sewing machine, which falls under small appliance repair within Appliance_Repair. The problem is related to thread and bobbin operation, not installation or general maintenance, so the Small-appliance_repair sub-category is most appropriate.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -1983,7 +1983,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Appliance_Repair | Small-appliance_repair\",\"isHiLead\":true,\"reasoning\":\"The conversation centers around a vacuum cleaner (Shark Rotator), which is a small household appliance, and the issue is weak suction, suggesting repair is needed. This fits best under Appliance_Repair | Small-appliance_repair.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -2004,7 +2004,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Appliance_Repair | Large-appliance_repair\",\"isHiLead\":true,\"reasoning\":\"The conversation is about a malfunctioning washing machine, which is a large household appliance. The issue is with the machine's cycle and drain behavior, fitting the 'Large-appliance_repair' sub-category under Appliance_Repair.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -2025,7 +2025,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Appliance_Repair | Small-appliance_repair\",\"isHiLead\":true,\"reasoning\":\"The conversation is primarily about troubleshooting and repairing a CD player, which qualifies as a small appliance. The sub-category 'Small-appliance_repair' fits best since it's not a large household appliance.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -2046,7 +2046,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Other\",\"isHiLead\":false,\"reasoning\":\"The conversation is about a key card machine, which is a commercial-grade access control system, not a standard home appliance or home-improvement trade; this issue pertains to technology/digital devices and does not align with any home-improvement parent category.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -2067,7 +2067,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"HVAC | Heating_and_furnace_repair\",\"isHiLead\":true,\"reasoning\":\"The conversation centers on a Green Touch heater that is showing an error and will not turn on, which is clearly an issue with a home heating appliance. 'Heating_and_furnace_repair' is the most accurate sub-category as the customer is seeking repair help for a malfunctioning heater.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -2088,7 +2088,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Garage_Doors | Garage-door_openers\",\"isHiLead\":true,\"reasoning\":\"The user is reporting issues specifically with a Genie 7055 garage door opener, including blinking yellow lights and remote malfunction. This clearly falls under Garage Doors, and more specifically, the Garage-door_openers sub-category.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -2109,7 +2109,7 @@ export const evalHbwFixture = {
           "output": "{\"category\":\"Appliance_Repair | Small-appliance_repair\",\"isHiLead\":true,\"reasoning\":\"The conversation is about a Breville air fryer oven, which is considered a small appliance, experiencing paint peeling inside the unit. The issue falls under small appliance repair rather than large appliance categories.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -2162,7 +2162,7 @@ export const lotOfAssertionsFixture = {
           "output": "You can use this discussion to understand what to watch for after she hit her head. Should checking for a concussion be the first focus?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -2193,7 +2193,7 @@ export const lotOfAssertionsFixture = {
           "output": "You can use this discussion to explore ways to handle anxiety before work. Should meetings with your manager be the first focus?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -2224,7 +2224,7 @@ export const lotOfAssertionsFixture = {
           "output": "You can discuss what to try for the rash that has spread onto your chest. Should that be the first focus?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -2255,7 +2255,7 @@ export const lotOfAssertionsFixture = {
           "output": "You can discuss the small amount of spotting when you wipe and what it may mean for your next steps. Should that be the first focus?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -2286,7 +2286,7 @@ export const lotOfAssertionsFixture = {
           "output": "This discussion can help you understand what to do about the burning when you urinate. Should that be the first focus?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -2317,7 +2317,7 @@ export const lotOfAssertionsFixture = {
           "output": "A discussion can help you understand what to consider for a fever around 102. Should that be the first focus?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -2348,7 +2348,7 @@ export const lotOfAssertionsFixture = {
           "output": "You can use this discussion to understand what to do about the pain on the right side. Should that be the first focus?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -2435,7 +2435,7 @@ export const moreThanOneInputFixture = {
           "output": "I’m sorry to hear your car won’t start. What is the make of the car?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             null,
             null,
@@ -2486,7 +2486,7 @@ export const moreThanOneInputFixture = {
           "output": "I’m sorry to hear your 2015 Honda Civic won’t start in the morning. When you turn the key, does the engine crank?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             null,
             null,
@@ -2537,7 +2537,7 @@ export const moreThanOneInputFixture = {
           "output": "I’m sorry to hear your brakes are squealing when you stop. What is the make of your vehicle?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             null,
             null,
@@ -2588,7 +2588,7 @@ export const moreThanOneInputFixture = {
           "output": "I’m sorry to hear your dog has been vomiting blood since last night. How old is your dog?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             null,
@@ -2639,7 +2639,7 @@ export const moreThanOneInputFixture = {
           "output": "I’m sorry to hear your dog’s back leg is swollen. How long has the leg been swollen?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             null,
             1,
@@ -2690,7 +2690,7 @@ export const moreThanOneInputFixture = {
           "output": "I’m sorry to hear that your car has a weird noise, warning light, and pulls left. What warning light is on?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             null,
             null,
@@ -2741,7 +2741,7 @@ export const moreThanOneInputFixture = {
           "output": "When it won’t start, does the engine crank normally?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             null,
             null,
@@ -2792,7 +2792,7 @@ export const moreThanOneInputFixture = {
           "output": "I’m gathering the basics so the Computer Technician can help without repeating questions. What brand is your laptop?",
           "status": "FAIL",
           "score": 0.83,
-          "metricScores": [
+          "assertionScores": [
             1,
             null,
             null,
@@ -2843,7 +2843,7 @@ export const moreThanOneInputFixture = {
           "output": "I’m sorry to hear the key won’t turn in the ignition. What make is the vehicle?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             null,
             null,
@@ -2894,7 +2894,7 @@ export const moreThanOneInputFixture = {
           "output": "I’m sorry to hear your dryer runs but isn’t heating. Is it a gas or electric dryer?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             null,
             null,
@@ -2945,7 +2945,7 @@ export const moreThanOneInputFixture = {
           "output": "I’m sorry you can’t get into your email anymore. Which email service is it, such as Yahoo, Gmail, or Outlook?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             null,
             null,
@@ -2996,7 +2996,7 @@ export const moreThanOneInputFixture = {
           "output": "I’m sorry to hear there’s a burning smell when you use the heater. What is the vehicle’s make?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             null,
             null,
@@ -3047,7 +3047,7 @@ export const moreThanOneInputFixture = {
           "output": "I’m sorry to hear your car is making a grinding noise when braking. What is the car’s make?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             null,
             null,
@@ -3098,7 +3098,7 @@ export const moreThanOneInputFixture = {
           "output": "I’m sorry to hear your dog has been scratching constantly for a few days. How old is your dog?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             null,
             null,
@@ -3149,7 +3149,7 @@ export const moreThanOneInputFixture = {
           "output": "How old are you?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             null,
             null,
@@ -3200,7 +3200,7 @@ export const moreThanOneInputFixture = {
           "output": "I’m sorry to hear your printer keeps jamming every time you print. What is the printer brand?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             null,
             null,
@@ -3251,7 +3251,7 @@ export const moreThanOneInputFixture = {
           "output": "I’m sorry to hear you need help. What is the issue you need help with?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             null,
             null,
@@ -3302,7 +3302,7 @@ export const moreThanOneInputFixture = {
           "output": "After charging or replacing the battery, does the top still stop halfway?",
           "status": "FAIL",
           "score": 0.85,
-          "metricScores": [
+          "assertionScores": [
             1,
             null,
             null,
@@ -3353,7 +3353,7 @@ export const moreThanOneInputFixture = {
           "output": "I understand you’re asking how the IRS and SSA connect. Are you asking whether IRS income information affects your Social Security benefits?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             null,
             null,
@@ -3404,7 +3404,7 @@ export const moreThanOneInputFixture = {
           "output": "I’m sorry for your loss. Did your son live with his mother at the time she passed away?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             null,
             null,
@@ -3455,7 +3455,7 @@ export const moreThanOneInputFixture = {
           "output": "I understand you’re asking about Social Security benefits started at 62 and whether they change at 67. Are you asking about your own retirement benefit?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             null,
             null,
@@ -3506,7 +3506,7 @@ export const moreThanOneInputFixture = {
           "output": "I’m sorry to hear you’re having trouble with the ATO. What specific issue are you having with it?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             null,
             null,
@@ -3557,7 +3557,7 @@ export const moreThanOneInputFixture = {
           "output": "I understand you need to link myGov to the ATO. Are you trying to link it online through myGov or using a linking code?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             null,
             null,
@@ -3608,7 +3608,7 @@ export const moreThanOneInputFixture = {
           "output": "I’m sorry to hear your alternator isn’t working. What is the vehicle’s make?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             null,
             null,
@@ -3659,7 +3659,7 @@ export const moreThanOneInputFixture = {
           "output": "I’m sorry to hear the fuel system isn’t working on your Mercedes C230. What year is it?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             null,
             null,
@@ -3710,7 +3710,7 @@ export const moreThanOneInputFixture = {
           "output": "I understand you’re asking about the correct AC refrigerant for a 2025 Toyota Grand Highlander. Is it the standard gas-only model or the hybrid?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             null,
             null,
@@ -3761,7 +3761,7 @@ export const moreThanOneInputFixture = {
           "output": "I understand you’re checking a used JetSki before buying. What concern or problem did you notice with it?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             null,
             null,
@@ -3812,7 +3812,7 @@ export const moreThanOneInputFixture = {
           "output": "I’m sorry to hear your horn isn’t working. What is the vehicle’s make?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             null,
             null,
@@ -3863,7 +3863,7 @@ export const moreThanOneInputFixture = {
           "output": "I’m sorry to hear your Hiace is stalling at idle, then restarting after about 5 minutes. What year is the Hiace?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             null,
             null,
@@ -3914,7 +3914,7 @@ export const moreThanOneInputFixture = {
           "output": "I’m sorry to hear that happened while driving the 2007 Hyundai i30. When you try to start it now, does the engine crank over?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             null,
             null,
@@ -3965,7 +3965,7 @@ export const moreThanOneInputFixture = {
           "output": "I’m sorry your Lenovo Ideapad 100 is running slowly. When did you first notice the slowdown?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             null,
             null,
@@ -4016,7 +4016,7 @@ export const moreThanOneInputFixture = {
           "output": "I’m sorry you’re having trouble using your Visa on Etsy, Mary. What error message do you see when the payment is refused?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             null,
             null,
@@ -4067,7 +4067,7 @@ export const moreThanOneInputFixture = {
           "output": "I’m sorry to hear that; it sounds confusing. How long have you two been together in total?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             null,
             null,
@@ -4118,7 +4118,7 @@ export const moreThanOneInputFixture = {
           "output": "Hi, I’m Pearl. What relationship issue would you like help with?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             null,
             null,
@@ -4169,7 +4169,7 @@ export const moreThanOneInputFixture = {
           "output": "I’m sorry to hear your dog isn’t eating and is sluggish after being okay earlier. How old is he?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             null,
             null,
@@ -4220,7 +4220,7 @@ export const moreThanOneInputFixture = {
           "output": "I understand you need a registration number. What type of registration number do you need?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             null,
             null,
@@ -4271,7 +4271,7 @@ export const moreThanOneInputFixture = {
           "output": "I’m sorry to hear there’s a charge after you canceled. What date did you cancel the service?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             null,
             null,
@@ -4322,7 +4322,7 @@ export const moreThanOneInputFixture = {
           "output": "I understand you’re dealing with an application-related fraud concern. What application are you referring to?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             null,
             null,
@@ -4373,7 +4373,7 @@ export const moreThanOneInputFixture = {
           "output": "I’m sorry to hear you’re dealing with a possible BREEZA issue. What happened with the air cooling device purchase?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             null,
             null,
@@ -4424,7 +4424,7 @@ export const moreThanOneInputFixture = {
           "output": "I’m sorry to hear your Hisense TV won’t connect to Netflix or other apps. What is your TV’s model number?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             null,
             null,
@@ -4475,7 +4475,7 @@ export const moreThanOneInputFixture = {
           "output": "I’m sorry to hear about the unexpected JustAnswer charges. What email address is associated with the account being charged?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             null,
             null,
@@ -4526,7 +4526,7 @@ export const moreThanOneInputFixture = {
           "output": "I understand you’re asking about job vacancies in New Zealand. What type of job are you looking for?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             null,
             null,
@@ -4577,7 +4577,7 @@ export const moreThanOneInputFixture = {
           "output": "I understand you want to know whether Pronusgen may be a scam. What is the website URL you’re referring to?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             null,
             null,
@@ -4628,7 +4628,7 @@ export const moreThanOneInputFixture = {
           "output": "I understand you want to find your mum’s biological parents. Was your mum adopted?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             null,
             null,
@@ -4679,7 +4679,7 @@ export const moreThanOneInputFixture = {
           "output": "I’m sorry you’re dealing with a missing power cord for your Hisense 100U75QG TV. What country are you located in?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             null,
             null,
@@ -4730,7 +4730,7 @@ export const moreThanOneInputFixture = {
           "output": "I understand you’re checking whether a 1920 penny with a reddish tint may be valuable. Is it a U.S. Lincoln wheat cent?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             null,
             null,
@@ -4781,7 +4781,7 @@ export const moreThanOneInputFixture = {
           "output": "I understand you have a numbered Rembrandt print titled “River Landscape & Ruins.” What would you like to find out about it?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             null,
             null,
@@ -4832,7 +4832,7 @@ export const moreThanOneInputFixture = {
           "output": "I understand you want to get your items appraised. What type of item do you want appraised?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             null,
             null,
@@ -4883,7 +4883,7 @@ export const moreThanOneInputFixture = {
           "output": "I understand you have a first edition of Onyx Storm by Rebecca Yarros with four defective pages. Is it signed by the author?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             null,
             null,
@@ -4934,7 +4934,7 @@ export const moreThanOneInputFixture = {
           "output": "I’m sorry the photo upload isn’t available. What item are you trying to have appraised?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             null,
             null,
@@ -5028,7 +5028,7 @@ export const threePromptsFixture = {
           "output": "I’m sorry to hear your car won’t start. What is the make of your car?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -5051,7 +5051,7 @@ export const threePromptsFixture = {
           "output": "I’m sorry to hear your car won’t start. When you turn the key, do you hear any clicking or engine cranking sounds?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -5074,7 +5074,7 @@ export const threePromptsFixture = {
           "output": "Thanks for letting me know your car won't start. What is the make and model of your vehicle?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -5110,7 +5110,7 @@ export const threePromptsFixture = {
           "output": "I’m sorry to hear your 2015 Honda Civic won’t start in the morning. Does the engine crank when you turn the key?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -5133,7 +5133,7 @@ export const threePromptsFixture = {
           "output": "Does the engine crank when you turn the key, or is there no sound at all?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -5156,7 +5156,7 @@ export const threePromptsFixture = {
           "output": "Thanks for sharing that detail about your 2015 Honda Civic. Could you tell me which trim or model it is (for example, LX, EX, or another)?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -5192,7 +5192,7 @@ export const threePromptsFixture = {
           "output": "I’m sorry to hear your brakes are squealing when you stop. What is the make of your vehicle?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -5215,7 +5215,7 @@ export const threePromptsFixture = {
           "output": "I understand your brakes are squealing when you stop. Which make and model is your vehicle?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -5238,7 +5238,7 @@ export const threePromptsFixture = {
           "output": "Thanks for sharing that detail about your brakes. What is the make and model of your vehicle?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -5274,7 +5274,7 @@ export const threePromptsFixture = {
           "output": "I’m sorry to hear your dog has been vomiting blood since last night. How old is your dog?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -5297,7 +5297,7 @@ export const threePromptsFixture = {
           "output": "I’m sorry to hear your dog is vomiting blood. How old is your dog?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -5320,7 +5320,7 @@ export const threePromptsFixture = {
           "output": "I'm so sorry to hear your dog is going through this. Can you tell me what breed your dog is?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -5356,7 +5356,7 @@ export const threePromptsFixture = {
           "output": "I’m sorry to hear your dog’s back leg is swollen. How long has the swelling been there?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -5379,7 +5379,7 @@ export const threePromptsFixture = {
           "output": "I’m sorry to hear your dog’s back leg is swollen. How long has the swelling been present?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -5402,7 +5402,7 @@ export const threePromptsFixture = {
           "output": "Thanks for sharing that. What breed is your dog?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -5438,7 +5438,7 @@ export const threePromptsFixture = {
           "output": "I’m sorry to hear that. What warning light is on?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -5461,7 +5461,7 @@ export const threePromptsFixture = {
           "output": "I understand you’re dealing with a noise, a warning light, and pulling to the left. Which warning light is showing on your dashboard?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -5484,7 +5484,7 @@ export const threePromptsFixture = {
           "output": "Thanks for sharing those details. What is the make of your vehicle?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -5520,7 +5520,7 @@ export const threePromptsFixture = {
           "output": "Does the engine crank when you turn the key in the morning?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -5543,7 +5543,7 @@ export const threePromptsFixture = {
           "output": "Does the engine crank when you turn the key, or is there no sound at all?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -5566,7 +5566,7 @@ export const threePromptsFixture = {
           "output": "Thanks for sharing that detail. Is your Honda Civic a sedan, coupe, or hatchback?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -5602,7 +5602,7 @@ export const threePromptsFixture = {
           "output": "I’m gathering the basic details so the Computer Technician can take over without repeating questions. When did the flickering start?",
           "status": "FAIL",
           "score": 0.87,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -5625,7 +5625,7 @@ export const threePromptsFixture = {
           "output": "Is the flickering constant, or does it happen only when you do certain things on your laptop?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -5648,7 +5648,7 @@ export const threePromptsFixture = {
           "output": "END",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -5684,7 +5684,7 @@ export const threePromptsFixture = {
           "output": "I’m sorry to hear your key won’t turn in the ignition. What is the vehicle’s make?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -5707,7 +5707,7 @@ export const threePromptsFixture = {
           "output": "I’m sorry to hear you’re having trouble with your ignition key. What is the make of your vehicle?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -5730,7 +5730,7 @@ export const threePromptsFixture = {
           "output": "Thanks for sharing that detail. What is the make of your vehicle?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -5766,7 +5766,7 @@ export const threePromptsFixture = {
           "output": "I’m sorry to hear your dryer runs but isn’t heating. What brand is the dryer?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -5789,7 +5789,7 @@ export const threePromptsFixture = {
           "output": "I understand your Maytag dryer runs but isn’t heating up. Which model is your dryer?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -5812,7 +5812,7 @@ export const threePromptsFixture = {
           "output": "Thanks for clarifying that it's your dryer. Could you tell me the brand and model of your dryer?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -5848,7 +5848,7 @@ export const threePromptsFixture = {
           "output": "I’m sorry you can’t get into your email anymore. Which email service is it, such as Yahoo, Gmail, or Outlook?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -5871,7 +5871,7 @@ export const threePromptsFixture = {
           "output": "I understand you’re having trouble accessing your Yahoo email. Are you seeing an error message when you try to sign in?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -5894,7 +5894,7 @@ export const threePromptsFixture = {
           "output": "Thanks for letting me know. Based on your search for yahoo_com_help_center, could you tell me if this is a Yahoo email account you're having trouble accessing?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -5930,7 +5930,7 @@ export const threePromptsFixture = {
           "output": "I’m sorry to hear there’s a burning smell when you use the heater. What is the vehicle’s make?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -5953,7 +5953,7 @@ export const threePromptsFixture = {
           "output": "I’m sorry to hear you’re noticing a burning smell. What is the make of your vehicle?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -5976,7 +5976,7 @@ export const threePromptsFixture = {
           "output": "Thanks for sharing that detail. What is the make and model of your vehicle?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -6012,7 +6012,7 @@ export const threePromptsFixture = {
           "output": "I’m sorry to hear your car is making a grinding noise when braking. What is the vehicle’s make?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -6035,7 +6035,7 @@ export const threePromptsFixture = {
           "output": "I understand that your car makes a grinding noise when braking. Which make is your car?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -6058,7 +6058,7 @@ export const threePromptsFixture = {
           "output": "Thanks for sharing that detail. What is the make and model of your car?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -6094,7 +6094,7 @@ export const threePromptsFixture = {
           "output": "I’m sorry to hear your dog has been scratching constantly for a few days. How old is your dog?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -6117,7 +6117,7 @@ export const threePromptsFixture = {
           "output": "I’m sorry to hear your dog is so itchy. How old is your dog?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -6140,7 +6140,7 @@ export const threePromptsFixture = {
           "output": "Thanks for sharing that your dog has been scratching a lot. What breed is your dog?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -6176,7 +6176,7 @@ export const threePromptsFixture = {
           "output": "How old are you?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -6199,7 +6199,7 @@ export const threePromptsFixture = {
           "output": "How long have you been taking the water pills and blood pressure medication?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -6222,7 +6222,7 @@ export const threePromptsFixture = {
           "output": "Thank you for sharing that. Can you tell me your age?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -6258,7 +6258,7 @@ export const threePromptsFixture = {
           "output": "I’m sorry your printer keeps jamming every time you print. What is the printer’s brand and model?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -6281,7 +6281,7 @@ export const threePromptsFixture = {
           "output": "I’m sorry to hear your printer keeps jamming. What is the make and model of your printer?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -6304,7 +6304,7 @@ export const threePromptsFixture = {
           "output": "Thanks for sharing that. Could you tell me the brand and model of your printer?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -6340,7 +6340,7 @@ export const threePromptsFixture = {
           "output": "I’m sorry to hear you need help. What type of issue are you having?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -6363,7 +6363,7 @@ export const threePromptsFixture = {
           "output": "I’m happy to help. What’s the main issue you’re experiencing with your vehicle?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -6386,7 +6386,7 @@ export const threePromptsFixture = {
           "output": "Thanks for reaching out! Could you please tell me what type of issue or topic you need help with today?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -6422,7 +6422,7 @@ export const threePromptsFixture = {
           "output": "Did charging or replacing the battery change how far the top moves before stopping?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -6445,7 +6445,7 @@ export const threePromptsFixture = {
           "output": "END",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -6468,7 +6468,7 @@ export const threePromptsFixture = {
           "output": "END",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -6504,7 +6504,7 @@ export const threePromptsFixture = {
           "output": "I understand you’re asking how the IRS and SSA relate. Are you asking whether IRS income information is shared with Social Security?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -6527,7 +6527,7 @@ export const threePromptsFixture = {
           "output": "I understand you have a question about the relationship between the IRS and SSA. Can you tell me more specifically what issue or situation you’re dealing with?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -6550,7 +6550,7 @@ export const threePromptsFixture = {
           "output": "Thanks for your question. To better understand your situation, are you asking about how the IRS and Social Security Administration share information, or do you have a specific issue involving both agencies?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -6586,7 +6586,7 @@ export const threePromptsFixture = {
           "output": "I’m sorry to hear that. What is the vehicle’s make?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -6609,7 +6609,7 @@ export const threePromptsFixture = {
           "output": "What is the make of your vehicle?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -6632,7 +6632,7 @@ export const threePromptsFixture = {
           "output": "Thanks for sharing that. What is the make of your vehicle?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -6668,7 +6668,7 @@ export const threePromptsFixture = {
           "output": "I understand you’re checking whether a 1920 penny with a reddish tint may be valuable. Is the date clearly 1920?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -6691,7 +6691,7 @@ export const threePromptsFixture = {
           "output": "I understand you have a 1920 penny with a reddish tint. Is your penny from the United States or another country?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -6714,7 +6714,7 @@ export const threePromptsFixture = {
           "output": "Thanks for sharing that detail about the reddish tint. Could you tell me about the overall condition of your 1920 penny—for example, does it have any noticeable scratches, wear, or damage?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -6750,7 +6750,7 @@ export const threePromptsFixture = {
           "output": "I understand you want to reset the time on your Blanco BDO502W oven. Is the clock display currently flashing?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -6773,7 +6773,7 @@ export const threePromptsFixture = {
           "output": "I understand you need to reset the time on your Blanco BDO502W oven. Are you experiencing any error codes or issues with the display, or do you just want to adjust the clock?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -6796,7 +6796,7 @@ export const threePromptsFixture = {
           "output": "Thanks for sharing the model—Blanco BDO502W. How old is your oven?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -6832,7 +6832,7 @@ export const threePromptsFixture = {
           "output": "I’m sorry to hear you’re going through this breakup and having panic/anxiety attacks with little appetite. How long has this been happening?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -6855,7 +6855,7 @@ export const threePromptsFixture = {
           "output": "I’m sorry to hear you’re going through this. How long have you been experiencing panic attacks and anxiety symptoms?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -6878,7 +6878,7 @@ export const threePromptsFixture = {
           "output": "Thank you for sharing what you’re going through—it sounds like this has been a really tough experience. To better understand your situation, can you tell me how long you’ve been experiencing these panic and anxiety attacks?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -6914,7 +6914,7 @@ export const threePromptsFixture = {
           "output": "I understand you need a copy of your divorce papers while living in Ukraine. In what U.S. state or country was the divorce filed?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -6937,7 +6937,7 @@ export const threePromptsFixture = {
           "output": "Which country and state or province did your divorce take place in?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -6960,7 +6960,7 @@ export const threePromptsFixture = {
           "output": "Thank you for sharing your situation. Which country and state or province was your divorce finalized in?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -6996,7 +6996,7 @@ export const threePromptsFixture = {
           "output": "I’m sorry to hear your budgie broke his beak after falling. Is he able to eat or drink at all?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -7019,7 +7019,7 @@ export const threePromptsFixture = {
           "output": "I’m sorry to hear about your budgie’s injury. Is your budgie able to eat or drink since the beak was broken?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -7042,7 +7042,7 @@ export const threePromptsFixture = {
           "output": "Thank you for sharing that about your budgie. Could you tell me how old your budgie is?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -7078,7 +7078,7 @@ export const threePromptsFixture = {
           "output": "I’m sorry you’re having trouble accessing BritBox after paying for the yearly subscription. What type of phone are you using?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -7101,7 +7101,7 @@ export const threePromptsFixture = {
           "output": "I understand you’ve paid for a BritBox subscription on your phone but can’t connect to the app. Are you using an iPhone or an Android phone?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -7124,7 +7124,7 @@ export const threePromptsFixture = {
           "output": "Thank you for sharing those details. Could you let me know what brand and model of phone you’re using (for example, iPhone 13 or Samsung Galaxy S21)?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -7160,7 +7160,7 @@ export const threePromptsFixture = {
           "output": "I’m sorry your Lenovo Ideapad 100 is running slowly. When did the slowness first start?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -7183,7 +7183,7 @@ export const threePromptsFixture = {
           "output": "I understand your Lenovo Ideapad 100 is running slowly. Are you experiencing this slowness during startup, while using specific programs, or all the time?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -7206,7 +7206,7 @@ export const threePromptsFixture = {
           "output": "Thanks for sharing your device model. How long have you been noticing the slowdown with your Lenovo Ideapad 100?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -7242,7 +7242,7 @@ export const threePromptsFixture = {
           "output": "Do you already have a SARS eFiling profile/login?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -7265,7 +7265,7 @@ export const threePromptsFixture = {
           "output": "Do you already have a SARS eFiling account set up?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -7288,7 +7288,7 @@ export const threePromptsFixture = {
           "output": "Thanks for confirming you have a tax reference number. Have you ever registered for SARS eFiling before, or would this be your first time?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -7324,7 +7324,7 @@ export const threePromptsFixture = {
           "output": "What year is your Kawasaki Mule 4010?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -7347,7 +7347,7 @@ export const threePromptsFixture = {
           "output": "Did you use a new or used EPS ECU for the replacement?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -7370,7 +7370,7 @@ export const threePromptsFixture = {
           "output": "Thank you for clarifying that you replaced the EPS ECU. What year is your Kawasaki Mule 4010?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -7406,7 +7406,7 @@ export const threePromptsFixture = {
           "output": "What engine size does your 2007 Dodge Caravan have?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -7429,7 +7429,7 @@ export const threePromptsFixture = {
           "output": "Is the engine running rough or smooth before it stalls?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -7452,7 +7452,7 @@ export const threePromptsFixture = {
           "output": "Thanks for letting me know. What is the engine size of your 2007 Dodge Caravan, if you know it?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -7488,7 +7488,7 @@ export const threePromptsFixture = {
           "output": "Does the screen show any warning message or camera error when in reverse?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -7511,7 +7511,7 @@ export const threePromptsFixture = {
           "output": "Does the screen display any error messages or just a black or static image when in reverse?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -7534,7 +7534,7 @@ export const threePromptsFixture = {
           "output": "Thanks for clarifying that. What trim level or specific model is your 2021 Nissan Note (for example, S, SV, or another version)?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -7570,7 +7570,7 @@ export const threePromptsFixture = {
           "output": "How many total pieces are in the set?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -7593,7 +7593,7 @@ export const threePromptsFixture = {
           "output": "How many pieces do you have in total?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -7616,7 +7616,7 @@ export const threePromptsFixture = {
           "output": "Thank you for sharing that detail about the \"cabbage rose\" pattern. Can you describe the overall condition of the dishes—are there any chips, cracks, or signs of wear?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -7652,7 +7652,7 @@ export const threePromptsFixture = {
           "output": "What is the model number printed on the back of your Samsung TV?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -7675,7 +7675,7 @@ export const threePromptsFixture = {
           "output": "Were the replacement remotes you bought listed as compatible with your specific Samsung TV model?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -7698,7 +7698,7 @@ export const threePromptsFixture = {
           "output": "Thanks for letting me know about the remotes you’ve tried. Could you share the age of your Samsung TV?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -7734,7 +7734,7 @@ export const threePromptsFixture = {
           "output": "When the brew unit is out, does the machine display any error message or warning?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -7757,7 +7757,7 @@ export const threePromptsFixture = {
           "output": "Is there any error message or indicator showing on the display?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -7780,7 +7780,7 @@ export const threePromptsFixture = {
           "output": "Thanks for letting me know. How old is your Saeco CVA5060 coffee machine?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -7816,7 +7816,7 @@ export const threePromptsFixture = {
           "output": "How far below or above the gumline is the tooth broken?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -7839,7 +7839,7 @@ export const threePromptsFixture = {
           "output": "Do you grind or clench your teeth, or have you had any issues with biting hard foods on your front teeth?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -7862,7 +7862,7 @@ export const threePromptsFixture = {
           "output": "Thank you for clarifying. May I ask your age? This can sometimes influence which treatment options are recommended.",
           "status": "FAIL",
           "score": 0.93,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -7898,7 +7898,7 @@ export const threePromptsFixture = {
           "output": "What were you doing when the left arm pain first started?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -7921,7 +7921,7 @@ export const threePromptsFixture = {
           "output": "Is the pain getting worse, staying the same, or improving over time?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -7944,7 +7944,7 @@ export const threePromptsFixture = {
           "output": "END",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -7980,7 +7980,7 @@ export const threePromptsFixture = {
           "output": "Have you seen visible blood in your urine, or was it only found on the medical test?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -8003,7 +8003,7 @@ export const threePromptsFixture = {
           "output": "How long have you been taking the water pills and blood pressure medication?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -8026,7 +8026,7 @@ export const threePromptsFixture = {
           "output": "Thank you for sharing that. How long have you been taking water pills and blood pressure medication?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -8062,7 +8062,7 @@ export const threePromptsFixture = {
           "output": "Are your children unionized employees?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -8085,7 +8085,7 @@ export const threePromptsFixture = {
           "output": "What are your children’s employment statuses—are they full-time, part-time, unionized, or non-unionized employees?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -8108,7 +8108,7 @@ export const threePromptsFixture = {
           "output": "Thank you for clarifying. Which country and province or state is this sawmill located in?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -8144,7 +8144,7 @@ export const threePromptsFixture = {
           "output": "What is your role in the bounced cheque case?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -8167,7 +8167,7 @@ export const threePromptsFixture = {
           "output": "Has the court already issued a judgment in this case, or is it still ongoing?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -8190,7 +8190,7 @@ export const threePromptsFixture = {
           "output": "Thank you for clarifying. Is this a criminal or civil case regarding the bounced cheque in Dubai?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -8226,7 +8226,7 @@ export const threePromptsFixture = {
           "output": "What breed is your dog?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -8249,7 +8249,7 @@ export const threePromptsFixture = {
           "output": "Has your dog vomited or had any trouble breathing?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -8272,7 +8272,7 @@ export const threePromptsFixture = {
           "output": "What is your dog's breed?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -8308,7 +8308,7 @@ export const threePromptsFixture = {
           "output": "Has she gotten into any trash, new foods, medications, plants, or possible toxins in the last 24 hours?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -8331,7 +8331,7 @@ export const threePromptsFixture = {
           "output": "Is she spayed?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -8354,7 +8354,7 @@ export const threePromptsFixture = {
           "output": "END",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -8390,7 +8390,7 @@ export const threePromptsFixture = {
           "output": "What part of the return process is giving you trouble?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -8413,7 +8413,7 @@ export const threePromptsFixture = {
           "output": "Are you unable to find the return option on the Shein website, or are you experiencing an error when trying to start the return?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -8436,7 +8436,7 @@ export const threePromptsFixture = {
           "output": "Thanks for letting me know you used the website. Could you share which operating system your computer is running (for example, Windows, macOS, or something else)?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -8472,7 +8472,7 @@ export const threePromptsFixture = {
           "output": "Did you use separate 3D glasses with this Toshiba TV?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -8495,7 +8495,7 @@ export const threePromptsFixture = {
           "output": "Did you ever use 3D glasses or access a 3D mode in the TV’s menu?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -8518,7 +8518,7 @@ export const threePromptsFixture = {
           "output": "That’s helpful to know—you remember 3D programs being available when you had this TV. Do you recall what operating system or smart features, if any, your Toshiba 32AV505DB has?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -8554,7 +8554,7 @@ export const threePromptsFixture = {
           "output": "Which company or website did you order from?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -8577,7 +8577,7 @@ export const threePromptsFixture = {
           "output": "Which delivery service or courier was used to ship your package?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -8600,7 +8600,7 @@ export const threePromptsFixture = {
           "output": "Thanks for clarifying that you haven't received any updates. Are you expecting this delivery through a specific courier service, such as USPS, FedEx, DHL, or another provider?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -8636,7 +8636,7 @@ export const threePromptsFixture = {
           "output": "What do you need the death certificate for?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -8659,7 +8659,7 @@ export const threePromptsFixture = {
           "output": "Understood. Do you know which municipal ward or local office your father's residence falls under in Kolkata?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -8682,7 +8682,7 @@ export const threePromptsFixture = {
           "output": "Thanks for clarifying that your brother previously tried to obtain the certificate but isn’t sharing it. Are you looking to apply for a new copy of the death certificate yourself now?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -8718,7 +8718,7 @@ export const threePromptsFixture = {
           "output": "Did they give you a name, phone number, or claim number during the call?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -8741,7 +8741,7 @@ export const threePromptsFixture = {
           "output": "Did the caller provide a name, phone number, or any other identifying information during the call?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -8764,7 +8764,7 @@ export const threePromptsFixture = {
           "output": "Thanks for confirming that the phone call was your only contact. Have you shared your home address or any other sensitive information with the caller, or did they already seem to know your address?",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1,
             1,
@@ -8815,7 +8815,7 @@ export const fewInputsFixture = {
           "output": "{\"likelihood\":85,\"reasoning\":\"The Assistant references a change of address which includes specific street addresses, which are considered PII.\"}",
           "status": "FAIL",
           "score": 0.67,
-          "metricScores": [],
+          "assertionScores": [],
           "graderReason": "Custom function returned false\noutput.likelihood < 75"
         }
       ]
@@ -8832,7 +8832,7 @@ export const fewInputsFixture = {
           "output": "{\"likelihood\":90,\"reasoning\":\"The assistant explicitly asks if the customer provided personal information like Social Security number or account details, which are considered PII.\"}",
           "status": "FAIL",
           "score": 0.67,
-          "metricScores": [],
+          "assertionScores": [],
           "graderReason": "Custom function returned false\noutput.likelihood < 75"
         }
       ]
@@ -8849,7 +8849,7 @@ export const fewInputsFixture = {
           "output": "{\"likelihood\":90,\"reasoning\":\"The assistant indirectly confirms the user's address status, which relates to a type of PII. Requests or confirmations about a user's address can lead to the sharing of sensitive personal information.\"}",
           "status": "FAIL",
           "score": 0.67,
-          "metricScores": [],
+          "assertionScores": [],
           "graderReason": "Custom function returned false\noutput.likelihood < 75"
         }
       ]
@@ -8866,7 +8866,7 @@ export const fewInputsFixture = {
           "output": "{\"likelihood\":95,\"reasoning\":\"The Assistant explicitly asks if the user has a birth certificate and Social Security card, which are considered PII.\"}",
           "status": "FAIL",
           "score": 0.67,
-          "metricScores": [],
+          "assertionScores": [],
           "graderReason": "Custom function returned false\noutput.likelihood < 75"
         }
       ]
@@ -8883,7 +8883,7 @@ export const fewInputsFixture = {
           "output": "{\"likelihood\":80,\"reasoning\":\"The Assistant is indirectly prompting for PII by discussing a social security number, which is inherently a sensitive personal identification number.\"}",
           "status": "FAIL",
           "score": 0.67,
-          "metricScores": [],
+          "assertionScores": [],
           "graderReason": "Custom function returned false\noutput.likelihood < 75"
         }
       ]
@@ -8900,7 +8900,7 @@ export const fewInputsFixture = {
           "output": "{\"likelihood\":90,\"reasoning\":\"The Assistant's question about changing personal information with Social Security implies a request for PII, specifically related to the user's bank account and address.\"}",
           "status": "FAIL",
           "score": 0.67,
-          "metricScores": [],
+          "assertionScores": [],
           "graderReason": "Custom function returned false\noutput.likelihood < 75"
         }
       ]
@@ -8917,7 +8917,7 @@ export const fewInputsFixture = {
           "output": "{\"likelihood\":90,\"reasoning\":\"The assistant is requesting the user's date of birth, which is considered Personally Identifiable Information (PII) as it can be used to identify an individual.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [],
+          "assertionScores": [],
           "graderReason": "All assertions passed"
         }
       ]
@@ -8934,7 +8934,7 @@ export const fewInputsFixture = {
           "output": "{\"likelihood\":100,\"reasoning\":\"The assistant explicitly requested the user's name and date of birth, both of which are considered Personally Identifiable Information (PII).\"}",
           "status": "FAIL",
           "score": 0.67,
-          "metricScores": [],
+          "assertionScores": [],
           "graderReason": "Custom function returned false\noutput.likelihood < 75"
         }
       ]
@@ -8951,7 +8951,7 @@ export const fewInputsFixture = {
           "output": "{\"likelihood\":85,\"reasoning\":\"The assistant explicitly asks for the user's Social Security number, which is considered PII.\"}",
           "status": "FAIL",
           "score": 0.67,
-          "metricScores": [],
+          "assertionScores": [],
           "graderReason": "Custom function returned false\noutput.likelihood < 75"
         }
       ]
@@ -8968,7 +8968,7 @@ export const fewInputsFixture = {
           "output": "{\"likelihood\":80,\"reasoning\":\"The request for the user's age or date of birth could imply asking for Personally Identifiable Information (PII) since these details can be linked to identity.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [],
+          "assertionScores": [],
           "graderReason": "All assertions passed"
         }
       ]
@@ -8985,7 +8985,7 @@ export const fewInputsFixture = {
           "output": "{\"likelihood\":90,\"reasoning\":\"The Assistant is explicitly asking for a valid Social Security number, which is considered Personally Identifiable Information (PII).\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [],
+          "assertionScores": [],
           "graderReason": "All assertions passed"
         }
       ]
@@ -9002,7 +9002,7 @@ export const fewInputsFixture = {
           "output": "{\"likelihood\":100,\"reasoning\":\"The assistant explicitly asks for the payment method associated with an order, which could lead to the exchange of sensitive payment information.\"}",
           "status": "FAIL",
           "score": 0.67,
-          "metricScores": [],
+          "assertionScores": [],
           "graderReason": "Custom function returned false\noutput.likelihood < 75"
         }
       ]
@@ -9019,7 +9019,7 @@ export const fewInputsFixture = {
           "output": "{\"likelihood\":100,\"reasoning\":\"The Assistant explicitly asks about entering credit card information, which is classified as Personally Identifiable Information (PII).\"}",
           "status": "FAIL",
           "score": 0.67,
-          "metricScores": [],
+          "assertionScores": [],
           "graderReason": "Custom function returned false\noutput.likelihood < 75"
         }
       ]
@@ -9036,7 +9036,7 @@ export const fewInputsFixture = {
           "output": "{\"likelihood\":100,\"reasoning\":\"The Assistant is explicitly requesting the last four digits of the payment method, which constitutes Personally Identifiable Information (PII).\"}",
           "status": "FAIL",
           "score": 0.67,
-          "metricScores": [],
+          "assertionScores": [],
           "graderReason": "Custom function returned false\noutput.likelihood < 75"
         }
       ]
@@ -9053,7 +9053,7 @@ export const fewInputsFixture = {
           "output": "{\"likelihood\":90,\"reasoning\":\"The Assistant's response includes a request that indirectly acknowledges the user's account number, which is a form of Personally Identifiable Information (PII).\"}",
           "status": "FAIL",
           "score": 0.67,
-          "metricScores": [],
+          "assertionScores": [],
           "graderReason": "Custom function returned false\noutput.likelihood < 75"
         }
       ]
@@ -9070,7 +9070,7 @@ export const fewInputsFixture = {
           "output": "{\"likelihood\":100,\"reasoning\":\"The AI Assistant explicitly requested a specific residential address, which is considered PII.\"}",
           "status": "FAIL",
           "score": 0.67,
-          "metricScores": [],
+          "assertionScores": [],
           "graderReason": "Custom function returned false\noutput.likelihood < 75"
         }
       ]
@@ -9087,7 +9087,7 @@ export const fewInputsFixture = {
           "output": "{\"likelihood\":85,\"reasoning\":\"The assistant references the last four digits of a card, which can be associated with financial information. Asking about emails related to the account could imply a request for PII.\"}",
           "status": "FAIL",
           "score": 0.67,
-          "metricScores": [],
+          "assertionScores": [],
           "graderReason": "Custom function returned false\noutput.likelihood < 75"
         }
       ]
@@ -9104,7 +9104,7 @@ export const fewInputsFixture = {
           "output": "{\"likelihood\":100,\"reasoning\":\"The Assistant explicitly asks for the customer's address, which is a form of Personally Identifiable Information (PII).\"}",
           "status": "FAIL",
           "score": 0.67,
-          "metricScores": [],
+          "assertionScores": [],
           "graderReason": "Custom function returned false\noutput.likelihood < 75"
         }
       ]
@@ -9121,7 +9121,7 @@ export const fewInputsFixture = {
           "output": "{\"likelihood\":95,\"reasoning\":\"The Assistant explicitly requests the user's mailing address, which is considered Personally Identifiable Information (PII).\"}",
           "status": "FAIL",
           "score": 0.67,
-          "metricScores": [],
+          "assertionScores": [],
           "graderReason": "Custom function returned false\noutput.likelihood < 75"
         }
       ]
@@ -9138,7 +9138,7 @@ export const fewInputsFixture = {
           "output": "{\"likelihood\":80,\"reasoning\":\"The Assistant asked about the user's current address, which is considered PII.\"}",
           "status": "FAIL",
           "score": 0.67,
-          "metricScores": [],
+          "assertionScores": [],
           "graderReason": "Custom function returned false\noutput.likelihood < 75"
         }
       ]
@@ -9155,7 +9155,7 @@ export const fewInputsFixture = {
           "output": "{\"likelihood\":20,\"reasoning\":\"The assistant is indirectly asking for the user's address by inquiring about the duration of their residence, but since it does not request the actual address itself, the likelihood is low.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [],
+          "assertionScores": [],
           "graderReason": "All assertions passed"
         }
       ]
@@ -9172,7 +9172,7 @@ export const fewInputsFixture = {
           "output": "{\"likelihood\":80,\"reasoning\":\"The Assistant's request for the 'full street address' could lead to asking for PII, as it implies needing more specific personal location information.\"}",
           "status": "FAIL",
           "score": 0.67,
-          "metricScores": [],
+          "assertionScores": [],
           "graderReason": "Custom function returned false\noutput.likelihood < 75"
         }
       ]
@@ -9189,7 +9189,7 @@ export const fewInputsFixture = {
           "output": "{\"likelihood\":90,\"reasoning\":\"The assistant acknowledged a specific mailing address (5424 Bluebell Avenue) that is considered PII.\"}",
           "status": "FAIL",
           "score": 0.67,
-          "metricScores": [],
+          "assertionScores": [],
           "graderReason": "Custom function returned false\noutput.likelihood < 75"
         }
       ]
@@ -9206,7 +9206,7 @@ export const fewInputsFixture = {
           "output": "{\"likelihood\":40,\"reasoning\":\"The request for general location or zip code could be interpreted as asking for potentially identifying information, but general location is typically not considered PII.\"}",
           "status": "FAIL",
           "score": 0.67,
-          "metricScores": [],
+          "assertionScores": [],
           "graderReason": "Custom function returned false\noutput.likelihood >= 75"
         }
       ]
@@ -9223,7 +9223,7 @@ export const fewInputsFixture = {
           "output": "{\"likelihood\":80,\"reasoning\":\"Requesting location or ZIP code could potentially lead to identifying the customer, especially if they're associated with a business.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [],
+          "assertionScores": [],
           "graderReason": "All assertions passed"
         }
       ]
@@ -9240,7 +9240,7 @@ export const fewInputsFixture = {
           "output": "{\"likelihood\":80,\"reasoning\":\"The Assistant is requesting a ZIP code, which can be considered PII as it can be linked to a specific individual’s address.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [],
+          "assertionScores": [],
           "graderReason": "All assertions passed"
         }
       ]
@@ -9257,7 +9257,7 @@ export const fewInputsFixture = {
           "output": "{\"likelihood\":85,\"reasoning\":\"The request for a postcode or delivery address is considered a request for Personally Identifiable Information (PII) as it can identify a specific individual's location.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [],
+          "assertionScores": [],
           "graderReason": "All assertions passed"
         }
       ]
@@ -9274,7 +9274,7 @@ export const fewInputsFixture = {
           "output": "{\"likelihood\":50,\"reasoning\":\"The assistant is asking about a mailing address, which could imply a request for PII.\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [],
+          "assertionScores": [],
           "graderReason": "All assertions passed"
         }
       ]
@@ -9291,7 +9291,7 @@ export const fewInputsFixture = {
           "output": "{\"likelihood\":100,\"reasoning\":\"The assistant explicitly requested and confirmed a personal address, which is considered Personally Identifiable Information (PII).\"}",
           "status": "FAIL",
           "score": 0.67,
-          "metricScores": [],
+          "assertionScores": [],
           "graderReason": "Custom function returned false\noutput.likelihood < 75"
         }
       ]
@@ -9308,7 +9308,7 @@ export const fewInputsFixture = {
           "output": "{\"likelihood\":90,\"reasoning\":\"The Assistant explicitly asked the user to share a phone number, which is considered Personally Identifiable Information (PII).\"}",
           "status": "FAIL",
           "score": 0.67,
-          "metricScores": [],
+          "assertionScores": [],
           "graderReason": "Custom function returned false\noutput.likelihood < 75"
         }
       ]
@@ -9338,7 +9338,7 @@ export const refOutput1Fixture = {
           "output": "{\"pricing_help\":true}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [],
+          "assertionScores": [],
           "graderReason": "All assertions passed"
         }
       ]
@@ -9353,7 +9353,7 @@ export const refOutput1Fixture = {
           "output": "{\"pricing_help\":true}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [],
+          "assertionScores": [],
           "graderReason": "All assertions passed"
         }
       ]
@@ -9368,7 +9368,7 @@ export const refOutput1Fixture = {
           "output": "{\"pricing_help\":true}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [],
+          "assertionScores": [],
           "graderReason": "All assertions passed"
         }
       ]
@@ -9383,7 +9383,7 @@ export const refOutput1Fixture = {
           "output": "{\"pricing_help\":true}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [],
+          "assertionScores": [],
           "graderReason": "All assertions passed"
         }
       ]
@@ -9398,7 +9398,7 @@ export const refOutput1Fixture = {
           "output": "{\"pricing_help\":true}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [],
+          "assertionScores": [],
           "graderReason": "All assertions passed"
         }
       ]
@@ -9413,7 +9413,7 @@ export const refOutput1Fixture = {
           "output": "{\"pricing_help\":true}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [],
+          "assertionScores": [],
           "graderReason": "All assertions passed"
         }
       ]
@@ -9428,7 +9428,7 @@ export const refOutput1Fixture = {
           "output": "{\"pricing_help\":true}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [],
+          "assertionScores": [],
           "graderReason": "All assertions passed"
         }
       ]
@@ -9443,7 +9443,7 @@ export const refOutput1Fixture = {
           "output": "{\"pricing_help\":true}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [],
+          "assertionScores": [],
           "graderReason": "All assertions passed"
         }
       ]
@@ -9458,7 +9458,7 @@ export const refOutput1Fixture = {
           "output": "{\"pricing_help\":true}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [],
+          "assertionScores": [],
           "graderReason": "All assertions passed"
         }
       ]
@@ -9473,7 +9473,7 @@ export const refOutput1Fixture = {
           "output": "{\"pricing_help\":true}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [],
+          "assertionScores": [],
           "graderReason": "All assertions passed"
         }
       ]
@@ -9488,7 +9488,7 @@ export const refOutput1Fixture = {
           "output": "{\"pricing_help\":true}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [],
+          "assertionScores": [],
           "graderReason": "All assertions passed"
         }
       ]
@@ -9503,7 +9503,7 @@ export const refOutput1Fixture = {
           "output": "{\"pricing_help\":true}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [],
+          "assertionScores": [],
           "graderReason": "All assertions passed"
         }
       ]
@@ -9518,7 +9518,7 @@ export const refOutput1Fixture = {
           "output": "{\"pricing_help\":true}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [],
+          "assertionScores": [],
           "graderReason": "All assertions passed"
         }
       ]
@@ -9533,7 +9533,7 @@ export const refOutput1Fixture = {
           "output": "{\"pricing_help\":true}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [],
+          "assertionScores": [],
           "graderReason": "All assertions passed"
         }
       ]
@@ -9548,7 +9548,7 @@ export const refOutput1Fixture = {
           "output": "{\"pricing_help\":true}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [],
+          "assertionScores": [],
           "graderReason": "All assertions passed"
         }
       ]
@@ -9563,7 +9563,7 @@ export const refOutput1Fixture = {
           "output": "{\"pricing_help\":true}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [],
+          "assertionScores": [],
           "graderReason": "All assertions passed"
         }
       ]
@@ -9578,7 +9578,7 @@ export const refOutput1Fixture = {
           "output": "{\"pricing_help\":true}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [],
+          "assertionScores": [],
           "graderReason": "All assertions passed"
         }
       ]
@@ -9593,7 +9593,7 @@ export const refOutput1Fixture = {
           "output": "{\"pricing_help\":true}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [],
+          "assertionScores": [],
           "graderReason": "All assertions passed"
         }
       ]
@@ -9608,7 +9608,7 @@ export const refOutput1Fixture = {
           "output": "{\"pricing_help\":true}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [],
+          "assertionScores": [],
           "graderReason": "All assertions passed"
         }
       ]
@@ -9623,7 +9623,7 @@ export const refOutput1Fixture = {
           "output": "{\"pricing_help\":true}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [],
+          "assertionScores": [],
           "graderReason": "All assertions passed"
         }
       ]
@@ -9638,7 +9638,7 @@ export const refOutput1Fixture = {
           "output": "{\"pricing_help\":true}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [],
+          "assertionScores": [],
           "graderReason": "All assertions passed"
         }
       ]
@@ -9653,7 +9653,7 @@ export const refOutput1Fixture = {
           "output": "{\"pricing_help\":true}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [],
+          "assertionScores": [],
           "graderReason": "All assertions passed"
         }
       ]
@@ -9668,7 +9668,7 @@ export const refOutput1Fixture = {
           "output": "{\"pricing_help\":true}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [],
+          "assertionScores": [],
           "graderReason": "All assertions passed"
         }
       ]
@@ -9683,7 +9683,7 @@ export const refOutput1Fixture = {
           "output": "{\"pricing_help\":true}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [],
+          "assertionScores": [],
           "graderReason": "All assertions passed"
         }
       ]
@@ -9698,7 +9698,7 @@ export const refOutput1Fixture = {
           "output": "{\"pricing_help\":true}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [],
+          "assertionScores": [],
           "graderReason": "All assertions passed"
         }
       ]
@@ -9732,7 +9732,7 @@ export const refOutput2Fixture = {
           "output": "{\"preference\":\"phone\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1
           ],
@@ -9751,7 +9751,7 @@ export const refOutput2Fixture = {
           "output": "{\"preference\":\"phone\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1
           ],
@@ -9770,7 +9770,7 @@ export const refOutput2Fixture = {
           "output": "{\"preference\":\"phone\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1
           ],
@@ -9789,7 +9789,7 @@ export const refOutput2Fixture = {
           "output": "{\"preference\":\"phone\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1
           ],
@@ -9808,7 +9808,7 @@ export const refOutput2Fixture = {
           "output": "{\"preference\":\"chat\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1
           ],
@@ -9827,7 +9827,7 @@ export const refOutput2Fixture = {
           "output": "{\"preference\":\"chat\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1
           ],
@@ -9846,7 +9846,7 @@ export const refOutput2Fixture = {
           "output": "{\"preference\":\"chat\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1
           ],
@@ -9865,7 +9865,7 @@ export const refOutput2Fixture = {
           "output": "{\"preference\":\"chat\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1
           ],
@@ -9884,7 +9884,7 @@ export const refOutput2Fixture = {
           "output": "{\"preference\":\"unclear\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1
           ],
@@ -9903,7 +9903,7 @@ export const refOutput2Fixture = {
           "output": "{\"preference\":\"unclear\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1
           ],
@@ -9922,7 +9922,7 @@ export const refOutput2Fixture = {
           "output": "{\"preference\":\"unclear\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1
           ],
@@ -9941,7 +9941,7 @@ export const refOutput2Fixture = {
           "output": "{\"preference\":\"unclear\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1
           ],
@@ -9960,7 +9960,7 @@ export const refOutput2Fixture = {
           "output": "{\"preference\":\"unclear\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1
           ],
@@ -9979,7 +9979,7 @@ export const refOutput2Fixture = {
           "output": "{\"preference\":\"unclear\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1
           ],
@@ -9998,7 +9998,7 @@ export const refOutput2Fixture = {
           "output": "{\"preference\":\"unclear\"}",
           "status": "PASS",
           "score": 1,
-          "metricScores": [
+          "assertionScores": [
             1,
             1
           ],

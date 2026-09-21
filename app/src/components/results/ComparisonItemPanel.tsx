@@ -8,13 +8,17 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetBody, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { DatasetSourceIcon } from "../dataset/DatasetSourceIcon";
 import { variantColor } from "./charts";
+import { SegmentedToggle } from "./ResultsFiltersMenu";
+
+/** Mirrors `ResultItemPanel`'s same-named type — "any variant matches" semantics here, consistent with `comparisonRowMatchesAssertion`. */
+type AssertionOutcomeFilter = "all" | "passed" | "failed" | "na";
 
 /**
  * The comparison view's equivalent of `ResultItemPanel` — one dataset row, but with every
- * variant's output shown side by side (so a difference is visible at a glance) and every metric's
- * outcome shown per variant in one row (so "which variant regressed on this metric" doesn't
- * require counting across separate panels). Input and the reviewer note are shared/shown once,
- * since they're the same regardless of which variant produced the output.
+ * variant's output shown side by side (so a difference is visible at a glance) and every
+ * assertion's outcome shown per variant in one row (so "which variant regressed on this
+ * assertion" doesn't require counting across separate panels). Input and the reviewer note are
+ * shared/shown once, since they're the same regardless of which variant produced the output.
  */
 export function ComparisonItemPanel({
   rows,
@@ -38,10 +42,17 @@ export function ComparisonItemPanel({
   const index = rows.findIndex((r) => r.datasetItemId === datasetItemId);
   const row = index >= 0 ? rows[index] : null;
   const [noteDraft, setNoteDraft] = useState(row?.item?.note ?? "");
+  const [assertionOutcomeFilter, setAssertionOutcomeFilter] = useState<AssertionOutcomeFilter>("all");
 
   useEffect(() => {
     setNoteDraft(row?.item?.note ?? "");
   }, [datasetItemId, row?.item?.note]);
+
+  // Resets on Prev/Next, same reasoning as `ResultItemPanel` — a "Failed" filter left on from the
+  // last row shouldn't silently hide everything on the next one.
+  useEffect(() => {
+    setAssertionOutcomeFilter("all");
+  }, [datasetItemId]);
 
   if (!row) return null;
   const values = row.item ? resolveDatasetItemValues(row.item, variableNames) : {};
@@ -49,6 +60,21 @@ export function ComparisonItemPanel({
   function saveNote() {
     if (row!.item && onSetNote && noteDraft !== (row!.item.note ?? "")) onSetNote(row!.item.id, noteDraft);
   }
+
+  /** "Any variant" semantics — an assertion row stays visible if at least one variant's score for it matches the chosen outcome. */
+  function assertionMatchesOutcomeFilter(assertion: Assertion): boolean {
+    if (assertionOutcomeFilter === "all") return true;
+    return variants.some((_v, i) => {
+      const result = row!.results[i];
+      if (!result || rowStatus(result) === "error") return false;
+      const sc = result.scores.find((s) => s.assertionId === assertion.id);
+      if (!sc) return false;
+      if (assertionOutcomeFilter === "na") return !!sc.na;
+      if (assertionOutcomeFilter === "passed") return !sc.na && sc.passed;
+      return !sc.na && !sc.passed;
+    });
+  }
+  const visibleAssertions = assertions.filter(assertionMatchesOutcomeFilter);
 
   return (
     <Sheet open onOpenChange={(open) => !open && onClose()}>
@@ -147,12 +173,26 @@ export function ComparisonItemPanel({
           </div>
 
           <div className="space-y-2 border-t border-slate-200 pt-4">
-            <h4 className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Metrics by variant</h4>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h4 className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Assertions by variant</h4>
+              {assertions.length > 0 && (
+                <SegmentedToggle
+                  value={assertionOutcomeFilter}
+                  options={[
+                    { id: "all", label: "All" },
+                    { id: "passed", label: "Passed" },
+                    { id: "failed", label: "Failed" },
+                    { id: "na", label: "N/A" },
+                  ]}
+                  onChange={(v) => setAssertionOutcomeFilter(v)}
+                />
+              )}
+            </div>
             <div className="overflow-hidden rounded-lg border border-slate-200">
               <table className="w-full border-collapse text-xs">
                 <thead>
                   <tr className="bg-slate-50 text-left">
-                    <th className="border-b border-slate-200 px-3 py-2 text-[11px] font-medium text-slate-500">Metric</th>
+                    <th className="border-b border-slate-200 px-3 py-2 text-[11px] font-medium text-slate-500">Assertion</th>
                     {variants.map((v, i) => (
                       <th key={v.id} className="border-b border-slate-200 px-3 py-2 text-[11px] font-medium text-slate-500">
                         <span className="inline-flex items-center gap-1.5">
@@ -164,7 +204,7 @@ export function ComparisonItemPanel({
                   </tr>
                 </thead>
                 <tbody>
-                  {assertions.map((a) => (
+                  {visibleAssertions.map((a) => (
                     <tr key={a.id} className="border-b border-slate-100 last:border-b-0 odd:bg-white even:bg-slate-50/50">
                       <td className="px-3 py-2 align-top text-slate-700">{a.description}</td>
                       {variants.map((_v, i) => {
@@ -204,14 +244,21 @@ export function ComparisonItemPanel({
                   {assertions.length === 0 && (
                     <tr>
                       <td colSpan={1 + variants.length} className="px-3 py-4 text-center text-slate-400">
-                        No metrics configured.
+                        No assertions configured.
+                      </td>
+                    </tr>
+                  )}
+                  {assertions.length > 0 && visibleAssertions.length === 0 && (
+                    <tr>
+                      <td colSpan={1 + variants.length} className="px-3 py-4 text-center text-slate-400">
+                        No assertions match this filter.
                       </td>
                     </tr>
                   )}
                 </tbody>
               </table>
             </div>
-            <p className="text-[10px] text-slate-400">Hover a metric's badge to see its full reasoning.</p>
+            <p className="text-[10px] text-slate-400">Hover an assertion's badge to see its full reasoning.</p>
           </div>
         </SheetBody>
       </SheetContent>

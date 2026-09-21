@@ -8,7 +8,18 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { LabelChips } from "./LabelChips";
+import { SegmentedToggle } from "./ResultsFiltersMenu";
 import { DatasetSourceIcon } from "../dataset/DatasetSourceIcon";
+
+/** One row's Assertions list, scoped down to a single outcome — mirrors the table's Assertions column header filter (`AssertionsHeaderFilter` in `ResultsTable.tsx`) but as a full 4-way toggle, since a busy row (dozens of assertions) benefits from isolating passes just as much as failures. */
+type AssertionOutcomeFilter = "all" | "passed" | "failed" | "na";
+
+function matchesAssertionOutcomeFilter(sc: { na?: boolean; passed: boolean }, filter: AssertionOutcomeFilter): boolean {
+  if (filter === "all") return true;
+  if (filter === "na") return !!sc.na;
+  if (filter === "passed") return !sc.na && sc.passed;
+  return !sc.na && !sc.passed;
+}
 
 /** promptfoo's Evaluation table has a "Type" column (`equals`, `contains`, `llm-rubric`, …) — this is the AI Studio equivalent for one Assertion's tier/check. */
 function assertionTypeLabel(assertion: Assertion): string {
@@ -24,7 +35,7 @@ function assertionTypeLabel(assertion: Assertion): string {
  * Only LLM rubric (and, secondarily, a Group's aggregate) gets an actual color here — deterministic
  * and custom-code stay plain/neutral. This card already has a strong green/red pass-fail signal
  * (the check/X icon, the score badge, the reason text color); piling a 3-way tier color scheme on
- * top of that would compete with it. What's actually easy to miss is specifically "this metric's
+ * top of that would compete with it. What's actually easy to miss is specifically "this assertion's
  * pass/fail came from an LLM's judgment, not exact code" — so only that gets called out, the same
  * "info" tone the Eval pane's own tier badges use for `rubric_grading` (see `TIER_META` in
  * EvalPane.tsx), for visual consistency with where a reviewer would go to look up the assertion.
@@ -103,10 +114,12 @@ function RubricText({ text }: { text: string }) {
  * the whole point being that reading a rubric's reasoning next to the exact output it's judging
  * shouldn't require holding either one in your head while you click to the other tab:
  *   - LEFT (pinned): input(s), output, reference output, and the row's persistent reviewer note —
- *     the "what happened" context that every metric on the right refers back to.
- *   - RIGHT (scrolls independently): every metric, expanded — pass/fail/n/a, score, type, and (for
- *     LLM rubrics and deterministic checks only — custom code just relies on its metric name) the
- *     exact rubric/check value it was judged against, plus the full reasoning text, all at once.
+ *     the "what happened" context that every assertion on the right refers back to.
+ *   - RIGHT (scrolls independently): every assertion, expanded — pass/fail/n/a, score, type, and
+ *     (for LLM rubrics and deterministic checks only — custom code just relies on its assertion
+ *     name) the exact rubric/check value it was judged against, plus the full reasoning text, all
+ *     at once. A Passed/Failed/N-A filter (mirroring the table's Assertions column header filter)
+ *     lets a row with many assertions be scanned down to just the ones that matter right now.
  *   - FOOTER: latency/cost/tokens, collapsed by default (a per-row curiosity, not something worth
  *     permanent screen space).
  * Prev/Next step through `rows` (the table's current sorted/filtered order) without closing the panel.
@@ -137,10 +150,18 @@ export function ResultItemPanel({
   const row = index >= 0 ? rows[index] : null;
   const [metadataOpen, setMetadataOpen] = useState(false);
   const [noteDraft, setNoteDraft] = useState(row?.item?.note ?? "");
+  const [assertionOutcomeFilter, setAssertionOutcomeFilter] = useState<AssertionOutcomeFilter>("all");
 
   useEffect(() => {
     setNoteDraft(row?.item?.note ?? "");
   }, [datasetItemId, row?.item?.note]);
+
+  // Resets every time you navigate to a different row (Prev/Next or reopening from the table) —
+  // a filter left on "Failed" from the last row would otherwise silently hide everything on the
+  // next one if it happened to have passed cleanly.
+  useEffect(() => {
+    setAssertionOutcomeFilter("all");
+  }, [datasetItemId]);
 
   if (!row) return null;
   const { result, item, failCount, passCount, naCount, status } = row;
@@ -221,7 +242,7 @@ export function ResultItemPanel({
                 <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-2.5 text-xs text-amber-800">
                   <AlertTriangle size={14} className="mt-0.5 shrink-0" />
                   <div>
-                    <p className="font-medium">The generation call failed before any metric could run.</p>
+                    <p className="font-medium">The generation call failed before any assertion could run.</p>
                     {result.error && <p className="mt-0.5 text-amber-700">{result.error}</p>}
                   </div>
                 </div>
@@ -293,17 +314,36 @@ export function ResultItemPanel({
             </div>
           </div>
 
-          {/* RIGHT — every metric, expanded, always visible alongside the output on the left. */}
+          {/* RIGHT — every assertion, expanded, always visible alongside the output on the left. */}
           <div className="min-h-0 flex-1 overflow-y-auto p-4">
-            <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-              Metrics {status !== "error" && `(${passCount + failCount + naCount})`}
-            </h4>
-            <div className="space-y-2">
-              {status === "error" && <p className="text-xs italic text-slate-400">No metrics ran for this row.</p>}
-              {status !== "error" && result.scores.length === 0 && (
-                <p className="text-xs italic text-slate-400">No metrics were run for this row.</p>
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+              <h4 className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                Assertions {status !== "error" && `(${passCount + failCount + naCount})`}
+              </h4>
+              {status !== "error" && result.scores.length > 0 && (
+                <SegmentedToggle
+                  value={assertionOutcomeFilter}
+                  options={[
+                    { id: "all", label: "All" },
+                    { id: "passed", label: "Passed" },
+                    { id: "failed", label: "Failed" },
+                    { id: "na", label: "N/A" },
+                  ]}
+                  onChange={(v) => setAssertionOutcomeFilter(v)}
+                />
               )}
-              {result.scores.map((sc) => {
+            </div>
+            <div className="space-y-2">
+              {status === "error" && <p className="text-xs italic text-slate-400">No assertions ran for this row.</p>}
+              {status !== "error" && result.scores.length === 0 && (
+                <p className="text-xs italic text-slate-400">No assertions were run for this row.</p>
+              )}
+              {status !== "error" &&
+                result.scores.length > 0 &&
+                !result.scores.some((sc) => matchesAssertionOutcomeFilter(sc, assertionOutcomeFilter)) && (
+                  <p className="text-xs italic text-slate-400">No assertions match this filter.</p>
+                )}
+              {result.scores.filter((sc) => matchesAssertionOutcomeFilter(sc, assertionOutcomeFilter)).map((sc) => {
                 const assertion = assertionMap.get(sc.assertionId);
                 return (
                   <div
@@ -320,7 +360,7 @@ export function ResultItemPanel({
                           <XCircle size={13} className="mt-0.5 shrink-0 text-rose-600" />
                         )}
                         <div>
-                          <p className="text-xs font-medium text-slate-800">{assertion?.description ?? "(deleted metric)"}</p>
+                          <p className="text-xs font-medium text-slate-800">{assertion?.description ?? "(deleted assertion)"}</p>
                           {assertion?.group && <p className="text-[10px] uppercase tracking-wide text-slate-400">{assertion.group}</p>}
                         </div>
                       </div>
@@ -335,7 +375,7 @@ export function ResultItemPanel({
                     </div>
                     {/* Only LLM rubrics and deterministic checks get a "what was this judged against"
                         box. Custom-code assertions deliberately show nothing here — per Veronica, the
-                        metric name above should already say what the code checks, and the source
+                        assertion name above should already say what the code checks, and the source
                         itself isn't useful context in the review panel. Composite/grouped assertions
                         (assert-set) get their own threshold callout instead, further below. */}
                     {!assertion?.children?.length && assertion?.tier === "rubric_grading" && (

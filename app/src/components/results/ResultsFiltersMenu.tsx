@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DatasetSourceIcon } from "../dataset/DatasetSourceIcon";
 
-function SegmentedToggle<T extends string>({
+export function SegmentedToggle<T extends string>({
   value,
   options,
   onChange,
@@ -36,9 +36,9 @@ function SegmentedToggle<T extends string>({
 
 /**
  * "Filters" popover — everything beyond the toolbar's quick All/Passed/Failed pills: which single
- * metric to filter by (and its outcome), which labels a row must/mustn't have, dataset row source,
- * latency/cost/token ranges, and whether a row has a reference output. Inspired by promptfoo's
- * Filters button, generalized past just pass/fail.
+ * assertion to filter by (and its outcome), which labels a row must/mustn't have, dataset row
+ * source, latency/cost/token ranges, and whether a row has a reference output. Inspired by
+ * promptfoo's Filters button, generalized past just pass/fail.
  *
  * Every section here mirrors a column that's actually visible in `prefs` — filtering only exists
  * for what you can currently see in the table, never a dimension the table doesn't display (e.g.
@@ -61,7 +61,7 @@ export function ResultsFiltersMenu({
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const activeCount = countActiveFilters(filters, prefs.hiddenColumns);
-  const showChecks = !prefs.hiddenColumns.includes("checks");
+  const showAssertions = !prefs.hiddenColumns.includes("assertions");
   const showLabels = !prefs.hiddenColumns.includes("labels");
   const showSource = !prefs.hiddenColumns.includes("source");
   const showLatency = !prefs.hiddenColumns.includes("latency");
@@ -103,16 +103,16 @@ export function ResultsFiltersMenu({
               )}
             </div>
 
-            {showChecks && assertions.length > 0 && (
+            {showAssertions && assertions.length > 0 && (
               <div className="space-y-1.5">
-                <p className="text-xs font-medium text-slate-700">Metric</p>
+                <p className="text-xs font-medium text-slate-700">Assertion</p>
                 <div className="flex items-center gap-1.5">
                   <select
                     value={filters.assertionId ?? ""}
                     onChange={(e) => onChange({ assertionId: e.target.value || null })}
                     className="min-w-0 flex-1 truncate rounded-md border border-slate-200 bg-white px-1.5 py-1 text-xs text-slate-700 outline-none focus:border-ring"
                   >
-                    <option value="">Any metric</option>
+                    <option value="">Any assertion</option>
                     {assertions.map((a) => (
                       <option key={a.id} value={a.id}>
                         {a.description.slice(0, 60)}
@@ -133,9 +133,9 @@ export function ResultsFiltersMenu({
               </div>
             )}
 
-            {showChecks && (
+            {showAssertions && (
               <div className="space-y-1.5">
-                <p className="text-xs font-medium text-slate-700">Metric type</p>
+                <p className="text-xs font-medium text-slate-700">Assertion type</p>
                 <div className="flex flex-wrap gap-1">
                   {(
                     [

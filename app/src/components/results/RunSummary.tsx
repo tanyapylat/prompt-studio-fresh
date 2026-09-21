@@ -72,7 +72,7 @@ function AssertionChip({
       type="button"
       onClick={() => onFilterByAssertion?.(stat.assertion.id, outcome)}
       disabled={!onFilterByAssertion}
-      title={`${stat.assertion.description} — ${Math.round(stat.passRate * 100)}% pass (threshold ${Math.round(stat.threshold * 100)}%) — click to filter results by this metric`}
+      title={`${stat.assertion.description} — ${Math.round(stat.passRate * 100)}% pass (threshold ${Math.round(stat.threshold * 100)}%) — click to filter results by this assertion`}
       className={`inline-flex max-w-full items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
         stat.meetsThreshold
           ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
@@ -139,7 +139,7 @@ function AssertionRollup({
         ))}
       </div>
       {onFilterByAssertion && (
-        <p className="mt-2.5 text-[10px] text-slate-400">Click a metric to filter the table below to its rows; click again to clear.</p>
+        <p className="mt-2.5 text-[10px] text-slate-400">Click an assertion to filter the table below to its rows; click again to clear.</p>
       )}
     </div>
   );
@@ -198,7 +198,7 @@ export function RunSummary({
       <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
         <div className="text-2xl font-semibold text-slate-900">{Math.round(run.passRate * 100)}%</div>
         <div className="text-xs text-slate-500">
-          pass rate across {run.results.length} rows × {spec.assertions.length} metrics
+          pass rate across {run.results.length} rows × {spec.assertions.length} assertions
         </div>
         {run.scope === "sample" && (
           <Badge tone="warning">
@@ -257,7 +257,7 @@ export function RunSummary({
           </div>
 
           {insights.reviewFirst.length === 0 && insights.improvements.length === 0 ? (
-            <p className="text-xs italic text-slate-400">Nothing stands out — every row passed every metric.</p>
+            <p className="text-xs italic text-slate-400">Nothing stands out — every row passed every assertion.</p>
           ) : (
             <div className="space-y-3">
               {insights.reviewFirst.length > 0 && (

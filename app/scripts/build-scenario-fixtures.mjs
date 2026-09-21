@@ -120,10 +120,10 @@ function buildFixture(cfg) {
 
   // Metric names for each group (assumed identical across groups — true for every file here).
   const width0 = groupWidth(header, cfg.groupStartCols[0], cfg.groupStartCols);
-  const metricCount = width0 - 6; // output, status, score, namedScores, ..metrics.., graderReason, comment
+  const assertionCount = width0 - 6; // output, status, score, namedScores, ..assertions.., graderReason, comment
   const assertionNames =
-    metricCount > 0
-      ? header.slice(cfg.groupStartCols[0] + 4, cfg.groupStartCols[0] + 4 + metricCount).map((h) => h.replace(/^Metric:\s*/, ""))
+    assertionCount > 0
+      ? header.slice(cfg.groupStartCols[0] + 4, cfg.groupStartCols[0] + 4 + assertionCount).map((h) => h.replace(/^Metric:\s*/, ""))
       : [];
 
   const statusValuesSeen = new Set();
@@ -139,15 +139,15 @@ function buildFixture(cfg) {
       statusValuesSeen.add(status);
       const scoreRaw = (r[start + 2] ?? "").trim();
       const score = scoreRaw === "" ? null : Number(scoreRaw);
-      const metricScores =
-        metricCount > 0
-          ? Array.from({ length: metricCount }, (_, mi) => {
+      const assertionScores =
+        assertionCount > 0
+          ? Array.from({ length: assertionCount }, (_, mi) => {
               const raw = (r[start + 4 + mi] ?? "").trim();
               return raw === "" ? null : Number(raw);
             })
           : [];
-      const graderReason = r[start + 4 + metricCount] ?? "";
-      return { output, status, score, metricScores, graderReason };
+      const graderReason = r[start + 4 + assertionCount] ?? "";
+      return { output, status, score, assertionScores, graderReason };
     });
 
     return { description, vars, reference, variants };

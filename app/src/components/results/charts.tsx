@@ -2,8 +2,8 @@
  * Small, dependency-free SVG charts for the N-way comparison view (`ComparisonRunBody`) — no
  * charting library in this project yet, and these are simple enough (bars, dots) that pulling one
  * in for just this isn't worth it. Not meant to be a general-purpose chart kit — just what
- * promptfoo's own comparison view shows: a pass-rate bar per variant, a per-metric grouped bar, and
- * a 2-way scatter plot.
+ * promptfoo's own comparison view shows: a pass-rate bar per variant, a per-assertion grouped bar,
+ * and a 2-way scatter plot.
  */
 
 const VARIANT_COLORS = ["#6366f1", "#f97316", "#10b981", "#ec4899", "#0ea5e9", "#a855f7"];
@@ -43,7 +43,7 @@ export function PassRateBarChart({ labels, values }: { labels: string[]; values:
   );
 }
 
-/** One group of bars (one per variant) per metric — the per-assertion breakdown, side by side across variants. */
+/** One group of bars (one per variant) per assertion — the per-assertion breakdown, side by side across variants. */
 export function GroupedBarChart({
   groupLabels,
   seriesLabels,
@@ -75,7 +75,7 @@ export function GroupedBarChart({
         ))}
       </div>
       <div className="overflow-x-auto">
-        <svg width={width} height={chartHeight + 40} viewBox={`0 0 ${width} ${chartHeight + 40}`} role="img" aria-label="Pass rate by metric">
+        <svg width={width} height={chartHeight + 40} viewBox={`0 0 ${width} ${chartHeight + 40}`} role="img" aria-label="Pass rate by assertion">
           {/* baseline */}
           <line x1={0} y1={chartHeight} x2={width} y2={chartHeight} stroke="#e2e8f0" />
           {groupLabels.map((label, gi) => {

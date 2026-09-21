@@ -704,7 +704,7 @@ export function suggestRunInsightsHeuristic(spec: SpecProject, run: RunGroup): R
     const pct = Math.round(s.failRate * 100);
     if (s.assertion.children?.length) {
       improvements.push(
-        `"${s.assertion.description}" (a grouped/weighted metric) misses its threshold ${pct}% of the time (${s.failCount}/${s.total}) — open a failing row's detail panel to see which sub-check is dragging the average down.`,
+        `"${s.assertion.description}" (a grouped/weighted assertion) misses its threshold ${pct}% of the time (${s.failCount}/${s.total}) — open a failing row's detail panel to see which sub-check is dragging the average down.`,
       );
     } else if (s.assertion.tier === "rubric_grading") {
       improvements.push(

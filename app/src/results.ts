@@ -7,10 +7,10 @@ import { toCsv } from "./download";
 export interface ResultRow {
   result: RunItemResult;
   item: DatasetItem | undefined;
-  /** Counts only *applicable* checks (`score.na` excluded from both this and `passCount`) — an n/a check is neither a pass nor a fail. */
+  /** Counts only *applicable* assertions (`score.na` excluded from both this and `passCount`) — an n/a assertion is neither a pass nor a fail. */
   failCount: number;
   passCount: number;
-  /** How many of this row's checks were marked not-applicable — surfaced so "0 fails" can still be distinguished from "everything was n/a". */
+  /** How many of this row's assertions were marked not-applicable — surfaced so "0 fails" can still be distinguished from "everything was n/a". */
   naCount: number;
   status: "passed" | "failed" | "error";
 }
@@ -89,7 +89,7 @@ export interface ResultsFilters {
   /** Only one assertion at a time — restrict to rows where it passed/failed. */
   assertionId: string | null;
   assertionOutcome: "failed" | "passed";
-  /** Restrict to rows with at least one check of this tier (deterministic / custom code / LLM rubric) — independent of `assertionId`, which targets one specific check instead of a whole tier. */
+  /** Restrict to rows with at least one assertion of this tier (deterministic / custom code / LLM rubric) — independent of `assertionId`, which targets one specific assertion instead of a whole tier. */
   assertionTier: AssertionTier | null;
   /** OR-matched against each row's labels; `NO_LABEL_FILTER_VALUE` matches rows with zero labels. */
   labels: string[];
@@ -130,8 +130,8 @@ export const DEFAULT_RESULTS_FILTERS: ResultsFilters = {
 export function countActiveFilters(f: ResultsFilters, hiddenColumns: ResultsColumnId[] = []): number {
   const hidden = new Set(hiddenColumns);
   let n = 0;
-  if (f.assertionId && !hidden.has("checks")) n++;
-  if (f.assertionTier && !hidden.has("checks")) n++;
+  if (f.assertionId && !hidden.has("assertions")) n++;
+  if (f.assertionTier && !hidden.has("assertions")) n++;
   if (f.labels.length > 0 && !hidden.has("labels")) n++;
   if (f.sources.length > 0 && !hidden.has("source")) n++;
   if (!hidden.has("latency") && (f.minLatencyMs != null || f.maxLatencyMs != null)) n++;
@@ -154,13 +154,13 @@ export function matchesFilters(
   assertionTierById?: Map<string, AssertionTier>,
 ): boolean {
   const hidden = new Set(hiddenColumns);
-  if (filters.assertionId && !hidden.has("checks")) {
+  if (filters.assertionId && !hidden.has("assertions")) {
     const score = row.result.scores.find((s) => s.assertionId === filters.assertionId);
     if (!score || score.na) return false;
     if (filters.assertionOutcome === "failed" && score.passed) return false;
     if (filters.assertionOutcome === "passed" && !score.passed) return false;
   }
-  if (filters.assertionTier && !hidden.has("checks") && assertionTierById) {
+  if (filters.assertionTier && !hidden.has("assertions") && assertionTierById) {
     const hasTier = row.result.scores.some((s) => !s.na && assertionTierById.get(s.assertionId) === filters.assertionTier);
     if (!hasTier) return false;
   }
@@ -265,7 +265,7 @@ export function assertionById(spec: SpecProject): Map<string, Assertion> {
   return new Map(flattenAssertions(spec.assertions).map((a) => [a.id, a]));
 }
 
-/** `Assertion.id -> tier` — powers the Filters menu's "Metric type" (deterministic / custom code / LLM rubric) dimension. */
+/** `Assertion.id -> tier` — powers the Filters menu's "Assertion type" (deterministic / custom code / LLM rubric) dimension. */
 export function assertionTierById(spec: SpecProject): Map<string, AssertionTier> {
   return new Map(flattenAssertions(spec.assertions).map((a) => [a.id, a.tier]));
 }
@@ -278,10 +278,10 @@ export function resultRowsToJson(rows: ResultRow[], spec: SpecProject, variableN
     referenceOutput: item?.expectedOutput ?? null,
     output: result.output,
     passed: passCount === result.scores.length,
-    metricsPassed: passCount,
-    metricsTotal: result.scores.length,
+    assertionsPassed: passCount,
+    assertionsTotal: result.scores.length,
     scores: result.scores.map((s) => ({
-      assertion: assertionMap.get(s.assertionId)?.description ?? "(deleted metric)",
+      assertion: assertionMap.get(s.assertionId)?.description ?? "(deleted assertion)",
       tier: assertionMap.get(s.assertionId)?.tier,
       passed: s.passed,
       score: s.score,
@@ -302,8 +302,8 @@ export function resultRowsToCsv(rows: ResultRow[], variableNames: string[]): str
     "output",
     "referenceOutput",
     "passed",
-    "metricsPassed",
-    "metricsTotal",
+    "assertionsPassed",
+    "assertionsTotal",
     "latencyMs",
     "costUsd",
     "promptTokens",
@@ -352,7 +352,7 @@ export function buildComparisonRows(spec: SpecProject, run: RunGroup): Compariso
   }));
 }
 
-/** Fraction of *applicable* checks a variant's result passed on one row — undefined if the result is missing or errored (nothing to score). */
+/** Fraction of *applicable* assertions a variant's result passed on one row — undefined if the result is missing or errored (nothing to score). */
 export function variantScoreFraction(result: RunItemResult | undefined): number | undefined {
   if (!result || result.error) return undefined;
   const applicable = result.scores.filter((s) => !s.na);

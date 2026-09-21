@@ -152,7 +152,7 @@ export function RunDetailPage() {
           <p className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-slate-500">
             <RunVersionSwitcher spec={spec} run={run} onSelect={selectRun} />
             <span>
-              {run.results.length} rows × {spec.assertions.length} metrics
+              {run.results.length} rows × {spec.assertions.length} assertions
             </span>
           </p>
         </div>

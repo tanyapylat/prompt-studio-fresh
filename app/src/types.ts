@@ -152,8 +152,8 @@ export interface Assertion {
   passThreshold?: number;
   /**
    * Composite/grouped assertion — promptfoo's `assert-set` (e.g. several weighted sub-checks
-   * rolled into one named metric with its own pass threshold; real-world example: an "H1 tag
-   * quality" metric averaging a length check, a keyword check, and a tone check). When this is
+   * rolled into one named assertion with its own pass threshold; real-world example: an "H1 tag
+   * quality" assertion averaging a length check, a keyword check, and a tone check). When this is
    * set, THIS assertion's own `tier`/`check`/`code`/`rubric` are not used for scoring — each
    * child is scored independently by its own tier, then this assertion's score is the weighted
    * average of the children's scores (see `weight`) and it passes when that average reaches

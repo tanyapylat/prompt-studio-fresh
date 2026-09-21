@@ -9,7 +9,7 @@ import { useEffect, useState } from "react";
 export type ResultsSortField = "failCount" | "latencyMs" | "costUsd" | "tokens";
 export type ResultsSortDir = "asc" | "desc";
 /** Optional columns a user can hide — Status, Input(s), and the row-actions column are always shown. */
-export type ResultsColumnId = "source" | "output" | "referenceOutput" | "checks" | "latency" | "cost" | "tokens" | "labels";
+export type ResultsColumnId = "source" | "output" | "referenceOutput" | "assertions" | "latency" | "cost" | "tokens" | "labels";
 
 export interface ResultsViewPrefs {
   /** Compact (truncated, single-line) vs full (wrapped, multi-line) table cells. */
@@ -21,19 +21,19 @@ export interface ResultsViewPrefs {
   /** When the prompt has more than one variable: one combined "Inputs" column vs. one column per variable. */
   splitInputColumns: boolean;
   /**
-   * Metrics column: one small named chip per assertion (pass/fail + score), Promptfoo-style,
+   * Assertions column: one small named chip per assertion (pass/fail + score), Promptfoo-style,
    * instead of just the aggregate "X/Y passed" badge. On by default — parity with promptfoo's own
    * results view, where per-assertion chips are always what you see; can still be turned off to
-   * save horizontal room once a metric's already well understood.
+   * save horizontal room once an assertion's already well understood.
    */
-  showCheckChips: boolean;
+  showAssertionChips: boolean;
   /**
-   * Metrics column: when `showCheckChips` is on, only render chips for metrics that actually
-   * failed (n/a and passing chips are hidden) — a more compact, problems-only view. Off by
-   * default. Configured via a small filter control in the Metrics column header itself, not the
-   * Columns menu, since it's specific to that one column.
+   * Assertions column: when `showAssertionChips` is on, only render chips for assertions that
+   * actually failed (n/a and passing chips are hidden) — a more compact, problems-only view. Off
+   * by default. Configured via a small filter control in the Assertions column header itself, not
+   * the Columns menu, since it's specific to that one column.
    */
-  metricsOnlyFailing: boolean;
+  assertionsOnlyFailing: boolean;
 }
 
 /** Wrapped-by-default, per-item — flipped from the old compact default so a fresh Spec's Results tab opens already showing full output/reasoning (promptfoo parity was compact-first; we're not). */
@@ -44,16 +44,16 @@ export const DEFAULT_RESULTS_VIEW_PREFS: ResultsViewPrefs = {
   sortDir: "desc",
   hiddenColumns: [],
   splitInputColumns: false,
-  showCheckChips: true,
-  metricsOnlyFailing: false,
+  showAssertionChips: true,
+  assertionsOnlyFailing: false,
 };
 
 export const RESULTS_PAGE_SIZE_OPTIONS = [10, 25, 50, 100] as const;
 
-// v3 — bumped so browsers that already cached prefs under v1/v2 (before Labels was moved back to
-// "visible by default") fall through to the corrected `computeAutoHiddenColumns` defaults instead
-// of being stuck on the old, buggy saved shape forever.
-const STORAGE_PREFIX = "prompt-studio:results-view:v3:";
+// v4 — bumped so browsers with prefs cached under v1–v3 (which stored the optional column as
+// "checks") fall through to the corrected default shape instead of carrying a stale column id
+// that no longer matches anything ("checks" was renamed to "assertions" — see RES-23).
+const STORAGE_PREFIX = "prompt-studio:results-view:v4:";
 
 function readPrefs(specId: string, autoHiddenColumns: ResultsColumnId[]): ResultsViewPrefs {
   try {
@@ -115,7 +115,7 @@ export function useResultsViewPrefs(specId: string, autoHiddenColumns: ResultsCo
  * The smart initial column visibility, computed once from the Run's own shape — never overrides an
  * explicit user choice (see `readPrefs`).
  *   - Latency/Cost/Tokens are always hidden by default now (not just "when crowded") — this
- *     per-row metadata is one click away in the detail panel's Metadata footer, and a column set
+ *     per-row metadata is one click away in the detail panel's metadata footer, and a column set
  *     that silently changes shape as a dataset grows was more surprising than useful. Still just a
  *     default — the Columns menu always brings any of them back, and that choice sticks.
  *   - Labels is shown by default (unlike Latency/Cost/Tokens) — it's the reviewer-facing "group

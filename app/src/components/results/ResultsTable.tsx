@@ -30,7 +30,7 @@ const MIN_COL_WIDTH = 90;
 
 /** Short, chip-friendly label for one assertion — its full text is still available via `title`. */
 function assertionChipLabel(assertion: Assertion | undefined): string {
-  if (!assertion) return "metric";
+  if (!assertion) return "assertion";
   return assertion.description.length > 22 ? `${assertion.description.slice(0, 21)}…` : assertion.description;
 }
 
@@ -104,13 +104,13 @@ function ColResizeHandle({ width, minWidth = MIN_COL_WIDTH, onResize }: { width:
 }
 
 /**
- * Small filter control living directly in the Metrics column header — lets you collapse that one
- * column to just its failing chips (`prefs.metricsOnlyFailing`) without opening the Columns menu.
- * Deliberately scoped to this one column (unlike every other view toggle, which lives in the
- * Columns menu) since it's a display option specific to what that column is currently showing,
- * not a whole-table setting.
+ * Small filter control living directly in the Assertions column header — lets you collapse that
+ * one column to just its failing chips (`prefs.assertionsOnlyFailing`) without opening the Columns
+ * menu. Deliberately scoped to this one column (unlike every other view toggle, which lives in
+ * the Columns menu) since it's a display option specific to what that column is currently
+ * showing, not a whole-table setting.
  */
-function MetricsHeaderFilter({ prefs, onUpdate }: { prefs: ResultsViewPrefs; onUpdate: (patch: Partial<ResultsViewPrefs>) => void }) {
+function AssertionsHeaderFilter({ prefs, onUpdate }: { prefs: ResultsViewPrefs; onUpdate: (patch: Partial<ResultsViewPrefs>) => void }) {
   const [open, setOpen] = useState(false);
   return (
     <span className="relative inline-flex">
@@ -119,8 +119,8 @@ function MetricsHeaderFilter({ prefs, onUpdate }: { prefs: ResultsViewPrefs; onU
           e.stopPropagation();
           setOpen((v) => !v);
         }}
-        title="Configure which metrics show in this column"
-        className={`rounded-md p-0.5 ${prefs.metricsOnlyFailing ? "text-primary" : "text-slate-400 hover:text-slate-700"}`}
+        title="Configure which assertions show in this column"
+        className={`rounded-md p-0.5 ${prefs.assertionsOnlyFailing ? "text-primary" : "text-slate-400 hover:text-slate-700"}`}
       >
         <Filter size={11} />
       </button>
@@ -130,19 +130,19 @@ function MetricsHeaderFilter({ prefs, onUpdate }: { prefs: ResultsViewPrefs; onU
           <div className="absolute left-0 top-full z-20 mt-1 w-40 rounded-lg border border-slate-200 bg-white py-1 shadow-lg shadow-slate-900/10">
             <button
               onClick={() => {
-                onUpdate({ metricsOnlyFailing: false });
+                onUpdate({ assertionsOnlyFailing: false });
                 setOpen(false);
               }}
-              className={`block w-full px-3 py-1.5 text-left text-xs ${!prefs.metricsOnlyFailing ? "bg-accent text-accent-foreground" : "text-slate-700 hover:bg-slate-50"}`}
+              className={`block w-full px-3 py-1.5 text-left text-xs ${!prefs.assertionsOnlyFailing ? "bg-accent text-accent-foreground" : "text-slate-700 hover:bg-slate-50"}`}
             >
-              Show all metrics
+              Show all assertions
             </button>
             <button
               onClick={() => {
-                onUpdate({ metricsOnlyFailing: true });
+                onUpdate({ assertionsOnlyFailing: true });
                 setOpen(false);
               }}
-              className={`block w-full px-3 py-1.5 text-left text-xs ${prefs.metricsOnlyFailing ? "bg-accent text-accent-foreground" : "text-slate-700 hover:bg-slate-50"}`}
+              className={`block w-full px-3 py-1.5 text-left text-xs ${prefs.assertionsOnlyFailing ? "bg-accent text-accent-foreground" : "text-slate-700 hover:bg-slate-50"}`}
             >
               Only fails/errors
             </button>
@@ -195,10 +195,10 @@ export function CombinedInputsCell({ item, variableNames, wrap }: { item: Datase
 /**
  * The Results tab's main table — mirrors the Dataset tab's `DatasetTable` (compact/wrapped cells,
  * sortable columns, pagination, configurable columns, row selection), with pass/fail, output,
- * metrics, latency, cost, and an inline-editable Labels column added on top. Full detail
+ * assertions, latency, cost, and an inline-editable Labels column added on top. Full detail
  * (per-assertion reasons, metadata) lives in `ResultItemPanel`, not inline here.
  *
- * Input(s)/Output/Reference Output/Metrics/Labels columns are drag-resizable (a persistent handle
+ * Input(s)/Output/Reference Output/Assertions/Labels columns are drag-resizable (a persistent handle
  * at each column's right edge, `table-layout: fixed` + a `<colgroup>` under the hood) with
  * horizontal scroll for whatever doesn't fit — useful once you split multi-variable inputs into
  * one column per variable. Widths reset when this component unmounts (session-only, not a Spec
@@ -226,7 +226,7 @@ export function ResultsTable({
   rows: ResultRow[];
   variableNames: string[];
   prefs: ResultsViewPrefs;
-  /** Powers the Metrics column header's own "only fails/errors" filter — see `MetricsHeaderFilter`. */
+  /** Powers the Assertions column header's own "only fails/errors" filter — see `AssertionsHeaderFilter`. */
   onUpdate: (patch: Partial<ResultsViewPrefs>) => void;
   selectedIds: Set<string>;
   onToggleSelect: (datasetItemId: string) => void;
@@ -236,9 +236,9 @@ export function ResultsTable({
   onSetLabels: (datasetItemId: string, labels: string[]) => void;
   allLabels: string[];
   onPageSizeChange: (size: number) => void;
-  /** Only needed when `prefs.showCheckChips` is on, to label each chip. */
+  /** Only needed when `prefs.showAssertionChips` is on, to label each chip. */
   assertions?: Assertion[];
-  /** Clicking a per-row metric chip drills into "everything else with this same outcome" — wired to the toolbar's Filters popover. */
+  /** Clicking a per-row assertion chip drills into "everything else with this same outcome" — wired to the toolbar's Filters popover. */
   onFilterByAssertion?: (assertionId: string, outcome: "passed" | "failed") => void;
   activeAssertionId?: string | null;
   activeAssertionOutcome?: "passed" | "failed";
@@ -279,7 +279,7 @@ export function ResultsTable({
   const showSource = !prefs.hiddenColumns.includes("source");
   const showOutput = !prefs.hiddenColumns.includes("output");
   const showReferenceOutput = !prefs.hiddenColumns.includes("referenceOutput");
-  const showChecks = !prefs.hiddenColumns.includes("checks");
+  const showAssertions = !prefs.hiddenColumns.includes("assertions");
   const showLatency = !prefs.hiddenColumns.includes("latency");
   const showCost = !prefs.hiddenColumns.includes("cost");
   const showTokens = !prefs.hiddenColumns.includes("tokens");
@@ -298,7 +298,10 @@ export function ResultsTable({
     setColWidths((prev) => ({ ...prev, [key]: width }));
   }
 
-  const checksDefaultWidth = prefs.showCheckChips ? 260 : 140;
+  // Wider default than most columns — this is where the substance of a row lives (one chip per
+  // assertion, plus reasons in wrap mode), so it shouldn't be squeezed to the same width as, say,
+  // Labels (which is mostly empty until you actually tag something).
+  const assertionsDefaultWidth = prefs.showAssertionChips ? 360 : 180;
 
   // Every visible column's actual rendered width, in table order — drives both the `<colgroup>`
   // and (crucially) the table's own total width. Without an explicit total, a `table-layout:
@@ -316,11 +319,13 @@ export function ResultsTable({
     ...inputColumns.map((col) => ({ key: `input:${col}`, width: widthOf(`input:${col}`, 220) })),
     ...(showOutput ? [{ key: "output", width: widthOf("output", 220) }] : []),
     ...(showReferenceOutput ? [{ key: "referenceOutput", width: widthOf("referenceOutput", 200) }] : []),
-    ...(showChecks ? [{ key: "checks", width: widthOf("checks", checksDefaultWidth) }] : []),
+    ...(showAssertions ? [{ key: "assertions", width: widthOf("assertions", assertionsDefaultWidth) }] : []),
     ...(showLatency ? [{ key: "latency", width: 90 }] : []),
     ...(showCost ? [{ key: "cost", width: 80 }] : []),
     ...(showTokens ? [{ key: "tokens", width: 100 }] : []),
-    ...(showLabels ? [{ key: "labels", width: widthOf("labels", 180) }] : []),
+    // Narrower default than Assertions — Labels starts out empty for most rows, so it shouldn't
+    // claim as much width as the column that actually carries the pass/fail substance.
+    ...(showLabels ? [{ key: "labels", width: widthOf("labels", 130) }] : []),
     { key: "actions", width: 36 },
   ];
   const totalTableWidth = colSpecs.reduce((sum, c) => sum + c.width, 0);
@@ -360,7 +365,7 @@ export function ResultsTable({
               <th className="border-b border-slate-200 bg-slate-50 px-2 py-2 text-right text-xs font-medium text-slate-400">#</th>
               {/* Shortened from "Status"/"Source" — both cells below are icon-only already, so the
                   full word was pure overhead squeezing out the columns that actually matter
-                  (Inputs/Output/Metrics); full word still available via `title` on hover. */}
+                  (Inputs/Output/Assertions); full word still available via `title` on hover. */}
               <th className="border-b border-slate-200 bg-slate-50 px-2 py-2 text-xs font-medium text-slate-500" title="Status">
                 St.
               </th>
@@ -387,13 +392,13 @@ export function ResultsTable({
                   <ColResizeHandle width={widthOf("referenceOutput", 200)} onResize={(w) => setColWidth("referenceOutput", w)} />
                 </th>
               )}
-              {showChecks && (
+              {showAssertions && (
                 <th className="relative border-b border-slate-200 bg-slate-50 px-2.5 py-2">
                   <div className="flex items-center gap-1 pr-2.5">
-                    <SortHeader label="Metrics" field="failCount" prefs={prefs} onSort={onSort} />
-                    <MetricsHeaderFilter prefs={prefs} onUpdate={onUpdate} />
+                    <SortHeader label="Assertions" field="failCount" prefs={prefs} onSort={onSort} />
+                    <AssertionsHeaderFilter prefs={prefs} onUpdate={onUpdate} />
                   </div>
-                  <ColResizeHandle width={widthOf("checks", checksDefaultWidth)} onResize={(w) => setColWidth("checks", w)} />
+                  <ColResizeHandle width={widthOf("assertions", assertionsDefaultWidth)} onResize={(w) => setColWidth("assertions", w)} />
                 </th>
               )}
               {showLatency && (
@@ -436,7 +441,7 @@ export function ResultsTable({
                   onClick={() => onOpenItem(result.datasetItemId)}
                   className="cursor-pointer odd:bg-white even:bg-slate-50/50 hover:bg-accent/60"
                 >
-                  {/* `align-top` on every cell here — a tall row (e.g. many stacked Metrics chips)
+                  {/* `align-top` on every cell here — a tall row (e.g. many stacked Assertions chips)
                       would otherwise leave the checkbox/#/Status/Source cells vertically centered
                       by the browser's default `td` alignment, floating away from the rest of the
                       row's content, which all starts at the top instead. */}
@@ -506,19 +511,19 @@ export function ResultsTable({
                       )}
                     </td>
                   )}
-                  {showChecks && (
+                  {showAssertions && (
                     <td className="overflow-hidden border-b border-slate-100 px-2.5 py-2 align-top">
                       {status === "error" ? (
-                        <span className="text-[11px] italic text-amber-600">Errored before metrics ran</span>
-                      ) : prefs.showCheckChips ? (
+                        <span className="text-[11px] italic text-amber-600">Errored before assertions ran</span>
+                      ) : prefs.showAssertionChips ? (
                         <div className="flex flex-col gap-1.5">
-                          {(prefs.metricsOnlyFailing ? result.scores.filter((sc) => !sc.na && !sc.passed) : result.scores).map((sc) => {
+                          {(prefs.assertionsOnlyFailing ? result.scores.filter((sc) => !sc.na && !sc.passed) : result.scores).map((sc) => {
                             const assertion = assertionMap.get(sc.assertionId);
                             if (sc.na) {
                               return (
                                 <span
                                   key={sc.assertionId}
-                                  title={`${assertion?.description ?? "metric"} — not applicable to this row`}
+                                  title={`${assertion?.description ?? "assertion"} — not applicable to this row`}
                                   className="inline-flex w-fit max-w-full items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-medium text-slate-400 whitespace-nowrap"
                                 >
                                   <span className="truncate">{assertionChipLabel(assertion)}</span>
@@ -537,7 +542,7 @@ export function ResultsTable({
                                 <button
                                   type="button"
                                   onClick={(e) => handleChipClick(e, sc.assertionId, outcome)}
-                                  title={`${assertion?.description ?? "metric"}${rubricHint}\n\nClick to filter by this metric`}
+                                  title={`${assertion?.description ?? "assertion"}${rubricHint}\n\nClick to filter by this assertion`}
                                   className={`inline-flex w-fit max-w-full items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-medium whitespace-nowrap transition-colors ${
                                     sc.passed
                                       ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
@@ -578,8 +583,8 @@ export function ResultsTable({
                             );
                           })}
                           {result.scores.length === 0 && <span className="text-slate-400">—</span>}
-                          {result.scores.length > 0 && prefs.metricsOnlyFailing && result.scores.every((sc) => sc.na || sc.passed) && (
-                            <span className="text-[10px] italic text-slate-400">All metrics passed</span>
+                          {result.scores.length > 0 && prefs.assertionsOnlyFailing && result.scores.every((sc) => sc.na || sc.passed) && (
+                            <span className="text-[10px] italic text-slate-400">All assertions passed</span>
                           )}
                         </div>
                       ) : (
@@ -588,8 +593,8 @@ export function ResultsTable({
                             {passCount}/{passCount + failCount} passed
                           </Badge>
                           {/* Chips are off, but full/wrap view is still supposed to surface *why* a row failed
-                              (promptfoo parity) — show each failing metric's reason under the aggregate badge
-                              instead of going silent just because the per-metric chip breakdown is hidden. */}
+                              (promptfoo parity) — show each failing assertion's reason under the aggregate badge
+                              instead of going silent just because the per-assertion chip breakdown is hidden. */}
                           {prefs.wrap && !allPass && (
                             <div className="flex flex-col gap-1 pl-0.5">
                               {result.scores

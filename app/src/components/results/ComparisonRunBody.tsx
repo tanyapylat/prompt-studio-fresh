@@ -44,7 +44,7 @@ const COMPARISON_STATUS_FILTERS: { id: ComparisonStatusFilter; label: string }[]
   { id: "error", label: "Errors" },
 ];
 
-/** Per-variant columns beyond the always-on Output/Metrics pair — off by default, same "secondary info, one click away" call as the single-run table's Latency/Cost/Tokens (see `computeAutoHiddenColumns`). */
+/** Per-variant columns beyond the always-on Output/Assertions pair — off by default, same "secondary info, one click away" call as the single-run table's Latency/Cost/Tokens (see `computeAutoHiddenColumns`). */
 type ComparisonOptionalColumn = "source" | "latency" | "cost" | "tokens";
 
 /** Loose text match across a comparison row's inputs, note, and every variant's output — the comparison-view equivalent of `matchesSearch`. */
@@ -105,8 +105,8 @@ function ComparisonColumnsMenu({ hidden, onToggle }: { hidden: Set<ComparisonOpt
 
 /**
  * Small "Filters" popover for the comparison table — a scoped-down version of the single-run
- * `ResultsFiltersMenu`'s "Metric" section: which single metric to filter by, and whether it must
- * have passed or failed on *any* variant (see `comparisonRowMatchesAssertion`).
+ * `ResultsFiltersMenu`'s "Assertion" section: which single assertion to filter by, and whether it
+ * must have passed or failed on *any* variant (see `comparisonRowMatchesAssertion`).
  */
 function ComparisonFiltersMenu({
   assertions,
@@ -128,19 +128,19 @@ function ComparisonFiltersMenu({
           assertionId ? "border-primary bg-primary/10 text-primary" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
         }`}
       >
-        <Filter size={12} /> Metric filter <ChevronDown size={11} />
+        <Filter size={12} /> Assertion filter <ChevronDown size={11} />
       </button>
       {open && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
           <div className="absolute left-0 top-full z-20 mt-1 w-64 space-y-2 rounded-lg border border-slate-200 bg-white p-3 shadow-lg shadow-slate-900/10">
-            <p className="text-xs font-medium text-slate-700">Metric</p>
+            <p className="text-xs font-medium text-slate-700">Assertion</p>
             <select
               value={assertionId ?? ""}
               onChange={(e) => onChange({ assertionId: e.target.value || null })}
               className="w-full truncate rounded-md border border-slate-200 bg-white px-1.5 py-1 text-xs text-slate-700 outline-none focus:border-ring"
             >
-              <option value="">Any metric</option>
+              <option value="">Any assertion</option>
               {assertions.map((a) => (
                 <option key={a.id} value={a.id}>
                   {a.description.slice(0, 60)}
@@ -173,10 +173,10 @@ function ComparisonFiltersMenu({
  * N-way comparison Run body — Promptfoo-style side-by-side view for a Run that evaluated 2+
  * prompts/targets against the exact same dataset and assertions in one go (`run.comparison`).
  * Distinct from `SingleRunBody` because the whole shape is different: every row now has *one
- * output+metrics per variant* instead of one, and the headline story is "where do the variants
+ * output+assertions per variant* instead of one, and the headline story is "where do the variants
  * disagree", not "how many rows pass overall" — hence the charts (pass rate per variant, pass
- * rate per metric across variants, and a 2-way agreement scatter when there are exactly 2), the
- * "Different only" filter, and the Status/Metric filters using "any variant" semantics (see
+ * rate per assertion across variants, and a 2-way agreement scatter when there are exactly 2), the
+ * "Different only" filter, and the Status/Assertion filters using "any variant" semantics (see
  * `comparisonRowStatus`) — none of which have a single-run equivalent.
  */
 export function ComparisonRunBody({
@@ -196,7 +196,7 @@ export function ComparisonRunBody({
   const [search, setSearch] = useState("");
   const [differentOnly, setDifferentOnly] = useState(false);
   const [statusFilter, setStatusFilter] = useState<ComparisonStatusFilter>("all");
-  const [metricFilter, setMetricFilter] = useState<{ assertionId: string | null; outcome: "passed" | "failed" }>({
+  const [assertionFilter, setAssertionFilter] = useState<{ assertionId: string | null; outcome: "passed" | "failed" }>({
     assertionId: null,
     outcome: "failed",
   });
@@ -227,9 +227,9 @@ export function ComparisonRunBody({
           matchesComparisonSearch(row, search, variableNames) &&
           (!differentOnly || comparisonRowIsDifferent(row)) &&
           (statusFilter === "all" || comparisonRowStatus(row) === statusFilter) &&
-          (!metricFilter.assertionId || comparisonRowMatchesAssertion(row, metricFilter.assertionId, metricFilter.outcome)),
+          (!assertionFilter.assertionId || comparisonRowMatchesAssertion(row, assertionFilter.assertionId, assertionFilter.outcome)),
       ),
-    [allRows, search, variableNames, differentOnly, statusFilter, metricFilter],
+    [allRows, search, variableNames, differentOnly, statusFilter, assertionFilter],
   );
   const differentCount = useMemo(() => allRows.filter(comparisonRowIsDifferent).length, [allRows]);
 
@@ -266,7 +266,7 @@ export function ComparisonRunBody({
         <GitCompare size={16} className="text-primary" />
         <p className="text-sm font-semibold text-slate-800">{variants.length}-way comparison</p>
         <p className="text-xs text-slate-500">
-          {allRows.length} rows × {spec.assertions.length} metrics, same dataset &amp; assertions across every variant
+          {allRows.length} rows × {spec.assertions.length} assertions, same dataset &amp; assertions across every variant
         </p>
         {differentCount > 0 && (
           <Badge tone="warning" className="ml-1">
@@ -320,7 +320,7 @@ export function ComparisonRunBody({
             )}
             {spec.assertions.length > 0 && (
               <div className="lg:col-span-2">
-                <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-slate-400">Pass rate by metric</p>
+                <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-slate-400">Pass rate by assertion</p>
                 <GroupedBarChart
                   groupLabels={spec.assertions.map((a) => a.description)}
                   seriesLabels={variants.map((v) => v.label)}
@@ -366,9 +366,9 @@ export function ComparisonRunBody({
         </div>
         <ComparisonFiltersMenu
           assertions={spec.assertions}
-          assertionId={metricFilter.assertionId}
-          outcome={metricFilter.outcome}
-          onChange={(patch) => setMetricFilter((prev) => ({ ...prev, ...patch }))}
+          assertionId={assertionFilter.assertionId}
+          outcome={assertionFilter.outcome}
+          onChange={(patch) => setAssertionFilter((prev) => ({ ...prev, ...patch }))}
         />
         <ComparisonColumnsMenu hidden={hiddenCols} onToggle={toggleCol} />
         <button
@@ -414,7 +414,7 @@ export function ComparisonRunBody({
                       Output
                     </th>
                     <th className="border-b border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-medium text-slate-400">
-                      Metrics
+                      Assertions
                     </th>
                     {showLatency && <th className="border-b border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-medium text-slate-400">Latency</th>}
                     {showCost && <th className="border-b border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-medium text-slate-400">Cost</th>}
@@ -458,7 +458,7 @@ export function ComparisonRunBody({
                                 {passCount}/{applicable.length}
                               </Badge>
                             )}
-                            {/* Promptfoo-style fallback: same idea as the single-run table's Metrics
+                            {/* Promptfoo-style fallback: same idea as the single-run table's Assertions
                                 column — whichever of Latency/Cost/Tokens is hidden as its own column
                                 still shows up here in miniature, instead of disappearing entirely. */}
                             {status !== "error" && (!showLatency || !showCost || !showTokens) && (

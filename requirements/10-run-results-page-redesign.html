@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
@@ -93,8 +93,8 @@ descoped for this round — read those before estimating.</p>
 <p>Why this page is being redesigned, and the priorities that should settle any ambiguity below:</p>
 <ol>
 <li><strong>Never make the reviewer hold context in their head.</strong> The single biggest complaint about the
-current page is that reading a piece of AI-generated output, then judging why a check on it
-passed or failed, then checking metadata, meant flipping between separate tabs/screens — by
+current page is that reading a piece of AI-generated output, then judging why an assertion on
+it passed or failed, then checking metadata, meant flipping between separate tabs/screens — by
 the time you reached the reasoning, you&#39;d already lost sight of the output it was judging.
 Every layout decision below optimizes for &quot;everything I&#39;m comparing stays in front of me at
 once.&quot;</li>
@@ -102,14 +102,14 @@ once.&quot;</li>
 both need to exist, one click apart — not a setting buried three menus deep. Every column has
 a sensible default (shown, hidden, or shown-only-when-relevant), but any user override sticks.</li>
 <li><strong>Match the industry-standard eval-tool experience where it&#39;s already proven, improve on it
-where it&#39;s obviously worth it.</strong> Per-check result chips, reasoning for both a pass and a fail,
-filtering, and comparison charts should feel familiar to anyone who&#39;s used a mainstream
+where it&#39;s obviously worth it.</strong> Per-assertion result chips, reasoning for both a pass and a
+fail, filtering, and comparison charts should feel familiar to anyone who&#39;s used a mainstream
 open-source eval tool. The two-panel review layout, adaptive column visibility, and
-weighted/composite checks are meant to go further than that baseline.</li>
-<li><strong>A check&#39;s pass/fail must never be ambiguous.</strong> Every other visual signal (what kind of check
-it is, where a test case came from, how results are grouped) has to be layered on without
-competing with the one signal that matters most: did it pass or fail. See RES‑29 for a concrete
-case where this shaped the design.</li>
+weighted/composite assertions are meant to go further than that baseline.</li>
+<li><strong>An assertion&#39;s pass/fail must never be ambiguous.</strong> Every other visual signal (what type of
+assertion it is, where a test case came from, how results are grouped) has to be layered on
+without competing with the one signal that matters most: did it pass or fail. See RES‑29 for a
+concrete case where this shaped the design.</li>
 <li><strong>Never present an estimate as a measured fact.</strong> Cost/latency/token figures are estimates
 until real usage metering is wired up; the page has to read that way wherever they appear.</li>
 </ol>
@@ -120,9 +120,9 @@ until real usage metering is wired up; the page has to read that way wherever th
 covering single-prompt runs, a 3-way prompt comparison, and runs both with and without a
 reference/expected answer to compare against — plus a much larger <strong>export of eval
 configurations</strong> (not results — the actual setup of many real eval suites) that was reviewed
-afterward specifically to check for gaps: check types or structures the redesign hadn&#39;t
-accounted for yet. That second pass is where the &quot;not-equals&quot; / &quot;contains HTML&quot; check types and
-the weighted/composite check requirement (§4.E) came from.</li>
+afterward specifically to check for gaps: assertion types or structures the redesign hadn&#39;t
+accounted for yet. That second pass is where the &quot;not-equals&quot; / &quot;contains HTML&quot; assertion types
+and the weighted/composite assertion requirement (§4.E) came from.</li>
 <li>Two rounds of hands-on feedback against the running prototype are already folded into the
 requirements below — this isn&#39;t a first draft.</li>
 </ul>
@@ -132,10 +132,10 @@ input, every example model output, and every example pass/fail/score is real, ta
 that export. A handful of supporting details the exports never captured were <strong>invented on top of
 that real data</strong>, purely to make the demo readable — most notably: what the underlying prompt
 actually says (exports only ever recorded which prompt/version ran, never its content), a
-human-readable name for that prompt, and — for AI-judged checks — the actual grading instructions
-a judge would have been given (exports only ever recorded a check&#39;s name and its pass/fail, never
-its instructions). One scenario (Scenario 5, §3) is entirely invented, to demonstrate a check
-shape that hadn&#39;t come up yet in the real exports.</p>
+human-readable name for that prompt, and — for AI-judged assertions — the actual grading
+instructions a judge would have been given (exports only ever recorded an assertion&#39;s name and its
+pass/fail, never its instructions). One scenario (Scenario 5, §3) is entirely invented, to
+demonstrate an assertion shape that hadn&#39;t come up yet in the real exports.</p>
 <p><strong>The takeaway:</strong> don&#39;t treat any specific number, output, or wording in the prototype as
 something to match exactly — the <em>behavior and rules</em> being demonstrated are the requirement, not
 the illustrative content sitting inside them.</p>
@@ -156,14 +156,14 @@ with <strong>&quot;Scenario N — …&quot;</strong>.</p>
 </thead>
 <tbody><tr>
 <td>1</td>
-<td><em>Scenario 1 — Compliance chat, 14 assertions</em> (and two sibling variants: <em>Intake bot, 7 inputs &amp; n/a checks</em> / <em>Pet-service greeter, 4 inputs</em>)</td>
+<td><em>Scenario 1 — Compliance chat, 14 assertions</em> (and two sibling variants: <em>Intake bot, 7 inputs &amp; n/a assertions</em> / <em>Pet-service greeter, 4 inputs</em>)</td>
 <td>A single prompt evaluated with no expected/reference answer to compare against</td>
-<td>The base single-run view; a case with many checks at once; a case with several input fields per test case; checks that don&#39;t apply to every test case; one test case that hard-errored instead of scoring</td>
+<td>The base single-run view; a case with many assertions at once; a case with several input fields per test case; assertions that don&#39;t apply to every test case; one test case that hard-errored instead of scoring</td>
 </tr>
 <tr>
 <td>2</td>
 <td><em>Scenario 2 — Intake bot, 3-prompt comparison</em></td>
-<td>Three candidate prompt versions evaluated side by side, on the same test cases and same checks</td>
+<td>Three candidate prompt versions evaluated side by side, on the same test cases and same assertions</td>
 <td>The whole comparison view — shared table, charts, filters, and detail view across variants</td>
 </tr>
 <tr>
@@ -180,31 +180,32 @@ with <strong>&quot;Scenario N — …&quot;</strong>.</p>
 </tr>
 <tr>
 <td>5</td>
-<td><em>Scenario 5 — Funnel headlines, grouped &amp; new check types</em></td>
+<td><em>Scenario 5 — Funnel headlines, grouped &amp; new assertion types</em></td>
 <td>A single prompt, entirely invented for this purpose</td>
-<td>A weighted, multi-part check (§4.E) and two additional standard check types not seen in the real exports</td>
+<td>A weighted, multi-part assertion (§4.E) and two additional standard assertion types not seen in the real exports</td>
 </tr>
 </tbody></table>
-<h3>Scenario 5, in detail — the one to study for weighted/composite checks</h3>
+<h3>Scenario 5, in detail — the one to study for weighted/composite assertions</h3>
 <p>An invented &quot;funnel-page headline generator&quot;: given a service category (e.g. &quot;Divorce Lawyer&quot;),
-the prompt writes a page headline and a one-line description. Its checks:</p>
+the prompt writes a page headline and a one-line description. Its assertions:</p>
 <ol>
-<li>Output must contain proper markup for a headline (a new standard check type).</li>
-<li>Output must <strong>not</strong> be the generic fallback headline for that category (a new standard check
-type, using per-row data).</li>
-<li><strong>&quot;Headline quality score&quot;</strong> — a single named check that is really an equally-weighted average
-of three smaller checks (headline length, category-relevant keyword present, and a
-benefit-led-not-clickbait tone check graded by an AI judge), passing once that average clears a
-set bar.</li>
-<li>A separate AI-judged check on whether the description is compelling and specific.</li>
+<li>Output must contain proper markup for a headline (a new standard assertion type).</li>
+<li>Output must <strong>not</strong> be the generic fallback headline for that category (a new standard
+assertion type, using per-row data).</li>
+<li><strong>&quot;Headline quality score&quot;</strong> — a single named assertion that is really an equally-weighted
+average of three smaller assertions (headline length, category-relevant keyword present, and a
+benefit-led-not-clickbait tone assertion graded by an AI judge), passing once that average
+clears a set bar.</li>
+<li>A separate AI-judged assertion on whether the description is compelling and specific.</li>
 </ol>
 <p>The example test cases deliberately isolate different situations, each worth opening once you&#39;re
-in the prototype: two clean passes; one failing <em>only</em> check 1 with everything else passing; one
-failing <em>only</em> check 2 similarly in isolation; two where the weighted check (#3) fails outright;
-and — the single most important example in the whole prototype — <strong>one case where one of the
-three smaller checks inside the weighted check fails, but the weighted check still passes overall</strong>
-because the average of all three still clears the bar. That last case is the one to point to when
-explaining why &quot;weighted average&quot; is more useful than &quot;every sub-check must pass.&quot;</p>
+in the prototype: two clean passes; one failing <em>only</em> assertion 1 with everything else passing;
+one failing <em>only</em> assertion 2 similarly in isolation; two where the weighted assertion (#3) fails
+outright; and — the single most important example in the whole prototype — <strong>one case where one
+of the three smaller assertions inside the weighted assertion fails, but the weighted assertion
+still passes overall</strong> because the average of all three still clears the bar. That last case is
+the one to point to when explaining why &quot;weighted average&quot; is more useful than &quot;every
+sub-assertion must pass.&quot;</p>
 <hr>
 <h2>4. Requirements</h2>
 <p>Every block: an ID, what must be true, why, and how to tell it&#39;s working. Section groupings A–L
@@ -227,7 +228,7 @@ way back to wherever you came from.</p>
 &quot;browse everything that&#39;s ever been run&quot; doesn&#39;t require opening each project one at a time.</p>
 <h3>B. The summary header (top of every results page, single run or comparison)</h3>
 <h4>RES-4 — Aggregate status at a glance</h4>
-<p>Shows, without any interaction: how many test cases ran, how many checks were evaluated, the
+<p>Shows, without any interaction: how many test cases ran, how many assertions were evaluated, the
 overall pass rate, and a clear flag when this run only scored a chosen subset of the test cases
 rather than the whole set.</p>
 <h4>RES-5 — The page names the real prompt and version it evaluated, not an internal label</h4>
@@ -243,21 +244,21 @@ produced these results without cross-referencing anything else.</li>
 <li>Acceptance: if the real version was never registered/synced anywhere yet, say so plainly instead
 of showing a blank or a guess.</li>
 </ul>
-<h4>RES-6 — A pass-rate breakdown per check, grouped, and clickable to filter</h4>
-<p>Directly below the header, show every check&#39;s own pass rate for this run, visually grouped the
-same way checks are grouped when they&#39;re authored (so, e.g., every &quot;Guardrails&quot;-tagged check rolls
-up together), color-coded against whether it&#39;s meeting its own required pass bar. Clicking a
-check&#39;s entry should narrow the results table below to exactly the rows where that check had a
-given outcome; clicking it again should clear that narrowing.</p>
+<h4>RES-6 — A pass-rate breakdown per assertion, grouped, and clickable to filter</h4>
+<p>Directly below the header, show every assertion&#39;s own pass rate for this run, visually grouped the
+same way assertions are grouped when they&#39;re authored (so, e.g., every &quot;Guardrails&quot;-tagged
+assertion rolls up together), color-coded against whether it&#39;s meeting its own required pass bar.
+Clicking an assertion&#39;s entry should narrow the results table below to exactly the rows where that
+assertion had a given outcome; clicking it again should clear that narrowing.</p>
 <h4>RES-7 — Run-level cost, latency, and token summary</h4>
 <p>A compact strip of run-level totals/averages (cost, latency, tokens) — separate from the same
 figures shown per individual test case (RES‑19).</p>
 <h4>RES-8 — Automatic, free &quot;review this first&quot; guidance</h4>
 <p>Without any user action or cost, the page should point out which test cases have the most
-failing checks (worth reviewing first) and which checks fail most often, with a short plain-
-language hint at likely cause. A path to hand this off for a deeper, opt-in AI-assisted analysis
-should exist as an escalation, but building that deeper analysis itself is <strong>out of scope</strong> for
-this round (§6).</p>
+failing assertions (worth reviewing first) and which assertions fail most often, with a short
+plain-language hint at likely cause. A path to hand this off for a deeper, opt-in AI-assisted
+analysis should exist as an escalation, but building that deeper analysis itself is <strong>out of
+scope</strong> for this round (§6).</p>
 <h3>C. The results table — structure &amp; density</h3>
 <h4>RES-9 — A compact view and a fully detailed view, one click apart, detailed by default</h4>
 <p>Every row must be viewable either as a single truncated line per field (compact) or fully
@@ -267,16 +268,21 @@ anyone opens a given run&#39;s results.</p>
 <p>Every visible row is numbered in its current sorted/filtered order, so a reviewer can say &quot;case
 #14&quot; and mean something concrete and locatable.</p>
 <h4>RES-11 — Three distinct outcomes per row: passed, failed, or errored</h4>
-<p>A test case that broke before any check could even run (e.g. the underlying system never
-responded) must look and read differently from a test case that ran fully and simply failed a
-check — different visual treatment, and its checks column should say plainly that nothing could be
-scored, rather than showing empty or zeroed-out results. Errored rows must be excluded from every
-pass-rate calculation, the same way not-applicable checks are (RES‑26).</p>
+<p>A test case that broke before any assertion could even run (e.g. the underlying system never
+responded) must look and read differently from a test case that ran fully and simply failed an
+assertion — different visual treatment, and its assertions column should say plainly that nothing
+could be scored, rather than showing empty or zeroed-out results. Errored rows must be excluded
+from every pass-rate calculation, the same way not-applicable assertions are (RES‑26).</p>
 <h4>RES-12 — Where each test case came from is visible per row</h4>
 <p>Every row shows, via a small distinct indicator, whether that test case was written by a person or
 generated — independent of, and never confused with, whether it passed or failed.</p>
-<h4>RES-13 — Column widths are adjustable</h4>
-<p>Every column&#39;s width can be dragged wider or narrower, and that choice is remembered.</p>
+<h4>RES-13 — Column widths are adjustable, with defaults sized to what each column is actually for</h4>
+<p>Every column&#39;s width can be dragged wider or narrower, and that choice is remembered. Default
+widths should reflect how much a column is actually used for review, not just split space evenly:
+the assertion-results column carries the substance of a row (one entry per assertion, plus
+reasoning) and needs a generous default width; a column that&#39;s typically empty until a reviewer
+deliberately uses it (e.g. labels) should default narrower, so it doesn&#39;t claim space at the
+expense of the column that matters more.</p>
 <h4>RES-14 — A clearly-labeled full-screen mode, in every layout</h4>
 <p>A prominent, clearly worded control (not just an icon that&#39;s easy to miss) expands the results
 table to fill the whole screen, with an equally clear way to exit — available identically whether
@@ -294,20 +300,21 @@ because a neighboring cell is short.</p>
 available rather than leaving a dead, unused strip once the visible columns no longer add up to
 the full width.</p>
 <h4>RES-17 — Sortable, with the worst results surfaced first by default, and paginated</h4>
-<p>Results can be sorted by how many checks failed (the default — worst test cases first, no filter
-required to see them), or by latency/cost/tokens; large runs are paginated with a choice of page
-size.</p>
+<p>Results can be sorted by how many assertions failed (the default — worst test cases first, no
+filter required to see them), or by latency/cost/tokens; large runs are paginated with a choice of
+page size.</p>
 <h3>D. Which columns show, and when</h3>
 <h4>RES-18 — A sensible, minimal default column set</h4>
 <p>Always shown, and never something a user can accidentally hide: a way to select rows, the row
 number, pass/fail/error status, where the test case came from, its inputs, the model&#39;s output, and
-its check results. Everything else is optional and controlled the way RES‑22 describes.</p>
+its assertion results. Everything else is optional and controlled the way RES‑22 describes.</p>
 <h4>RES-19 — Latency, cost, and token columns are hidden by default, always — not just when the table is crowded</h4>
 <p>These three don&#39;t show automatically even on a run with very few test cases and plenty of room —
 they&#39;re performance/cost bookkeeping, not the primary review signal, so they stay one click away
 regardless of how much space is available. When hidden, they aren&#39;t fully lost: a short inline
-summary of whichever of the three are currently hidden still appears folded into the check-results
-column, so the numbers stay glanceable without needing three permanently-open columns.</p>
+summary of whichever of the three are currently hidden still appears folded into the
+assertion-results column, so the numbers stay glanceable without needing three permanently-open
+columns.</p>
 <h4>RES-20 — A reference/expected-answer column shows only when at least one test case actually has one</h4>
 <p>If no test case in this run has a known correct answer to compare against, that column shouldn&#39;t
 exist at all for this run — never a column full of blanks. The moment at least one test case does
@@ -319,75 +326,81 @@ give each input field its own column when that&#39;s more useful (only offered w
 actually has more than one input field).</p>
 <h4>RES-22 — One place to control every optional column, plus a couple of directly related display choices</h4>
 <p>A single menu exposes every column that can be hidden/shown (RES‑18–21), plus: turning the
-per-check result indicators on/off (kept independent from the check-results column&#39;s own
+per-assertion result indicators on/off (kept independent from the assertion-results column&#39;s own
 visibility — turning that column off must never also remove the only control that turns those
-indicators back on) and switching between combined vs. per-field input columns. The check-results
-column&#39;s own &quot;only show failures&quot; density option lives on that column itself instead (RES‑25), not
-in this general menu.</p>
-<h3>E. Check results &amp; check types</h3>
-<h4>RES-23 — &quot;Checks&quot; is called &quot;Metrics&quot; everywhere</h4>
-<p>Every label a user sees for this concept — the column, the detail-view section, anything
-exported — should consistently say &quot;Metrics,&quot; not &quot;Checks.&quot;</p>
-<h4>RES-24 — One compact result indicator per check, per row</h4>
-<p>Each row shows a small pass/fail indicator per check, with its short name and its score (when that
-check produces one). Clicking one narrows the whole table to exactly that check&#39;s outcome — the
-same behavior as clicking a check in the header rollup (RES‑6).</p>
-<h4>RES-25 — The Metrics column can be switched to &quot;only show failures/errors&quot;</h4>
-<p>A density control that lives specifically on the Metrics column&#39;s own header — separate from the
-general column menu (RES‑22) — lets a reviewer collapse every passing check out of view and see
-only what&#39;s failing or errored, for a much faster read on a mostly-passing run.</p>
-<h4>RES-26 — A check can be explicitly &quot;not applicable&quot; to a given test case, and that must never count as a pass or a fail</h4>
-<p>Some checks legitimately don&#39;t apply to every test case (e.g. a pet-related check on a
+indicators back on) and switching between combined vs. per-field input columns. The
+assertion-results column&#39;s own &quot;only show failures&quot; density option lives on that column itself
+instead (RES‑25), not in this general menu.</p>
+<h3>E. Assertion results &amp; assertion types</h3>
+<h4>RES-23 — One consistent word for this concept, everywhere: &quot;Assertion&quot;</h4>
+<p>Every label a user sees for this concept — the column, the detail-view section, filters, anything
+exported — must consistently say &quot;Assertion&quot; / &quot;Assertions.&quot; No other word (&quot;Check,&quot; &quot;Metric,&quot; or
+anything else) should appear as a synonym anywhere in the page; a reviewer should never have to
+wonder whether &quot;Metrics&quot; and &quot;Checks&quot; mean the same thing as &quot;Assertions,&quot; because only one term
+is ever used for it.</p>
+<h4>RES-24 — One compact result indicator per assertion, per row</h4>
+<p>Each row shows a small pass/fail indicator per assertion, with its short name and its score (when
+that assertion produces one). Clicking one narrows the whole table to exactly that assertion&#39;s
+outcome — the same behavior as clicking an assertion in the header rollup (RES‑6).</p>
+<h4>RES-25 — The Assertions column can be switched to &quot;only show failures/errors&quot;</h4>
+<p>A density control that lives specifically on the Assertions column&#39;s own header — separate from
+the general column menu (RES‑22) — lets a reviewer collapse every passing assertion out of view
+and see only what&#39;s failing or errored, for a much faster read on a mostly-passing run.</p>
+<h4>RES-26 — An assertion can be explicitly &quot;not applicable&quot; to a given test case, and that must never count as a pass or a fail</h4>
+<p>Some assertions legitimately don&#39;t apply to every test case (e.g. a pet-related assertion on a
 vehicle-related test case). That state needs its own neutral, clearly distinct treatment — and
 must be excluded from both sides of every pass-rate calculation, at the level of a single test
-case, a single check summed across the run, or a whole run. If a check never applied to a single
-test case in the run, say so plainly instead of showing a misleading 0% or 100%.</p>
-<h4>RES-27 — The full grading instructions behind an AI-judged check are always reachable, without crowding the compact view</h4>
+case, a single assertion summed across the run, or a whole run. If an assertion never applied to a
+single test case in the run, say so plainly instead of showing a misleading 0% or 100%.</p>
+<h4>RES-27 — The full grading instructions behind an AI-judged assertion are always reachable, without crowding the compact view</h4>
 <p>The compact per-row indicator surfaces the actual instructions an AI judge was given (e.g. on
 hover), rather than forcing them into the table itself; the full text is always available in the
 detailed per-row view (RES‑40).</p>
-<h4>RES-28 — Every check shows its reasoning, whether it passed or failed</h4>
-<p>In the detailed table view, every check&#39;s result includes a short explanation of <em>why</em> — not only
-for failures. A check that passed with no explanation at all reads as unfinished next to a
-fully-explained failure; this must be avoided for every AI-judged check. Simple built-in checks
-(e.g. an exact-match check) can stay terse, since there&#39;s nothing meaningful to explain either way.</p>
-<h4>RES-29 — Every check shows what kind it is, but only one kind gets an actual color</h4>
-<p>Every check should be labeled by kind — a simple built-in check, custom logic, an AI-judged check,
-or a weighted/composite check (RES‑30) — and it must be possible to filter by kind. Deliberately,
-only the AI-judged kind gets an actual distinct color treatment (a muted, non-alarming tone,
-reused as a subtle accent on that check&#39;s whole result card); weighted/composite checks get their
-own distinct-but-equally-muted treatment; the rest stay visually neutral.</p>
+<h4>RES-28 — Every assertion shows its reasoning, whether it passed or failed</h4>
+<p>In the detailed table view, every assertion&#39;s result includes a short explanation of <em>why</em> — not
+only for failures. An assertion that passed with no explanation at all reads as unfinished next to
+a fully-explained failure; this must be avoided for every AI-judged assertion. Simple built-in
+assertions (e.g. an exact-match assertion) can stay terse, since there&#39;s nothing meaningful to
+explain either way.</p>
+<h4>RES-29 — Every assertion shows what type it is, but only one type gets an actual color</h4>
+<p>Every assertion should be labeled by type — a simple built-in assertion, custom logic, an
+AI-judged assertion, or a weighted/composite assertion (RES‑30) — and it must be possible to
+filter by type. Deliberately, only the AI-judged type gets an actual distinct color treatment (a
+muted, non-alarming tone, reused as a subtle accent on that assertion&#39;s whole result card);
+weighted/composite assertions get their own distinct-but-equally-muted treatment; the rest stay
+visually neutral.</p>
 <ul>
 <li>Why: the detail view already has an unambiguous pass/fail signal (an icon, a score, and
-color already used for that). Giving every kind of check its own saturated color on top of that
-would compete with it — e.g. a bright &quot;green&quot; kind-label sitting next to a red fail icon reads as
-contradictory. AI-judged checks are the one kind that&#39;s genuinely easy to overlook otherwise, so
-that&#39;s the one exception.</li>
+color already used for that). Giving every assertion type its own saturated color on top of that
+would compete with it — e.g. a bright &quot;green&quot; type label sitting next to a red fail icon reads as
+contradictory. AI-judged assertions are the one type that&#39;s genuinely easy to overlook
+otherwise, so that&#39;s the one exception.</li>
 </ul>
-<h4>RES-30 — Support a weighted, multi-part check (&quot;composite check&quot;)</h4>
-<p>A single named check can really be several smaller checks rolled together with individual
+<h4>RES-30 — Support a weighted, multi-part assertion (&quot;composite assertion&quot;)</h4>
+<p>A single named assertion can really be several smaller assertions rolled together with individual
 weights, passing once their weighted average clears a set bar — e.g. an overall &quot;headline
-quality&quot; check that&#39;s really an average of a length check, a keyword check, and a tone check.</p>
+quality&quot; assertion that&#39;s really an average of a length assertion, a keyword assertion, and a tone
+assertion.</p>
 <ul>
-<li>The smaller checks inside it can themselves be of any kind (built-in, custom, or AI-judged), and
-can be mixed.</li>
-<li>Everywhere a normal check would appear — the header rollup, the per-row indicator, filters — the
-composite check must appear as exactly <strong>one</strong> entry with its own aggregate result; its smaller
-checks are never separately counted or double-counted in any pass-rate calculation.</li>
-<li>The full breakdown of every smaller check&#39;s own result must always be reachable underneath the
-main entry, never hidden away.</li>
-<li>It must be visibly possible for some of the smaller checks to fail while the composite check as
-a whole still passes, if the weighted average still clears the bar — see Scenario 5 (§3) for a
-concrete example a reviewer can point to.</li>
+<li>The smaller assertions inside it can themselves be of any type (built-in, custom, or
+AI-judged), and can be mixed.</li>
+<li>Everywhere a normal assertion would appear — the header rollup, the per-row indicator, filters —
+the composite assertion must appear as exactly <strong>one</strong> entry with its own aggregate result; its
+smaller assertions are never separately counted or double-counted in any pass-rate calculation.</li>
+<li>The full breakdown of every smaller assertion&#39;s own result must always be reachable underneath
+the main entry, never hidden away.</li>
+<li>It must be visibly possible for some of the smaller assertions to fail while the composite
+assertion as a whole still passes, if the weighted average still clears the bar — see Scenario 5
+(§3) for a concrete example a reviewer can point to.</li>
 <li>Note for whoever designs the underlying data model: this document intentionally doesn&#39;t
-prescribe <em>how</em> a composite check should be represented internally — that&#39;s an engineering
+prescribe <em>how</em> a composite assertion should be represented internally — that&#39;s an engineering
 decision — only the behavior it must produce.</li>
 </ul>
-<h4>RES-31 — Two additional standard, built-in check types</h4>
-<p>Alongside whatever standard checks already exist, add: a check that the output must <strong>not</strong> match
-a specific value (as opposed to must match), and a check that the output must contain valid markup
-for a given element (found to be a real, recurring need when reviewing real eval configurations,
-not something either of the existing checks covered).</p>
+<h4>RES-31 — Two additional standard, built-in assertion types</h4>
+<p>Alongside whatever standard assertions already exist, add: an assertion that the output must
+<strong>not</strong> match a specific value (as opposed to must match), and an assertion that the output must
+contain valid markup for a given element (found to be a real, recurring need when reviewing real
+eval configurations, not something either of the existing assertions covered).</p>
 <h3>F. Filtering &amp; search</h3>
 <h4>RES-32 — One search box, matching every text field on a row</h4>
 <p>A single free-text search matches against every input field, the output, the reference answer (if
@@ -397,39 +410,53 @@ currently visible/truncated.</p>
 <p>All / Passed / Failed / Errored — always visible, no menu required, independent of the fuller
 filter panel (RES‑34).</p>
 <h4>RES-34 — A full filter panel covering every meaningful dimension</h4>
-<p>Beyond the quick status filters: filter by a specific check and its outcome, by check kind, by
-label (including explicitly &quot;has no label&quot;), by where a test case came from, by latency/cost/token
-ranges, by whether a reference answer exists, and by whether a reviewer note exists. Show how many
-filters are currently active, and offer a one-click way to clear all of them at once.</p>
+<p>Beyond the quick status filters: filter by a specific assertion and its outcome, by assertion
+type, by label (including explicitly &quot;has no label&quot;), by where a test case came from, by
+latency/cost/token ranges, by whether a reference answer exists, and by whether a reviewer note
+exists. Show how many filters are currently active, and offer a one-click way to clear all of
+them at once.</p>
 <h4>RES-35 — You can only filter on what&#39;s currently visible</h4>
 <p>Every section of the filter panel only appears if its related column is currently shown (RES‑22)
 — hiding, say, the cost column also removes the ability to filter by a cost range, so nobody can
 end up filtering on a number they can no longer see or verify.</p>
 <h4>RES-36 — Clicking a result to filter is one consistent behavior everywhere, and never silently contradicts another filter</h4>
-<p>Clicking a check&#39;s result — from a row or from the header rollup (RES‑6/24) — always drives the
-same underlying filter, clicking it again always clears it, and applying it always resets the
+<p>Clicking an assertion&#39;s result — from a row or from the header rollup (RES‑6/24) — always drives
+the same underlying filter, clicking it again always clears it, and applying it always resets the
 quick status filter (RES‑33) back to &quot;all,&quot; so the two can never combine into a filter that&#39;s
-guaranteed to show zero results (e.g. &quot;passed&quot; plus &quot;this check failed&quot;).</p>
+guaranteed to show zero results (e.g. &quot;passed&quot; plus &quot;this assertion failed&quot;).</p>
+<h4>RES-36a — The detail view&#39;s assertion list can be filtered by outcome the same way</h4>
+<p>A row with many assertions can be scanned down to just the ones that matter right now: All,
+Passed, Failed, or N/A — a filter control that lives directly on the detail view&#39;s assertion
+section, mirroring RES‑25&#39;s column-header control but as a full 4-way choice rather than just
+&quot;only failing,&quot; since isolating passes is just as useful as isolating failures once a row has
+dozens of assertions. Resets to &quot;All&quot; every time a different test case is opened (Prev/Next or
+reopened from the table), so a filter left on &quot;Failed&quot; from one row can never silently hide
+everything on the next.</p>
+<ul>
+<li>In the comparison view&#39;s per-test-case detail (RES‑47), the same filter applies to the shared
+assertion table using &quot;any variant&quot; semantics: an assertion row stays visible if at least one
+variant&#39;s result for it matches the chosen outcome.</li>
+</ul>
 <h3>G. The detail view for a single test case</h3>
 <h4>RES-37 — One two-part view, not separate tabs, replaces the current design</h4>
 <p>Opening a test case&#39;s full detail must show, at once, on one screen: every input, the output, and
-the reference answer (if any) pinned on one side, always visible — and every check&#39;s full result
-and reasoning on the other side, scrollable independently. This directly replaces the previous
-tabbed design&#39;s core problem: reading a check&#39;s reasoning used to mean losing sight of the output
-it was judging, because they lived on different tabs.</p>
+the reference answer (if any) pinned on one side, always visible — and every assertion&#39;s full
+result and reasoning on the other side, scrollable independently. This directly replaces the
+previous tabbed design&#39;s core problem: reading an assertion&#39;s reasoning used to mean losing sight
+of the output it was judging, because they lived on different tabs.</p>
 <h4>RES-38 — Metadata is a small section, not a whole tab</h4>
 <p>Identifiers, timestamps, and performance figures collapse into a compact section rather than
-consuming as much visual weight as the output and the check results.</p>
+consuming as much visual weight as the output and the assertion results.</p>
 <h4>RES-39 — Step to the next/previous test case without closing the detail view</h4>
 <p>Simple forward/back controls move to the next or previous test case (in whatever order the table
 is currently sorted/filtered to) without closing and reopening the view.</p>
-<h4>RES-40 — What each check&#39;s detail shows depends on its kind</h4>
-<p>A simple built-in check shows what value or pattern it checked against — nothing more is needed.
-Custom-logic checks show their name only; the underlying logic itself is not shown — reviewing it
-was judged to add noise, not useful context, for this audience. AI-judged checks show their actual
-full grading instructions, collapsible if long, rather than either cutting them off or letting them
-take over the screen. A weighted/composite check (RES‑30) shows its pass bar and the full result
-of every smaller check inside it.</p>
+<h4>RES-40 — What each assertion&#39;s detail shows depends on its type</h4>
+<p>A simple built-in assertion shows what value or pattern it checked against — nothing more is
+needed. Custom-logic assertions show their name only; the underlying logic itself is not shown —
+reviewing it was judged to add noise, not useful context, for this audience. AI-judged assertions
+show their actual full grading instructions, collapsible if long, rather than either cutting them
+off or letting them take over the screen. A weighted/composite assertion (RES‑30) shows its pass
+bar and the full result of every smaller assertion inside it.</p>
 <h3>H. Letting a reviewer annotate what they see</h3>
 <h4>RES-41 — A free-text note per test case, that survives future runs</h4>
 <p>A reviewer can attach a free-text note to a test case; it must persist on that test case itself
@@ -437,33 +464,35 @@ of every smaller check inside it.</p>
 searchable (RES‑32) and filterable (RES‑34).</p>
 <h4>RES-42 — Short labels per result, visible by default</h4>
 <p>A reviewer can attach short, free-form labels to a specific result — meant to flag or group
-something about <em>this run&#39;s specific outcome</em> that the built-in checks don&#39;t capture (unlike the
-note above, a label isn&#39;t expected to still be meaningful after the prompt changes and reruns).
-Labels must be filterable, including &quot;has no label,&quot; and — unlike performance figures (RES‑19) —
-must be visible by default, since this is reviewer-facing signal, not bookkeeping.</p>
+something about <em>this run&#39;s specific outcome</em> that the built-in assertions don&#39;t capture (unlike
+the note above, a label isn&#39;t expected to still be meaningful after the prompt changes and
+reruns). Labels must be filterable, including &quot;has no label,&quot; and — unlike performance figures
+(RES‑19) — must be visible by default, since this is reviewer-facing signal, not bookkeeping.</p>
 <h3>I. Comparing several prompt variants at once</h3>
 <h4>RES-43 — The comparison layout appears automatically whenever a run actually compares variants</h4>
 <p>When a run evaluated two or more prompt variants against the exact same test cases and the exact
-same checks in one go, the results page must automatically show the comparison layout instead of
-the single-run layout — no separate action required to switch into it.</p>
+same assertions in one go, the results page must automatically show the comparison layout instead
+of the single-run layout — no separate action required to switch into it.</p>
 <ul>
-<li>Note: comparing variants that were checked against genuinely different check sets is <strong>not</strong>
-supported (§6) — only same-test-cases, same-checks comparisons.</li>
+<li>Note: comparing variants that were checked against genuinely different assertion sets is
+<strong>not</strong> supported (§6) — only same-test-cases, same-assertions comparisons.</li>
 </ul>
 <h4>RES-44 — Comparison charts</h4>
-<p>Three chart types: a pass-rate comparison across variants; a per-check breakdown comparing every
-variant side by side for each check; and, specifically when comparing exactly two variants, an
-agreement view showing, per test case, whether the two variants agreed or disagreed.</p>
+<p>Three chart types: a pass-rate comparison across variants; a per-assertion breakdown comparing
+every variant side by side for each assertion; and, specifically when comparing exactly two
+variants, an agreement view showing, per test case, whether the two variants agreed or disagreed.</p>
 <h4>RES-45 — One shared table, every variant side by side, not a separate table per variant</h4>
-<p>Each test case appears exactly once, with every variant&#39;s status/output/check-results shown
+<p>Each test case appears exactly once, with every variant&#39;s status/output/assertion-results shown
 side by side within that one row — using the same column rules as the single-run table (RES‑18–21).</p>
 <h4>RES-46 — Comparison-specific filtering and column choices</h4>
-<p>The same status and check filters as the single-run view, plus the ability to show/hide
+<p>The same status and assertion filters as the single-run view, plus the ability to show/hide
 source/latency/cost/tokens independently per variant.</p>
 <h4>RES-47 — The comparison detail view shows every variant side by side for one test case</h4>
-<p>Opening a test case in the comparison view shows every variant&#39;s output and every check&#39;s outcome
-for that one test case together — inputs/note/reference (shared across variants) shown once — so a
-difference between two variants is visible without flipping between separate single-variant views.</p>
+<p>Opening a test case in the comparison view shows every variant&#39;s output and every assertion&#39;s
+outcome for that one test case together — inputs/note/reference (shared across variants) shown
+once — so a difference between two variants is visible without flipping between separate
+single-variant views. The same Passed/Failed/N-A filter as RES‑36a applies here too, scoped to
+this one test case&#39;s shared assertion table.</p>
 <h4>RES-48 — Full-screen mode in the comparison view too</h4>
 <p>The same clearly-labeled full-screen control as RES‑14, available in the comparison layout as well.</p>
 <h3>J. Getting data out</h3>
@@ -479,81 +508,84 @@ distinction needs to be preserved and stay visible, not quietly presented as fac
 are available for some but not all of these figures.</p>
 <h3>L. Preferences</h3>
 <h4>RES-51 — Every view choice is remembered per project, sane defaults win only until a user overrides them</h4>
-<p>Compact/detailed view, which columns are hidden, sort order, page size, and check-result density
-all persist per project, across visits. The very first time a project&#39;s results are viewed, hidden
-columns should start from the sensible computed defaults described above (RES‑19/20); the instant
-a user makes any explicit choice of their own — even re-hiding something that was already
-shown — that choice must win from then on and never silently revert back to the computed default.</p>
+<p>Compact/detailed view, which columns are hidden, sort order, page size, and assertion-result
+density all persist per project, across visits. The very first time a project&#39;s results are
+viewed, hidden columns should start from the sensible computed defaults described above
+(RES‑19/20); the instant a user makes any explicit choice of their own — even re-hiding something
+that was already shown — that choice must win from then on and never silently revert back to the
+computed default.</p>
 <hr>
 <h2>5. Underlying rules the data itself must support</h2>
 <p>A short summary of the capabilities the system needs, independent of any particular UI —
 useful for whoever designs how results are actually stored and computed:</p>
 <ul>
-<li>A single check&#39;s result on a single test case must be able to be marked <strong>not applicable</strong>,
+<li>A single assertion&#39;s result on a single test case must be able to be marked <strong>not applicable</strong>,
 distinct from pass or fail, and excluded from every pass-rate calculation everywhere (RES‑26).</li>
 <li>A test case&#39;s run must be able to record a <strong>hard error</strong> (nothing could be scored) as a third,
 distinct outcome from pass/fail (RES‑11).</li>
-<li>A named check must be able to be a <strong>weighted combination of several smaller checks</strong>, each
-possibly of a different kind, with its own pass bar, and the ability to report both its own
+<li>A named assertion must be able to be a <strong>weighted combination of several smaller assertions</strong>,
+each possibly of a different type, with its own pass bar, and the ability to report both its own
 single aggregate result and the full breakdown of its parts (RES‑30).</li>
-<li>Two additional standard, built-in check types are needed: &quot;must not equal a given value&quot; and
+<li>Two additional standard, built-in assertion types are needed: &quot;must not equal a given value&quot; and
 &quot;must contain valid markup for a given element&quot; (RES‑31).</li>
 <li>The system must be able to carry the <strong>real, externally-meaningful identity</strong> of the prompt and
 version a run evaluated — not only an internal label — so the results page can always show
 genuine identity (RES‑5).</li>
 <li>A single run must be able to represent <strong>several prompt variants evaluated together</strong> against
-the identical test cases and identical checks, so a comparison is one run, not several
+the identical test cases and identical assertions, so a comparison is one run, not several
 separately-run results stitched together after the fact (RES‑43).</li>
 </ul>
 <hr>
 <h2>6. Explicitly out of scope for this round</h2>
 <p>Called out so nothing here gets accidentally scoped into a story:</p>
 <ul>
-<li><strong>Building/editing a weighted or composite check from scratch through a UI.</strong> This document
+<li><strong>Building/editing a weighted or composite assertion from scratch through a UI.</strong> This document
 requires the results page to fully <em>display</em> one correctly (RES‑30); it does not require the
-check-authoring experience to gain the ability to construct one.</li>
+assertion-authoring experience to gain the ability to construct one.</li>
 <li><strong>A deeper, AI-generated review pass.</strong> The free, instant &quot;review this first&quot; guidance (RES‑8)
 is required; a richer, opt-in AI-assisted analysis beyond that was discussed and is explicitly
 deferred, not required for this round.</li>
 <li><strong>Real-time model or AI-judge grading on this page.</strong> The scoring <em>rules</em> in §4/§5 are the
 requirement; live grading against a real model, in real time, is not part of this page&#39;s scope.</li>
-<li><strong>Test cases checked against genuinely different checks per test case within one run.</strong> A run&#39;s
-set of checks is fixed for the whole run. The closest supported case is a fixed check set where
-some checks legitimately don&#39;t apply to some test cases (RES‑26) — a different, and more common,
-situation than truly varying which checks run per test case.</li>
-<li><strong>Comparing variants that were graded with different checks.</strong> RES‑43 requires the same test
-cases <em>and</em> the same checks across every variant being compared.</li>
+<li><strong>Test cases checked against genuinely different assertions per test case within one run.</strong> A
+run&#39;s set of assertions is fixed for the whole run. The closest supported case is a fixed
+assertion set where some assertions legitimately don&#39;t apply to some test cases (RES‑26) — a
+different, and more common, situation than truly varying which assertions run per test case.</li>
+<li><strong>Comparing variants that were graded with different assertions.</strong> RES‑43 requires the same
+test cases <em>and</em> the same assertions across every variant being compared.</li>
 <li><strong>Real, metered cost/latency/token usage.</strong> RES‑50 requires these to read as estimates; wiring
 up real measured usage is separate future work.</li>
 </ul>
 <hr>
 <h2>7. Open questions for whoever scopes this next</h2>
 <ul>
-<li><strong>Unequal weighting inside a composite check.</strong> The requirement (RES‑30) allows it, and it&#39;s a
-documented real-world need, but the prototype&#39;s own example only demonstrates equal weighting.
+<li><strong>Unequal weighting inside a composite assertion.</strong> The requirement (RES‑30) allows it, and it&#39;s
+a documented real-world need, but the prototype&#39;s own example only demonstrates equal weighting.
 Worth confirming how much of a priority actual unequal-weight configuration deserves.</li>
-<li><strong>Checks that vary per test case within a single run</strong> (§6) — a real pattern seen in about one
-in ten real eval configurations reviewed, but out of scope here. Worth its own requirements pass
-if it turns out to matter more than that.</li>
-<li><strong>Composite checks nested inside other composite checks.</strong> Not required here — no real example
-needed it — but worth flagging if it turns out to be a real need later.</li>
+<li><strong>Assertions that vary per test case within a single run</strong> (§6) — a real pattern seen in about
+one in ten real eval configurations reviewed, but out of scope here. Worth its own requirements
+pass if it turns out to matter more than that.</li>
+<li><strong>Composite assertions nested inside other composite assertions.</strong> Not required here — no real
+example needed it — but worth flagging if it turns out to be a real need later.</li>
 </ul>
 <hr>
 <h2>8. Glossary</h2>
 <ul>
-<li><strong>Run</strong> — one execution of a prompt&#39;s full set of checks against its test cases. A <strong>comparison
-run</strong> is a single run where several prompt variants were evaluated together against the same
-test cases and the same checks (RES‑43).</li>
-<li><strong>Check / Metric</strong> — used interchangeably (the page itself always says &quot;Metric,&quot; RES‑23); one
-named pass/fail (or scored) test applied to every test case.</li>
-<li><strong>Check kind</strong> — a simple built-in check (no AI involved), custom logic, an AI-judged check, or a
-weighted/composite check (RES‑30) — ordered roughly cheapest/simplest to most expensive, matching
-how checks are already classified when they&#39;re authored.</li>
-<li><strong>Composite / weighted check</strong> — a single named check that&#39;s really several smaller checks
-averaged together with individual weights, passing once that average clears a set bar (RES‑30).</li>
-<li><strong>Not applicable (n/a)</strong> — a check result explicitly excluded from pass/fail accounting because
-the check didn&#39;t make sense for that particular test case (RES‑26) — distinct from a hard
-<strong>error</strong> on that test case (RES‑11).</li>
+<li><strong>Run</strong> — one execution of a prompt&#39;s full set of assertions against its test cases. A
+<strong>comparison run</strong> is a single run where several prompt variants were evaluated together
+against the same test cases and the same assertions (RES‑43).</li>
+<li><strong>Assertion</strong> — the one and only word this page uses for the concept (RES‑23); one named
+pass/fail (or scored) test applied to every test case. Older drafts of this feature called the
+same thing &quot;Check&quot; or &quot;Metric&quot; — both are retired in favor of &quot;Assertion.&quot;</li>
+<li><strong>Assertion type</strong> — a simple built-in assertion (no AI involved), custom logic, an AI-judged
+assertion, or a weighted/composite assertion (RES‑30) — ordered roughly cheapest/simplest to
+most expensive, matching how assertions are already classified when they&#39;re authored.</li>
+<li><strong>Composite / weighted assertion</strong> — a single named assertion that&#39;s really several smaller
+assertions averaged together with individual weights, passing once that average clears a set
+bar (RES‑30).</li>
+<li><strong>Not applicable (n/a)</strong> — an assertion result explicitly excluded from pass/fail accounting
+because the assertion didn&#39;t make sense for that particular test case (RES‑26) — distinct from
+a hard <strong>error</strong> on that test case (RES‑11).</li>
 <li><strong>Sample run</strong> — a run that only scored a chosen subset of the test cases rather than all of
 them, flagged distinctly in the summary header (RES‑4).</li>
 </ul>

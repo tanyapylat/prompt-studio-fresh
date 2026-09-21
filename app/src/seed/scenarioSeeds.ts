@@ -71,7 +71,7 @@ import {
 
 const MODEL = "gpt-4o-mini";
 
-type FixtureVariant = { output: string; status: string; score: number | null; metricScores: readonly (number | null)[]; graderReason: string };
+type FixtureVariant = { output: string; status: string; score: number | null; assertionScores: readonly (number | null)[]; graderReason: string };
 type FixtureRow = { description?: string; vars: readonly string[]; reference?: string | null; variants: readonly FixtureVariant[] };
 interface Fixture {
   varNames: readonly string[];
@@ -113,7 +113,7 @@ function normalizeCheckName(name: string): string {
  * per row, never the judge instructions actually used — see the fixture-level "INVENTED" note at
  * the top of this file. Written in the same register as Veronica's real "no_advice" rubric
  * (explicit PASS/FAIL rules, not just "satisfies the criterion") so the panel's Rubric box reads
- * like a real judge prompt instead of a restated metric name. Grounded in what each fixture's rows
+ * like a real judge prompt instead of a restated assertion name. Grounded in what each fixture's rows
  * actually are: `lotOfAssertions` = a multi-vertical (medical/legal/pet/auto/etc.) intake bot
  * reflecting a detail + asking one question before handing off to a named Expert type;
  * `moreThanOneInput`/`threePrompts` = a similar intake bot for vehicle/pet/tech/health verticals
@@ -232,7 +232,7 @@ function fabricateRubric(name: string): string {
 /**
  * INVENTED, same key space as `RUBRIC_TEXT` — every one of these rows' real "reason" text is a
  * single per-row summary, always literally `"All assertions passed"` for a passing row (see the
- * fixture-level "INVENTED" note above), never a per-metric explanation. Promptfoo's own UI (per
+ * fixture-level "INVENTED" note above), never a per-assertion explanation. Promptfoo's own UI (per
  * Veronica's reference) always shows the judge's reasoning for a passing rubric grade, not just a
  * bare "Passed.", so this fills that gap with a plausible one-line explanation of *why* that
  * specific rubric would pass — read as "what a judge model would have said," not real judge output.
@@ -321,7 +321,7 @@ function passReasonFor(assertion: Assertion): string {
 }
 
 function buildScores(assertions: Assertion[], variant: FixtureVariant): AssertionScore[] {
-  if (assertions.length === 1 && variant.metricScores.length === 0) {
+  if (assertions.length === 1 && variant.assertionScores.length === 0) {
     const passed = variant.status === "PASS";
     return [
       {
@@ -333,7 +333,7 @@ function buildScores(assertions: Assertion[], variant: FixtureVariant): Assertio
     ];
   }
   return assertions.map((a, i) => {
-    const raw = variant.metricScores[i];
+    const raw = variant.assertionScores[i];
     if (raw === null || raw === undefined) {
       return { assertionId: a.id, passed: true, na: true, reason: "Not applicable to this row." };
     }
@@ -554,7 +554,7 @@ function fabricateHbwExtraVars(itemId: string): Record<string, string> {
 // Fully INVENTED — dataset rows, outputs, and every score below. Unlike Scenarios 1-4 (real CSV
 // exports with invented text/tiers layered on top), nothing here comes from a source file: no
 // result export Veronica gave us exercises promptfoo's `assert-set` (weighted/grouped sub-checks
-// rolled into one named metric — real examples she found: an "H1Tag Total score" averaging a
+// rolled into one named assertion — real examples she found: an "H1Tag Total score" averaging a
 // length check, a keyword check, and a tone check) or the `not-equals`/`contains-html` deterministic
 // modes, even though all three showed up when cross-checking her large `configs-new-2026-6-24.csv`
 // config export for coverage gaps. This scenario is a plausible SEO-funnel headline generator
@@ -764,7 +764,7 @@ const FUNNEL_ROWS: FunnelRow[] = [
 
 function buildScenario5(ownerId: string): SpecProject {
   const { containsHtml, notDuplicateFallback, h1Length, h1Keyword, h1Tone, h1Group, metaQuality } = buildScenario5Assertions();
-  const spec = createBlankSpec("Scenario 5 — Funnel headlines, grouped & new check types", ownerId, "org");
+  const spec = createBlankSpec("Scenario 5 — Funnel headlines, grouped & new assertion types", ownerId, "org");
 
   const items: DatasetItem[] = FUNNEL_ROWS.map((row) => {
     const item = buildDatasetItem({ Category: row.category }, ["Category"], "manual");
@@ -894,7 +894,7 @@ export function buildScenarioSpecs(ownerId: string): SpecProject[] {
   });
 
   const s1b = buildSingleVariantSpec({
-    name: "Scenario 1 — Intake bot, 7 inputs & n/a checks",
+    name: "Scenario 1 — Intake bot, 7 inputs & n/a assertions",
     ownerId,
     fixture: moreThanOneInputFixture,
     assertions: buildAssertionsFromNames(moreThanOneInputFixture.assertionNames),
