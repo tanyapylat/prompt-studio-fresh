@@ -285,7 +285,7 @@ const SQL_KEYWORDS = /\b(select|insert\s+into|update|delete\s+from|create\s+tabl
 const XML_TAG_PAIR = /<([a-zA-Z][\w:-]*)(?:\s[^>]*)?>[\s\S]*?<\/\1>/;
 
 /** Real, deterministic scoring of a `deterministic`-tier assertion against an actual (or simulated) output string. */
-export function scoreCodeAssertion(check: CodeCheck, output: string): { passed: boolean; reason: string } {
+export function scoreCodeAssertion(check: CodeCheck, output: string): { passed: boolean; reason: string; errored?: boolean } {
   const text = output ?? "";
   const lower = text.toLowerCase();
   switch (check.mode) {
@@ -454,8 +454,10 @@ export function scoreCodeAssertion(check: CodeCheck, output: string): { passed: 
         const re = new RegExp(check.value, "i");
         const passed = re.test(text);
         return { passed, reason: passed ? `Matched /${check.value}/.` : `Did not match /${check.value}/.` };
-      } catch {
-        return { passed: false, reason: `Invalid regex: ${check.value}` };
+      } catch (err) {
+        // The assertion's own config is broken (bad pattern), not the output — this never ran,
+        // so it's an error, not a legitimate fail.
+        return { passed: false, errored: true, reason: `Invalid regex "${check.value}": ${(err as Error).message}` };
       }
     }
     case "regex_excludes": {
@@ -466,8 +468,8 @@ export function scoreCodeAssertion(check: CodeCheck, output: string): { passed: 
           passed,
           reason: passed ? `Correctly avoided /${check.value}/.` : `Output matches disallowed pattern /${check.value}/.`,
         };
-      } catch {
-        return { passed: false, reason: `Invalid regex: ${check.value}` };
+      } catch (err) {
+        return { passed: false, errored: true, reason: `Invalid regex "${check.value}": ${(err as Error).message}` };
       }
     }
     case "word_count": {
@@ -502,7 +504,7 @@ export function scoreCustomCode(
   language: "javascript" | "python",
   output: string,
   input: string,
-): { passed: boolean; reason: string } {
+): { passed: boolean; reason: string; errored?: boolean } {
   if (language === "python") {
     return {
       passed: true,
@@ -510,7 +512,7 @@ export function scoreCustomCode(
     };
   }
   if (!code.trim()) {
-    return { passed: false, reason: "No code provided for this custom-code assertion." };
+    return { passed: false, errored: true, reason: "No code provided for this custom-code assertion." };
   }
   try {
     // eslint-disable-next-line no-new-func
@@ -523,7 +525,10 @@ export function scoreCustomCode(
     const passed = !!result;
     return { passed, reason: passed ? "Custom code returned a truthy value." : "Custom code returned a falsy value." };
   } catch (err) {
-    return { passed: false, reason: `Custom code threw an error: ${(err as Error).message}` };
+    // The check itself blew up (a bug in the snippet, a bad assumption about the output's shape,
+    // etc.) — it never actually evaluated pass/fail, so this is an error, not a legitimate fail
+    // (mirrors promptfoo's own Pass/Fail/Error split, just per-assertion instead of per-row).
+    return { passed: false, errored: true, reason: `Custom code threw an error: ${(err as Error).message}` };
   }
 }
 
@@ -548,11 +553,11 @@ function scoreOneAssertion(assertion: Assertion, passed: boolean, output: string
   if (assertion.children?.length) return scoreAssertionGroup(assertion, output, input, itemId);
   if (assertion.tier === "deterministic" && assertion.check) {
     const real = scoreCodeAssertion(assertion.check, output);
-    return { assertionId: assertion.id, passed: real.passed, reason: real.reason, score: real.passed ? 1 : 0 };
+    return { assertionId: assertion.id, passed: real.passed, errored: real.errored, reason: real.reason, score: real.passed ? 1 : 0 };
   }
   if (assertion.tier === "custom_code" && assertion.code) {
     const real = scoreCustomCode(assertion.code, assertion.codeLanguage ?? "javascript", output, input);
-    return { assertionId: assertion.id, passed: real.passed, reason: real.reason, score: real.passed ? 1 : 0 };
+    return { assertionId: assertion.id, passed: real.passed, errored: real.errored, reason: real.reason, score: real.passed ? 1 : 0 };
   }
   // Simulated rubric score: a plausible fractional value on the "passing"/"failing" side of
   // 0.5, not just a flat 1/0 — keeps the offline path exercising the same score field a live

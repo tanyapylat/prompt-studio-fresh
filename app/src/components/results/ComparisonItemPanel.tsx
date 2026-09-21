@@ -11,7 +11,7 @@ import { variantColor } from "./charts";
 import { SegmentedToggle } from "./ResultsFiltersMenu";
 
 /** Mirrors `ResultItemPanel`'s same-named type — "any variant matches" semantics here, consistent with `comparisonRowMatchesAssertion`. */
-type AssertionOutcomeFilter = "all" | "passed" | "failed" | "na";
+type AssertionOutcomeFilter = "all" | "passed" | "failed" | "errored" | "na";
 
 /**
  * The comparison view's equivalent of `ResultItemPanel` — one dataset row, but with every
@@ -70,8 +70,9 @@ export function ComparisonItemPanel({
       const sc = result.scores.find((s) => s.assertionId === assertion.id);
       if (!sc) return false;
       if (assertionOutcomeFilter === "na") return !!sc.na;
-      if (assertionOutcomeFilter === "passed") return !sc.na && sc.passed;
-      return !sc.na && !sc.passed;
+      if (assertionOutcomeFilter === "errored") return !sc.na && !!sc.errored;
+      if (assertionOutcomeFilter === "passed") return !sc.na && !sc.errored && sc.passed;
+      return !sc.na && !sc.errored && !sc.passed;
     });
   }
   const visibleAssertions = assertions.filter(assertionMatchesOutcomeFilter);
@@ -182,6 +183,7 @@ export function ComparisonItemPanel({
                     { id: "all", label: "All" },
                     { id: "passed", label: "Passed" },
                     { id: "failed", label: "Failed" },
+                    { id: "errored", label: "Errors" },
                     { id: "na", label: "N/A" },
                   ]}
                   onChange={(v) => setAssertionOutcomeFilter(v)}
@@ -230,6 +232,10 @@ export function ComparisonItemPanel({
                               <span className="inline-flex items-center gap-1 text-slate-400">
                                 <Minus size={12} /> n/a
                               </span>
+                            ) : sc.errored ? (
+                              <Badge tone="warning">
+                                <AlertTriangle size={11} /> error
+                              </Badge>
                             ) : (
                               <Badge tone={sc.passed ? "success" : "danger"}>
                                 {sc.passed ? <CheckCircle2 size={11} /> : <XCircle size={11} />}

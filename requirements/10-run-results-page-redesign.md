@@ -101,7 +101,7 @@ with **"Scenario N — …"**.
 | 2 | *Scenario 2 — Intake bot, 3-prompt comparison* | Three candidate prompt versions evaluated side by side, on the same test cases and same assertions | The whole comparison view — shared table, charts, filters, and detail view across variants |
 | 3 | *Scenario 3 — Pricing-help detector* and *Contact-preference classifier* | A single prompt evaluated **with** a known correct/expected answer to compare each output against | How the page behaves once a reference answer exists — one example with a yes/no-style reference, one with a multiple-choice-style reference |
 | 4 | *Scenario 4 — Category/lead classifier, 100 rows* | A single prompt evaluated against a large test set (100+ cases) with several input fields each, and a reference answer | How the page holds up at scale — density, column choices, one hard-errored test case mixed into a large run |
-| 5 | *Scenario 5 — Funnel headlines, grouped & new assertion types* | A single prompt, entirely invented for this purpose | A weighted, multi-part assertion (§4.E) and two additional standard assertion types not seen in the real exports |
+| 5 | *Scenario 5 — Funnel headlines, grouped & new assertion types* | A single prompt, entirely invented for this purpose | A weighted, multi-part assertion (§4.E); two additional standard assertion types not seen in the real exports; one sub-assertion that errors instead of failing (RES‑36a) |
 
 ### Scenario 5, in detail — the one to study for weighted/composite assertions
 
@@ -120,11 +120,12 @@ the prompt writes a page headline and a one-line description. Its assertions:
 The example test cases deliberately isolate different situations, each worth opening once you're
 in the prototype: two clean passes; one failing *only* assertion 1 with everything else passing;
 one failing *only* assertion 2 similarly in isolation; two where the weighted assertion (#3) fails
-outright; and — the single most important example in the whole prototype — **one case where one
-of the three smaller assertions inside the weighted assertion fails, but the weighted assertion
-still passes overall** because the average of all three still clears the bar. That last case is
-the one to point to when explaining why "weighted average" is more useful than "every
-sub-assertion must pass."
+outright; one case where one of the three smaller assertions inside the weighted assertion fails,
+but the weighted assertion still passes overall because the average of all three still clears the
+bar — the case to point to when explaining why "weighted average" is more useful than "every
+sub-assertion must pass"; and one case where a smaller assertion inside the weighted assertion
+**errors** instead of failing (its own grading logic never ran, since the output had nothing for
+it to inspect) — the case to point to for RES‑36a's Passed/Failed/**Errors**/N-A distinction.
 
 ---
 
@@ -381,12 +382,18 @@ guaranteed to show zero results (e.g. "passed" plus "this assertion failed").
 
 #### RES-36a — The detail view's assertion list can be filtered by outcome the same way
 A row with many assertions can be scanned down to just the ones that matter right now: All,
-Passed, Failed, or N/A — a filter control that lives directly on the detail view's assertion
-section, mirroring RES‑25's column-header control but as a full 4-way choice rather than just
-"only failing," since isolating passes is just as useful as isolating failures once a row has
+Passed, Failed, Errors, or N/A — a filter control that lives directly on the detail view's
+assertion section, mirroring RES‑25's column-header control but as a full 5-way choice rather than
+just "only failing," since isolating passes is just as useful as isolating failures once a row has
 dozens of assertions. Resets to "All" every time a different test case is opened (Prev/Next or
 reopened from the table), so a filter left on "Failed" from one row can never silently hide
 everything on the next.
+- "Errors" here is a **per-assertion** error — one specific assertion's own grading logic couldn't
+  run at all (e.g. a broken custom-code snippet, an invalid pattern) — as distinct from a row-level
+  error (RES‑11), where the whole test case never generated an output and no assertion ran at all.
+  An errored assertion still counts as a fail in every rollup, but is called out with its own
+  visual treatment and its own bucket here so a reviewer can immediately tell "this genuinely
+  didn't meet the bar" apart from "this assertion is broken and needs to be fixed, not the prompt."
 - In the comparison view's per-test-case detail (RES‑47), the same filter applies to the shared
   assertion table using "any variant" semantics: an assertion row stays visible if at least one
   variant's result for it matches the chosen outcome.

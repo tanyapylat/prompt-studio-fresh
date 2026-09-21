@@ -1,68 +1,24 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<title>Run Results Page — Redesign Requirements</title>
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta charset="UTF-8">
+<title>Run Results Page Redesign — Requirements</title>
 <style>
-  body {
-    max-width: 900px;
-    margin: 0 auto;
-    padding: 24px 40px 80px;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-    font-size: 16px;
-    line-height: 1.65;
-    color: #1f2328;
-    background: #ffffff;
-  }
-  h1, h2, h3, h4 { font-weight: 600; margin-top: 1.7em; margin-bottom: 0.6em; }
-  h1 { font-size: 2em; border-bottom: 1px solid #d0d7de; padding-bottom: 0.3em; }
-  h2 { font-size: 1.5em; border-bottom: 1px solid #d0d7de; padding-bottom: 0.3em; }
-  h3 { font-size: 1.2em; }
-  h4 { font-size: 1.05em; color: #24292f; }
-  p, li { color: #1f2328; }
-  a { color: #0969da; text-decoration: none; }
-  a:hover { text-decoration: underline; }
-  code {
-    background: rgba(175,184,193,0.2);
-    padding: 0.2em 0.4em;
-    border-radius: 6px;
-    font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
-    font-size: 85%;
-  }
-  blockquote {
-    border-left: 4px solid #d0d7de;
-    margin: 0;
-    padding: 0.2em 1em;
-    color: #59636e;
-  }
-  table {
-    border-collapse: collapse;
-    width: 100%;
-    margin: 1em 0;
-    display: block;
-    overflow-x: auto;
-  }
-  th, td {
-    border: 1px solid #d0d7de;
-    padding: 8px 13px;
-    text-align: left;
-    vertical-align: top;
-  }
-  tr:nth-child(2n) { background: #f6f8fa; }
-  hr { border: none; border-top: 1px solid #d0d7de; margin: 2.2em 0; }
-  .banner {
-    background: #ddf4ff;
-    border: 1px solid #54aeff3d;
-    border-radius: 6px;
-    padding: 10px 16px;
-    margin-bottom: 24px;
-    font-size: 14px;
-  }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; max-width: 900px; margin: 40px auto; padding: 0 24px; color: #1e293b; line-height: 1.6; }
+  h1, h2, h3, h4 { color: #0f172a; margin-top: 2em; }
+  h1 { border-bottom: 2px solid #e2e8f0; padding-bottom: 0.3em; }
+  h2 { border-bottom: 1px solid #e2e8f0; padding-bottom: 0.2em; }
+  code { background: #f1f5f9; padding: 0.15em 0.4em; border-radius: 4px; font-size: 0.9em; }
+  pre { background: #f1f5f9; padding: 1em; border-radius: 6px; overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+  th, td { border: 1px solid #e2e8f0; padding: 8px 12px; text-align: left; vertical-align: top; }
+  th { background: #f8fafc; }
+  blockquote { border-left: 4px solid #cbd5e1; margin: 1em 0; padding: 0.2em 1em; color: #475569; }
+  a { color: #2563eb; }
+  hr { border: none; border-top: 1px solid #e2e8f0; margin: 2em 0; }
 </style>
 </head>
 <body>
-<div class="banner">Rendered from <code>requirements/10-run-results-page-redesign.md</code> for easy reading — the <code>.md</code> file (also viewable rendered on GitHub) is the source of truth; if it changes, this export needs regenerating.</div>
 <h1>Run Results Page — Redesign Requirements</h1>
 <p><strong>Author:</strong> Veronica Kravets · <strong>Audience:</strong> engineering (to be broken down into stories)</p>
 <p><strong>Deployed prototype:</strong> <a href="https://veronica-studio.azurewebsites.net">https://veronica-studio.azurewebsites.net</a></p>
@@ -182,7 +138,7 @@ with <strong>&quot;Scenario N — …&quot;</strong>.</p>
 <td>5</td>
 <td><em>Scenario 5 — Funnel headlines, grouped &amp; new assertion types</em></td>
 <td>A single prompt, entirely invented for this purpose</td>
-<td>A weighted, multi-part assertion (§4.E) and two additional standard assertion types not seen in the real exports</td>
+<td>A weighted, multi-part assertion (§4.E); two additional standard assertion types not seen in the real exports; one sub-assertion that errors instead of failing (RES‑36a)</td>
 </tr>
 </tbody></table>
 <h3>Scenario 5, in detail — the one to study for weighted/composite assertions</h3>
@@ -201,11 +157,12 @@ clears a set bar.</li>
 <p>The example test cases deliberately isolate different situations, each worth opening once you&#39;re
 in the prototype: two clean passes; one failing <em>only</em> assertion 1 with everything else passing;
 one failing <em>only</em> assertion 2 similarly in isolation; two where the weighted assertion (#3) fails
-outright; and — the single most important example in the whole prototype — <strong>one case where one
-of the three smaller assertions inside the weighted assertion fails, but the weighted assertion
-still passes overall</strong> because the average of all three still clears the bar. That last case is
-the one to point to when explaining why &quot;weighted average&quot; is more useful than &quot;every
-sub-assertion must pass.&quot;</p>
+outright; one case where one of the three smaller assertions inside the weighted assertion fails,
+but the weighted assertion still passes overall because the average of all three still clears the
+bar — the case to point to when explaining why &quot;weighted average&quot; is more useful than &quot;every
+sub-assertion must pass&quot;; and one case where a smaller assertion inside the weighted assertion
+<strong>errors</strong> instead of failing (its own grading logic never ran, since the output had nothing for
+it to inspect) — the case to point to for RES‑36a&#39;s Passed/Failed/<strong>Errors</strong>/N-A distinction.</p>
 <hr>
 <h2>4. Requirements</h2>
 <p>Every block: an ID, what must be true, why, and how to tell it&#39;s working. Section groupings A–L
@@ -426,13 +383,19 @@ quick status filter (RES‑33) back to &quot;all,&quot; so the two can never com
 guaranteed to show zero results (e.g. &quot;passed&quot; plus &quot;this assertion failed&quot;).</p>
 <h4>RES-36a — The detail view&#39;s assertion list can be filtered by outcome the same way</h4>
 <p>A row with many assertions can be scanned down to just the ones that matter right now: All,
-Passed, Failed, or N/A — a filter control that lives directly on the detail view&#39;s assertion
-section, mirroring RES‑25&#39;s column-header control but as a full 4-way choice rather than just
-&quot;only failing,&quot; since isolating passes is just as useful as isolating failures once a row has
+Passed, Failed, Errors, or N/A — a filter control that lives directly on the detail view&#39;s
+assertion section, mirroring RES‑25&#39;s column-header control but as a full 5-way choice rather than
+just &quot;only failing,&quot; since isolating passes is just as useful as isolating failures once a row has
 dozens of assertions. Resets to &quot;All&quot; every time a different test case is opened (Prev/Next or
 reopened from the table), so a filter left on &quot;Failed&quot; from one row can never silently hide
 everything on the next.</p>
 <ul>
+<li>&quot;Errors&quot; here is a <strong>per-assertion</strong> error — one specific assertion&#39;s own grading logic couldn&#39;t
+run at all (e.g. a broken custom-code snippet, an invalid pattern) — as distinct from a row-level
+error (RES‑11), where the whole test case never generated an output and no assertion ran at all.
+An errored assertion still counts as a fail in every rollup, but is called out with its own
+visual treatment and its own bucket here so a reviewer can immediately tell &quot;this genuinely
+didn&#39;t meet the bar&quot; apart from &quot;this assertion is broken and needs to be fixed, not the prompt.&quot;</li>
 <li>In the comparison view&#39;s per-test-case detail (RES‑47), the same filter applies to the shared
 assertion table using &quot;any variant&quot; semantics: an assertion row stays visible if at least one
 variant&#39;s result for it matches the chosen outcome.</li>

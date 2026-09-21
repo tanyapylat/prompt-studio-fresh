@@ -572,6 +572,9 @@ const FUNNEL_REASONS = {
   length: {
     pass: "The <h1> text is between 30 and 70 characters.",
     fail: "The <h1> text falls outside the 30–70 character range.",
+    // Distinct from `fail` — the sub-check's own code couldn't run at all (see the "Handyman"
+    // row's note), not "ran and the length was wrong."
+    error: "Custom code threw an error: Cannot read properties of null (reading '1') — the output has no <h1> tag for the regex to extract text from.",
   },
   keyword: {
     pass: (cat: string) => `The <h1> text mentions "${cat}" by name.`,
@@ -655,6 +658,9 @@ interface FunnelRow {
   output: string;
   containsHtmlPass: boolean;
   notEqualsPass: boolean;
+  /** When true, `lengthPass` is ignored — the "H1 length" sub-check is rendered as *errored*
+   * (its code couldn't run) rather than passed/failed. See `AssertionScore.errored`. */
+  lengthErrored?: boolean;
   lengthPass: boolean;
   keywordPass: boolean;
   tonePass: boolean;
@@ -760,6 +766,19 @@ const FUNNEL_ROWS: FunnelRow[] = [
     metaPass: true,
     note: "The keyword sub-check fails, but the H1 tag quality score still passes overall — 2 of its 3 weighted sub-checks are enough to clear the 0.60 threshold.",
   },
+  {
+    category: "Handyman",
+    output:
+      "Need a Handyman? Get Quick Answers Before You Book\nAsk about that repair before scheduling a visit — a licensed handyman can tell you what's involved and roughly what it'll cost.",
+    containsHtmlPass: false, // no <h1> markup at all, same gap as the "Car Mechanic" row above
+    notEqualsPass: true,
+    lengthErrored: true, // the sub-check's own regex assumes an <h1> exists — it errors, it doesn't just fail
+    lengthPass: false,
+    keywordPass: true,
+    tonePass: true,
+    metaPass: true,
+    note: "The H1 length sub-check errors out here — the output has no <h1> tag for its regex to extract text from, so the check itself never ran (distinct from evaluating and failing). The group still passes on the other two sub-checks' weight; the top-level HTML-tag check fails on its own either way, which is a real evaluated failure, not an error.",
+  },
 ];
 
 function buildScenario5(ownerId: string): SpecProject {
@@ -799,12 +818,14 @@ function buildScenario5(ownerId: string): SpecProject {
 
   const results: RunItemResult[] = FUNNEL_ROWS.map((row, i) => {
     const item = items[i];
-    const lengthScore: AssertionScore = {
-      assertionId: h1Length.id,
-      passed: row.lengthPass,
-      score: row.lengthPass ? 1 : 0,
-      reason: row.lengthPass ? FUNNEL_REASONS.length.pass : FUNNEL_REASONS.length.fail,
-    };
+    const lengthScore: AssertionScore = row.lengthErrored
+      ? { assertionId: h1Length.id, passed: false, errored: true, score: 0, reason: FUNNEL_REASONS.length.error }
+      : {
+          assertionId: h1Length.id,
+          passed: row.lengthPass,
+          score: row.lengthPass ? 1 : 0,
+          reason: row.lengthPass ? FUNNEL_REASONS.length.pass : FUNNEL_REASONS.length.fail,
+        };
     const keywordScore: AssertionScore = {
       assertionId: h1Keyword.id,
       passed: row.keywordPass,

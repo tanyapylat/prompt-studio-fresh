@@ -369,6 +369,17 @@ export interface AssertionScore {
    */
   na?: boolean;
   /**
+   * True when this specific assertion couldn't be evaluated at all — the grading code itself
+   * threw (a `custom_code` bug, an invalid regex, a malformed reference) or the judge call failed
+   * — as distinct from evaluating cleanly and legitimately failing. Mirrors Promptfoo's own
+   * Pass/Fail/Error split, just scoped to one assertion instead of the whole row (see
+   * `RunItemResult.error` for the row-level version, which fires before any assertion even runs).
+   * Always implies `passed: false` (an errored check still counts as a fail for rollups — it just
+   * gets its own reason/visual treatment and its own bucket in the panel's outcome filter), and is
+   * mutually exclusive with `na` (an assertion is either skipped or attempted, never both).
+   */
+  errored?: boolean;
+  /**
    * Present only when this score belongs to a composite/grouped assertion (`Assertion.children`
    * set) — each child's own score, in the same shape and keyed the same way (`assertionId`) as a
    * normal top-level score, so the UI can render the breakdown behind the group's aggregate

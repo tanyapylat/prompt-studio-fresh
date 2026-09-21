@@ -300,8 +300,10 @@ export function ResultsTable({
 
   // Wider default than most columns — this is where the substance of a row lives (one chip per
   // assertion, plus reasons in wrap mode), so it shouldn't be squeezed to the same width as, say,
-  // Labels (which is mostly empty until you actually tag something).
-  const assertionsDefaultWidth = prefs.showAssertionChips ? 360 : 180;
+  // Labels (which is mostly empty until you actually tag something). A run with a dozen-plus
+  // assertions per row (per Veronica's real data) needs real room for this by default, not just
+  // "a bit more than before."
+  const assertionsDefaultWidth = prefs.showAssertionChips ? 460 : 220;
 
   // Every visible column's actual rendered width, in table order — drives both the `<colgroup>`
   // and (crucially) the table's own total width. Without an explicit total, a `table-layout:
@@ -544,9 +546,11 @@ export function ResultsTable({
                                   onClick={(e) => handleChipClick(e, sc.assertionId, outcome)}
                                   title={`${assertion?.description ?? "assertion"}${rubricHint}\n\nClick to filter by this assertion`}
                                   className={`inline-flex w-fit max-w-full items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-medium whitespace-nowrap transition-colors ${
-                                    sc.passed
-                                      ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
-                                      : "border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100"
+                                    sc.errored
+                                      ? "border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100"
+                                      : sc.passed
+                                        ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                                        : "border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100"
                                   } ${isActive ? "ring-2 ring-primary ring-offset-1" : ""}`}
                                 >
                                   <span className="truncate">{assertionChipLabel(assertion)}</span>
@@ -559,7 +563,11 @@ export function ResultsTable({
                                   {sc.score !== undefined && <span className="shrink-0 tabular-nums opacity-70">{sc.score.toFixed(2)}</span>}
                                 </button>
                                 {prefs.wrap && (
-                                  <p className={`whitespace-pre-wrap break-words pl-1 text-[10px] ${sc.passed ? "text-slate-500" : "text-rose-600"}`}>
+                                  <p
+                                    className={`whitespace-pre-wrap break-words pl-1 text-[10px] ${
+                                      sc.errored ? "text-amber-600" : sc.passed ? "text-slate-500" : "text-rose-600"
+                                    }`}
+                                  >
                                     {sc.reason}
                                   </p>
                                 )}
@@ -571,7 +579,12 @@ export function ResultsTable({
                                     {sc.childScores.map((child) => {
                                       const childAssertion = assertionMap.get(child.assertionId);
                                       return (
-                                        <p key={child.assertionId} className={`whitespace-pre-wrap break-words text-[10px] ${child.passed ? "text-slate-500" : "text-rose-600"}`}>
+                                        <p
+                                          key={child.assertionId}
+                                          className={`whitespace-pre-wrap break-words text-[10px] ${
+                                            child.errored ? "text-amber-600" : child.passed ? "text-slate-500" : "text-rose-600"
+                                          }`}
+                                        >
                                           <span className="font-medium">{childAssertion?.description ?? "sub-check"}</span>
                                           {child.score !== undefined && <span className="tabular-nums opacity-70"> ({child.score.toFixed(2)})</span>}: {child.reason}
                                         </p>

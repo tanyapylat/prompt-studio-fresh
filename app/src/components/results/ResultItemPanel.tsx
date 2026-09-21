@@ -11,14 +11,15 @@ import { LabelChips } from "./LabelChips";
 import { SegmentedToggle } from "./ResultsFiltersMenu";
 import { DatasetSourceIcon } from "../dataset/DatasetSourceIcon";
 
-/** One row's Assertions list, scoped down to a single outcome — mirrors the table's Assertions column header filter (`AssertionsHeaderFilter` in `ResultsTable.tsx`) but as a full 4-way toggle, since a busy row (dozens of assertions) benefits from isolating passes just as much as failures. */
-type AssertionOutcomeFilter = "all" | "passed" | "failed" | "na";
+/** One row's Assertions list, scoped down to a single outcome — mirrors the table's Assertions column header filter (`AssertionsHeaderFilter` in `ResultsTable.tsx`) but as a full 5-way toggle, since a busy row (dozens of assertions) benefits from isolating passes just as much as failures. "Errored" is split out from "Failed" — an assertion whose grading code itself blew up (see `AssertionScore.errored`) never actually evaluated pass/fail, which is a different thing to triage than a check that ran cleanly and legitimately failed. */
+type AssertionOutcomeFilter = "all" | "passed" | "failed" | "errored" | "na";
 
-function matchesAssertionOutcomeFilter(sc: { na?: boolean; passed: boolean }, filter: AssertionOutcomeFilter): boolean {
+function matchesAssertionOutcomeFilter(sc: { na?: boolean; errored?: boolean; passed: boolean }, filter: AssertionOutcomeFilter): boolean {
   if (filter === "all") return true;
   if (filter === "na") return !!sc.na;
-  if (filter === "passed") return !sc.na && sc.passed;
-  return !sc.na && !sc.passed;
+  if (filter === "errored") return !sc.na && !!sc.errored;
+  if (filter === "passed") return !sc.na && !sc.errored && sc.passed;
+  return !sc.na && !sc.errored && !sc.passed;
 }
 
 /** promptfoo's Evaluation table has a "Type" column (`equals`, `contains`, `llm-rubric`, …) — this is the AI Studio equivalent for one Assertion's tier/check. */
@@ -327,6 +328,7 @@ export function ResultItemPanel({
                     { id: "all", label: "All" },
                     { id: "passed", label: "Passed" },
                     { id: "failed", label: "Failed" },
+                    { id: "errored", label: "Errors" },
                     { id: "na", label: "N/A" },
                   ]}
                   onChange={(v) => setAssertionOutcomeFilter(v)}
@@ -354,6 +356,8 @@ export function ResultItemPanel({
                       <div className="flex items-start gap-2">
                         {sc.na ? (
                           <Minus size={13} className="mt-0.5 shrink-0 text-slate-400" />
+                        ) : sc.errored ? (
+                          <AlertTriangle size={13} className="mt-0.5 shrink-0 text-amber-600" />
                         ) : sc.passed ? (
                           <CheckCircle2 size={13} className="mt-0.5 shrink-0 text-emerald-600" />
                         ) : (
@@ -368,6 +372,8 @@ export function ResultItemPanel({
                         {assertion && <Badge tone={assertionTypeTone(assertion)}>{assertionTypeLabel(assertion)}</Badge>}
                         {sc.na ? (
                           <Badge tone="neutral">n/a</Badge>
+                        ) : sc.errored ? (
+                          <Badge tone="warning">error</Badge>
                         ) : (
                           sc.score !== undefined && <Badge tone={sc.passed ? "success" : "danger"}>{sc.score.toFixed(2)}</Badge>
                         )}
@@ -398,7 +404,11 @@ export function ResultItemPanel({
                         <span className="font-medium text-slate-600">{(assertion.groupThreshold ?? 0.5).toFixed(2)}</span>.
                       </p>
                     )}
-                    <p className={`mt-1.5 text-xs ${sc.na ? "italic text-slate-400" : sc.passed ? "text-slate-600" : "text-rose-700"}`}>
+                    <p
+                      className={`mt-1.5 text-xs ${
+                        sc.na ? "italic text-slate-400" : sc.errored ? "text-amber-700" : sc.passed ? "text-slate-600" : "text-rose-700"
+                      }`}
+                    >
                       {sc.na ? sc.reason || "Not applicable to this row." : sc.reason}
                     </p>
                     {/* Full breakdown behind a group's weighted score — each child was scored by its own
@@ -413,7 +423,9 @@ export function ResultItemPanel({
                           const childAssertion = assertionMap.get(child.assertionId);
                           return (
                             <div key={child.assertionId} className="flex items-start gap-2 rounded-md bg-white px-2 py-1.5">
-                              {child.passed ? (
+                              {child.errored ? (
+                                <AlertTriangle size={12} className="mt-0.5 shrink-0 text-amber-600" />
+                              ) : child.passed ? (
                                 <CheckCircle2 size={12} className="mt-0.5 shrink-0 text-emerald-600" />
                               ) : (
                                 <XCircle size={12} className="mt-0.5 shrink-0 text-rose-600" />
@@ -424,11 +436,13 @@ export function ResultItemPanel({
                                     {childAssertion?.description ?? "Sub-check"}
                                   </p>
                                   <span className="shrink-0 text-[10px] tabular-nums text-slate-400">
-                                    {child.score !== undefined ? child.score.toFixed(2) : child.passed ? "pass" : "fail"}
+                                    {child.errored ? "error" : child.score !== undefined ? child.score.toFixed(2) : child.passed ? "pass" : "fail"}
                                     {childAssertion?.weight !== undefined && childAssertion.weight !== 1 ? ` ×${childAssertion.weight}` : ""}
                                   </span>
                                 </div>
-                                <p className={`text-[10px] ${child.passed ? "text-slate-500" : "text-rose-600"}`}>{child.reason}</p>
+                                <p className={`text-[10px] ${child.errored ? "text-amber-700" : child.passed ? "text-slate-500" : "text-rose-600"}`}>
+                                  {child.reason}
+                                </p>
                               </div>
                             </div>
                           );
