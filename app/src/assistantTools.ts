@@ -109,7 +109,7 @@ export const ASSISTANT_TOOLS: AssistantToolSpec[] = [
   {
     name: "log_feedback",
     description:
-      "Capture the user's product feedback about AI Studio itself — praise, confusion, or a bug report — so the team can see it later. Use this whenever the user shares an opinion about the tool instead of just pointing them at the Feedback tab.",
+      "Capture the user's product feedback about Nova itself — praise, confusion, or a bug report — so the team can see it later. Use this whenever the user shares an opinion about the tool instead of just pointing them at the Feedback tab.",
     parameters: {
       type: "object",
       properties: { text: { type: "string" } },

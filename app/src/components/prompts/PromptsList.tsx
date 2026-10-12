@@ -1,5 +1,5 @@
 ﻿import { useMemo, useState } from "react";
-import { ChevronDown, ChevronRight, Compass, FileText, Globe2, Link2, Lock, Plus, Rocket, Search, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronRight, FileText, Globe2, Link2, Lock, Plus, Rocket, Search, Sparkles, Trash2 } from "lucide-react";
 import { useStore } from "../../store";
 import { useAssistantActions } from "../../assistantContext";
 import { activePromptVersion, draftDiffersFromBase } from "../../promptFactory";
@@ -177,8 +177,8 @@ export function PromptsList() {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-primary">
-            <Compass size={16} />
-            <span className="text-xs font-semibold uppercase tracking-wider">AI Studio</span>
+            <Sparkles size={16} />
+            <span className="text-xs font-semibold uppercase tracking-wider">Nova</span>
           </div>
           <h1 className="mt-1 text-2xl font-semibold text-slate-900">Prompts</h1>
           <p className="mt-1 max-w-xl text-sm text-slate-500">

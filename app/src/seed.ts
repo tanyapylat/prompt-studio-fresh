@@ -54,7 +54,7 @@ export function seedUsers(): MockUser[] {
 
 // The real, live production system prompt for the "ccheadline" Target — verbatim from
 // prompt_ccheadlineaistudio.txt, including its quirks (e.g. the mismatched quote around "free").
-// Uses {{Pearl_User_Chat}} (double-brace, the production convention) rather than AI Studio's
+// Uses {{Pearl_User_Chat}} (double-brace, the production convention) rather than Nova's
 // native single-brace {variable} — see promptTemplate.ts, which recognizes both.
 const CCHEADLINE_PROMPT = [
   "Read the customer and assistant interaction for context.",
@@ -255,14 +255,14 @@ const CCHEADLINE_RUN_V1: { headline: string; scores: { pass: boolean; score: num
  * The one and only seed Spec: a real, live production artifact ("ccheadline" — generates the
  * short problem-summary headline shown elsewhere in the product, e.g. a ticket/queue label, from
  * a Pearl chat transcript). Sourced verbatim from three real files (spec, prompt, eval config) plus
- * one real Run v1 result set — nothing here is invented, including its rough edges. AI Studio ships
+ * one real Run v1 result set — nothing here is invented, including its rough edges. Nova ships
  * with only this one Spec so the "generate everything from a Spec, then iterate on real results"
  * happy path can be polished end-to-end against a single, real, non-trivial case.
  */
 export function buildCcheadlineSpec(): SpecProject {
   let spec = createBlankSpec("Conversational Chat Headline", USER_VERONICA, "org");
   // Real Prompt Management project id this Spec's mirrored Prompt corresponds to — see
-  // `SpecProject.psProjectId`. Distinct from `spec.id`, which is only an AI Studio-internal key.
+  // `SpecProject.psProjectId`. Distinct from `spec.id`, which is only a Nova-internal key.
   spec.psProjectId = 4128;
 
   // Requirements — a flat list, no guardrail/criteria split (that split proved artificial against
@@ -465,7 +465,7 @@ export function buildCcheadlineSpec(): SpecProject {
   spec.assertions = [aOrganicHeadline, aProblemWording, aBrandCapitalization, aBannedWords, aHeadlineLength];
 
   // Not specified in the real eval config (promptfoo's default grading provider was used, no
-  // explicit judge system prompt) — AI Studio's own reasonable default, flagged as inferred.
+  // explicit judge system prompt) — Nova's own reasonable default, flagged as inferred.
   spec.judge = { id: newId("judge"), model: "gpt-4o-mini" };
 
   spec.target = {
@@ -627,7 +627,7 @@ const CQA_SYNTHETIC_CONVERSATION =
 export function buildCqaSpec(): SpecProject {
   let spec = createBlankSpec("CQA Pricing/Refund Detection", USER_PRIYA, "org");
   // Real Prompt Management project id this Spec's mirrored Prompt corresponds to — see
-  // `SpecProject.psProjectId`. Distinct from `spec.id`, which is only an AI Studio-internal key.
+  // `SpecProject.psProjectId`. Distinct from `spec.id`, which is only a Nova-internal key.
   spec.psProjectId = 4256;
 
   const rTrueCriteria = newRequirement(
@@ -681,7 +681,7 @@ export function buildCqaSpec(): SpecProject {
       ),
       newOpenQuestion(
         "The real production eval grades each row with an exact equality check (output.pricing_help === the " +
-          "row's known-correct answer) — a golden-answer comparison. AI Studio's assertion model doesn't yet " +
+          "row's known-correct answer) — a golden-answer comparison. Nova's assertion model doesn't yet " +
           "let a deterministic or custom-code check see a dataset row's own expectedOutput (only the output " +
           "itself), so \"Correct pricing/refund classification\" below is a rubric asking the judge to " +
           "re-derive the right answer from the Requirements instead of comparing to a stored one. Same intent, " +

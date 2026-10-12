@@ -11,9 +11,9 @@ import {
 import { AssistantChat } from "./AssistantChat";
 import { AssistantFeedback } from "./AssistantFeedback";
 
-/** "Your guide across AI Studio" plus whatever the user is currently looking at, when known. */
+/** "Your guide across Nova" plus whatever the user is currently looking at, when known. */
 function subtitleFor(view: AssistantView): string {
-  const base = "Your guide across AI Studio";
+  const base = "Your guide across Nova";
   if (view.specName) return `${base} · ${view.specName}`;
   if (view.section) return `${base} · ${view.section.charAt(0).toUpperCase()}${view.section.slice(1)}`;
   return base;

@@ -122,7 +122,7 @@ export function resolveRunPromptIdentity(spec: SpecProject, run: RunGroup, promp
  * One human-readable line combining everything that identifies what a Run evaluated — the
  * Prompt's name, its real Prompt Management project id, the local version number, and the real
  * Prompt Management version id (e.g. `{"promptId": 4924, "versionId": 25928}`, the same ids a
- * real eval-run payload reports — not AI Studio's own internal `prompt_*`/`pv_*` keys).
+ * real eval-run payload reports — not Nova's own internal `prompt_*`/`pv_*` keys).
  * Deliberately one flexible string, not four rigid columns — a future Run that isn't tied to a
  * versioned Prompt at all (e.g. an agent run) can just be a name with no project/version parts,
  * same as a Spec/version that's never been synced to Prompt Management yet says so plainly

@@ -150,7 +150,7 @@ function AssertionRollup({
  * pass-rate-by-assertion rollup, and "what to review first / how to improve" suggestions. `insights`
  * is always populated (the free heuristic, computed client-side in `ResultsPane`) — `onAskNorthStar`
  * opens the chat for a deeper, AI-backed pass instead of calling that API directly (every AI
- * generation in AI Studio is narrated through North Star, not fired silently from a pane button).
+ * generation in Nova is narrated through North Star, not fired silently from a pane button).
  */
 export function RunSummary({
   spec,

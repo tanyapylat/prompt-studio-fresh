@@ -7,7 +7,7 @@ const QUESTIONS: { group: string; items: { q: string; body: string }[] }[] = [
     items: [
       {
         q: "Should this page show tool adoption alongside production quality — or should those be two separate views?",
-        body: "Adoption = who's using AI Studio, how many Specs and runs. Quality = how well our live prompts are performing. Same audience or different?",
+        body: "Adoption = who's using Nova, how many Specs and runs. Quality = how well our live prompts are performing. Same audience or different?",
       },
       {
         q: "Who is the primary audience for this page?",

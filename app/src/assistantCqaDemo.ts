@@ -9,7 +9,7 @@ import { buildCqaSpec } from "./seed";
  * ONE deliberately failing synthetic row: an ambiguous "they" that the model misclassifies as
  * JustAnswer billing even though it refers to a photo-restoration vendor. That failure mode is
  * exactly what the system prompt's own K-shot examples warn about, and it's a clean illustration
- * of "production found a gap; AI Studio turns it into a test case."
+ * of "production found a gap; Nova turns it into a test case."
  *
  * Intercepted client-side in AssistantChat.tsx before the LLM/offline loop, like the CC Headline
  * demo. Returns null for anything that isn't a recognized next step so ordinary questions still
@@ -213,7 +213,7 @@ export function matchCqaDemoStep(text: string, spec: SpecProject | null): CqaDem
       outro:
         "100% — the fix held across all 14 rows, including the 13 real ones. " +
         "The synthetic 'they' case now classifies correctly as false.\n\n" +
-        "This is exactly the loop AI Studio is designed for: production found a failure → " +
+        "This is exactly the loop Nova is designed for: production found a failure → " +
         "it became a test case → you fixed the Prompt → you verified the fix didn't break anything else.",
       apply: (_addSpec, setSpec) => {
         const fixedResults = full.runs[0].results.map((r) => ({

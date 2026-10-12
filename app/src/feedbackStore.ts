@@ -11,7 +11,7 @@ export interface FeedbackEntry {
 }
 
 /**
- * Product feedback about AI Studio itself — deliberately local-only (no backend), per how this
+ * Product feedback about Nova itself — deliberately local-only (no backend), per how this
  * prototype persists everything else. Shared between the Feedback tab (`AssistantFeedback.tsx`,
  * which lists/submits it by hand) and North Star's `log_feedback` tool (which submits it from chat).
  */

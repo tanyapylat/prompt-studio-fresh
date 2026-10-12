@@ -271,7 +271,7 @@ export interface TargetVersion {
   createdAt?: number;
   /**
    * The real numeric version id from the production Prompt Management system — distinct from
-   * this Target's own `id`, which is only an AI Studio-internal key. Undefined until this exact
+   * this Target's own `id`, which is only a Nova-internal key. Undefined until this exact
    * version has actually been published/synced there (e.g. a fresh, never-published draft has no
    * id yet). This is the id real eval-run tooling reports alongside a project id — see
    * `SpecProject.psProjectId`.
@@ -504,7 +504,7 @@ export interface AccessGrant {
 export interface SpecUsageStats {
   /** Rolling window these counters cover, in hours (mocked as a fixed 24h window today). */
   windowHours: number;
-  /** How many times a Prompt version generated from this Spec has been fetched from AI Studio, within the window. */
+  /** How many times a Prompt version generated from this Spec has been fetched from Nova, within the window. */
   promptFetches: number;
   /**
    * How many times that Prompt was actually executed on Production via a LiteLLM call, within

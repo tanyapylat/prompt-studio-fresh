@@ -1,4 +1,4 @@
-# AI Studio — prototype
+# Nova — prototype
 
 A click-through prototype of the spec-driven workflow described in
 [`../spec-driven-redesign/`](../spec-driven-redesign/README.md), backed by **real OpenAI calls**
@@ -81,6 +81,22 @@ app/
 - **Results / error analysis** — a pass-rate-by-assertion rollup, failing rows sorted first,
   per-assertion reasons, a Live/Simulated badge per run, a Sample-run badge when applicable, and an
   open-coding note field per row.
+- **Observability (preview)** — a production-monitoring page built from real online-eval results
+  (one prompt's schedule: 55 runs every 6 hours, Sep 18 – Oct 2): a period control (presets, date range, drag-to-zoom on
+  the chart) with per-run or daily pooling; pass rate over time with a 95% confidence band and
+  regression markers; latency/cost trends; a per-check heatmap by day with
+  zoom-in; failure patterns over the period (first seen, trend) and for the selected run/day; a
+  filterable, sortable, paginated runs table; and an illustrative frequency/volume/threshold panel
+  with a cost estimate. Data is `src/seed/monitoringFixture.generated.ts`, produced by
+  `node scripts/build-monitoring-fixture.mjs <dir of raw Promptfoo eval JSON>`. Several evals share the
+  description "A2E Intake — shared" (other prompts' schedules reuse it) and nothing in a result names
+  its prompt, so the script follows the 6-hourly chain from a known first eval
+  (`MONITORING_ANCHOR`, default `eval-ywK-2026-09-18T14:41:53`). Each eval is stored
+  as a small **aggregate** (counts, percentiles, failure-pattern counts); failing chat IDs are kept
+  only for the latest 20 eval runs. The fixture is **content-free by design** — no conversation
+  text, chat IDs one-way hashed with a discarded salt — because this app is publicly deployed. Keep
+  raw eval JSON out of the repo, and re-check that property if the script changes. Logic lives in
+  `src/monitoring.ts`; the vision it prototypes is `../vision/production-monitoring-vision.md`.
 
 See [`../requirements/`](../requirements/README.md) for the full, granular requirement blocks
 this app implements (and the ones it deliberately doesn't yet).
@@ -91,7 +107,7 @@ Deploy from the repo root with `.\deploy.ps1`. The script reads `deployment-conf
 
 Wildcard CORS (`Access-Control-Allow-Origin: *`) is applied on the Node/Vite server in `app/server/cors.ts` and `app/server/apiPlugin.ts` (dev, preview, and Azure). Do not enable credentialed cross-origin requests (`Access-Control-Allow-Credentials`).
 
-Public base URL is `VITE_PUBLIC_BASE_URL` (`app/vite.config.ts` `base`, and `app/src/publicUrl.ts` for API/asset URLs). Local: unset, so the app uses relative paths at `http://localhost:5173`. Production: `https://veronica-studio.azurewebsites.net` from `deployment-config.json` `azureUrl`, injected at build time by `deploy.ps1`. (The Azure App Service was renamed from `veronica-ai-studio` to `veronica-studio` — "AI Studio" is being retired as the product name and a new one is still TBD; the old app service has been deleted, so that old hostname no longer resolves.)
+Public base URL is `VITE_PUBLIC_BASE_URL` (`app/vite.config.ts` `base`, and `app/src/publicUrl.ts` for API/asset URLs). Local: unset, so the app uses relative paths at `http://localhost:5173`. Production: `https://veronica-studio.azurewebsites.net` from `deployment-config.json` `azureUrl`, injected at build time by `deploy.ps1`. (The Azure App Service was renamed from `veronica-ai-studio` to `veronica-studio` — the product is now called **Nova** (matching `ja-Nova`), but the hostname deliberately stays `veronica-studio` to mark this as Veronica's personal prototype rather than the real Nova app; the old app service has been deleted, so that old hostname no longer resolves.)
 
 `deployment-config.json` holds a live Kudu zip-deploy password (`userPWD`) in plaintext and is intentionally **not** committed — it's gitignored (see the entry in `.gitignore` and `AGENTS.md`), unlike this sandbox tool's own default suggestion. Recreate it locally from `create-app-service`'s publishing profile if it's ever missing (see `deploy.ps1`'s expected shape).
 

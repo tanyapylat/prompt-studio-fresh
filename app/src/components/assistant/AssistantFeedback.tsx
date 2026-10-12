@@ -8,7 +8,7 @@ import { AutoGrowTextarea } from "@/components/ui/auto-grow-textarea";
 import { Button } from "@/components/ui/button";
 
 /**
- * Browses/submits AI Studio product feedback by hand — see `feedbackStore.ts` for the shared
+ * Browses/submits Nova product feedback by hand — see `feedbackStore.ts` for the shared
  * storage North Star's `log_feedback` tool also writes to when someone leaves feedback in chat.
  */
 export function AssistantFeedback() {
@@ -60,7 +60,7 @@ export function AssistantFeedback() {
     <div className="flex h-full flex-col">
       <div className="border-b border-slate-200 p-3">
         <p className="text-xs text-slate-500">
-          Tell the AI Studio team what's working, what's confusing, or what's broken.
+          Tell the Nova team what's working, what's confusing, or what's broken.
         </p>
         <AutoGrowTextarea
           value={text}

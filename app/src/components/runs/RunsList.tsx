@@ -154,7 +154,7 @@ function describeRun(row: Pick<Row, "spec" | "promptName" | "psProjectId" | "ver
 
 /**
  * The global "Eval runs" section — every eval Run across every Spec, newest first by default.
- * This is the AI Studio replacement for Promptfoo's eval-list screen: click a row to open that
+ * This is the Nova replacement for Promptfoo's eval-list screen: click a row to open that
  * Run's own full-page detail view (`RunDetailPage`). Every Run stays tied to the Spec it came
  * from — there's no standalone "eval config" concept here — but each Run also carries the exact
  * mirrored Prompt version it ran against (`run.targetId`, resolved to the Prompt/PromptVersion
@@ -309,7 +309,7 @@ export function RunsList() {
       <div>
         <div className="flex items-center gap-2 text-primary">
           <FlaskConical size={16} />
-          <span className="text-xs font-semibold uppercase tracking-wider">AI Studio</span>
+          <span className="text-xs font-semibold uppercase tracking-wider">Nova</span>
         </div>
         <h1 className="mt-1 text-2xl font-semibold text-slate-900">Eval runs</h1>
         <p className="mt-1 max-w-xl text-sm text-slate-500">

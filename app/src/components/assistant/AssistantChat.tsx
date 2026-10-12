@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Markdown } from "@/components/ui/markdown";
 
 const BUILD_NEW_SUGGESTION = "Build a new prompt from scratch";
-const FEEDBACK_SUGGESTION = "How do I give feedback about AI Studio?";
+const FEEDBACK_SUGGESTION = "How do I give feedback about Nova?";
 
 const TAB_SUGGESTIONS: Record<string, string[]> = {
   prompt: ["What's the difference between the Target and the Playground?"],

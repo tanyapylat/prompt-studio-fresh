@@ -95,7 +95,7 @@ function RunVersionSwitcher({ spec, run, onSelect }: { spec: SpecProject; run: R
 }
 
 /**
- * Standalone, full-page view of exactly one Run — the AI Studio equivalent of Promptfoo's eval
+ * Standalone, full-page view of exactly one Run — the Nova equivalent of Promptfoo's eval
  * detail screen. Reachable from the sidebar's Runs list (browsing across every Spec) or from a
  * Spec's Results tab ("View full history"). Renders the same `RunDetailBody` the in-Workspace
  * Results tab uses, so summary/table/filters/columns/export/annotation behave identically in both

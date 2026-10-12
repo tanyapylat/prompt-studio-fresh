@@ -28,7 +28,7 @@ function cardsFor(spec: SpecProject): PlannedCard[] {
       body:
         `Bind this Spec's Eval suite to a sample of live traffic so the same checks that gate a release ` +
         `keep running against production afterward — drift shows up as a number moving, not a support ` +
-        `ticket. Partly underway already in Prompt Studio; this is where it lands in AI Studio.`,
+        `ticket. Partly underway already in Prompt Studio; this is where it lands in Nova.`,
     },
     {
       icon: <BarChart3 size={16} />,
@@ -71,7 +71,7 @@ export function ObservabilityPane({ spec }: { spec: SpecProject }) {
         <h3 className="text-sm font-semibold text-slate-800">What's next for this Spec</h3>
         <p className="mt-1 text-xs text-slate-500">
           Nothing below is built yet — shown here so the roadmap stays visible next to the Spec it applies to,
-          instead of living only in a separate deck. "Next" and "Later" match the shared AI Studio roadmap horizons.
+          instead of living only in a separate deck. "Next" and "Later" match the shared Nova roadmap horizons.
         </p>
       </div>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

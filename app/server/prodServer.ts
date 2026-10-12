@@ -83,7 +83,7 @@ export function startProdServer(wwwRoot: string, port: number) {
   });
 
   server.listen(port, "0.0.0.0", () => {
-    console.log(`AI Studio listening on ${port}`);
+    console.log(`Nova listening on ${port}`);
   });
 }
 

@@ -44,7 +44,7 @@ npx --yes esbuild "app/server/prodServer.ts" --bundle --platform=node --format=c
 
 Write-Host "==> Writing package.json for Azure"
 @{
-  name = "ai-studio"
+  name = "nova"
   private = $true
   scripts = @{ start = "node server.js" }
 } | ConvertTo-Json | Set-Content -Path (Join-Path $root ".publish\package.json") -Encoding ASCII

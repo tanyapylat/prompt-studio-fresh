@@ -2,7 +2,6 @@
 import {
   Activity,
   ChevronsUpDown,
-  Compass,
   FileText,
   FlaskConical,
   ListChecks,
@@ -17,13 +16,13 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 export type Section = "specs" | "prompts" | "assertions" | "datasets" | "runs" | "observability" | "dashboard";
 
-const NAV: { id: Section; label: string; icon: typeof FileText; soon?: boolean }[] = [
+const NAV: { id: Section; label: string; icon: typeof FileText; badge?: string }[] = [
   { id: "specs", label: "Specs", icon: FileText },
   { id: "prompts", label: "Prompts", icon: Sparkles },
   { id: "assertions", label: "Assertions", icon: ListChecks },
   { id: "datasets", label: "Datasets", icon: TableProperties },
   { id: "runs", label: "Eval runs", icon: FlaskConical },
-  { id: "observability", label: "Observability", icon: Activity, soon: true },
+  { id: "observability", label: "Observability", icon: Activity, badge: "Preview" },
   { id: "dashboard", label: "Dashboard", icon: TrendingUp },
 ];
 
@@ -120,8 +119,8 @@ export function Sidebar({ section, onSectionChange }: { section: Section; onSect
     <aside className="flex w-56 shrink-0 flex-col border-r border-slate-100 bg-white">
       <div className="flex items-center justify-between gap-2 px-4 py-3.5">
         <span className="flex items-center gap-1.5">
-          <Compass size={15} className="text-slate-500" />
-          <span className="text-sm font-semibold text-slate-900">AI Studio</span>
+          <Sparkles size={15} className="text-primary" />
+          <span className="text-sm font-semibold text-slate-900">Nova</span>
         </span>
         <button
           onClick={() => setCollapsed(true)}
@@ -150,9 +149,9 @@ export function Sidebar({ section, onSectionChange }: { section: Section; onSect
                 <Icon size={15} className={active ? "text-slate-700" : "text-slate-400"} />
                 {item.label}
               </span>
-              {item.soon ? (
+              {item.badge ? (
                 <span className="rounded-full border border-slate-200 bg-slate-100 px-1.5 py-px text-[9px] font-semibold uppercase tracking-wide text-slate-400">
-                  Soon
+                  {item.badge}
                 </span>
               ) : (
                 counts[item.id] !== undefined && <span className="text-xs text-slate-400">{counts[item.id]}</span>

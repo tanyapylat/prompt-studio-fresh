@@ -3,13 +3,13 @@ import {
   ArrowUpRight,
   ChevronDown,
   ChevronRight,
-  Compass,
   Copy,
   FileText,
   Globe2,
   Lock,
   Plus,
   Search,
+  Sparkles,
   Trash2,
 } from "lucide-react";
 import { useStore } from "../store";
@@ -219,8 +219,8 @@ export function Home() {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-primary">
-            <Compass size={16} />
-            <span className="text-xs font-semibold uppercase tracking-wider">AI Studio</span>
+            <Sparkles size={16} />
+            <span className="text-xs font-semibold uppercase tracking-wider">Nova</span>
           </div>
           <h1 className="mt-1 text-2xl font-semibold text-slate-900">Specs</h1>
           <p className="mt-1 max-w-xl text-sm text-slate-500">
@@ -398,7 +398,7 @@ export function Home() {
             />
             <ColumnHeader
               label="API fetches (24h)"
-              title="Prompt versions generated from this Spec, fetched from AI Studio in the last 24h. Mocked for now — will come from real usage telemetry."
+              title="Prompt versions generated from this Spec, fetched from Nova in the last 24h. Mocked for now — will come from real usage telemetry."
               columnKey="apiFetches"
               activeSort={sortKey}
               sortDir={sortDir}

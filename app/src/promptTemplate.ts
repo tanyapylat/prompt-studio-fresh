@@ -125,7 +125,7 @@ export function promptAsRequestJson(source: PromptTemplateSource): string {
 //
 // EXCEPTION: `{{identifier}}` (Handlebars-style, no punctuation inside) is also treated as a
 // variable — real-world prompts (and reverse-engineered production configs) very commonly use this
-// convention instead of AI Studio's native single-brace one. A literal double-brace JSON example
+// convention instead of Nova's native single-brace one. A literal double-brace JSON example
 // like `{{"status": "ok"}}` still isn't a bare identifier, so it safely falls through to the
 // existing escaped-literal-brace handling below — the two conventions don't collide.
 const ESCAPED_OPEN = "\u0000";

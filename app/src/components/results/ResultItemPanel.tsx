@@ -22,7 +22,7 @@ function matchesAssertionOutcomeFilter(sc: { na?: boolean; errored?: boolean; pa
   return !sc.na && !sc.errored && !sc.passed;
 }
 
-/** promptfoo's Evaluation table has a "Type" column (`equals`, `contains`, `llm-rubric`, …) — this is the AI Studio equivalent for one Assertion's tier/check. */
+/** promptfoo's Evaluation table has a "Type" column (`equals`, `contains`, `llm-rubric`, …) — this is the Nova equivalent for one Assertion's tier/check. */
 function assertionTypeLabel(assertion: Assertion): string {
   // Composite/grouped assertion (promptfoo's assert-set) — checked first since `tier` on a group
   // is an arbitrary placeholder (see `Assertion.children`'s doc comment), not the real type.
